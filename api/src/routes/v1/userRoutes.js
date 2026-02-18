@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const UserController = require('../../controllers/userController');
-const { uploadProfilePicture } = require('../../utils/upload');
+const { uploadProfilePicture } = require('../../controllers/userController');
 
 /**
  * @swagger
@@ -207,41 +207,5 @@ router.put('/:id', uploadProfilePicture, UserController.updateUser);
  *         description: User not found
  */
 router.delete('/:id', UserController.deleteUser);
-
-/**
- * @swagger
- * /users/{id}/profile-picture:
- *   post:
- *     summary: Upload user profile picture
- *     tags: [Users]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             required:
- *               - profile_picture
- *             properties:
- *               profile_picture:
- *                 type: string
- *                 format: binary
- *                 description: Profile picture image file (JPEG, PNG, GIF, WebP - max 5MB)
- *     responses:
- *       200:
- *         description: Profile picture uploaded successfully
- *       400:
- *         description: No file uploaded
- *       404:
- *         description: User not found
- */
-router.post('/:id/profile-picture', uploadProfilePicture, UserController.uploadProfilePicture);
 
 module.exports = router;

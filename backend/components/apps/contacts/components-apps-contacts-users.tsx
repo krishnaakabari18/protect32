@@ -41,8 +41,11 @@ const ComponentsAppsContactsUsers = () => {
         date_of_birth: '',
         address: '',
         is_active: true,
+        profile_picture: null,
     });
     const [params, setParams] = useState<any>(JSON.parse(JSON.stringify(defaultParams)));
+    const [uploadedPhoto, setUploadedPhoto] = useState<File | null>(null);
+    const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
     useEffect(() => {
         fetchUsers();
@@ -112,6 +115,61 @@ const ComponentsAppsContactsUsers = () => {
         setParams({ ...params, [id]: type === 'checkbox' ? checked : value });
     };
 
+    const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            
+            // Validate file size (5MB max)
+            if (file.size > 5 * 1024 * 1024) {
+                showMessage('File size must be less than 5MB', 'error');
+                return;
+            }
+            
+            // Validate file type
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+            if (!allowedTypes.includes(file.type)) {
+                showMessage('Only JPEG, PNG, GIF, and WebP images are allowed', 'error');
+                return;
+            }
+            
+            setUploadedPhoto(file);
+            
+            // Create preview
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setPhotoPreview(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const toggleUserStatus = async (user: any) => {
+        try {
+            const token = localStorage.getItem('auth_token');
+            const formData = new FormData();
+            formData.append('is_active', (!user.is_active).toString());
+            
+            const response = await fetch(`${API_URL}/users/${user.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'ngrok-skip-browser-warning': 'true',
+                },
+                body: formData,
+            });
+
+            if (response.ok) {
+                showMessage(`User ${!user.is_active ? 'activated' : 'deactivated'} successfully.`);
+                fetchUsers();
+            } else {
+                const data = await response.json();
+                showMessage(data.error || 'Operation failed', 'error');
+            }
+        } catch (error: any) {
+            showMessage('Error: ' + error.message, 'error');
+        }
+    };
+
     const saveUser = async () => {
         if (!params.first_name) {
             showMessage('First name is required.', 'error');
@@ -136,32 +194,39 @@ const ComponentsAppsContactsUsers = () => {
             const url = params.id ? `${API_URL}/users/${params.id}` : `${API_URL}/users`;
             const method = params.id ? 'PUT' : 'POST';
 
-            const body: any = {
-                first_name: params.first_name,
-                last_name: params.last_name,
-                email: params.email,
-                user_type: params.user_type,
-                mobile_number: params.mobile_number,
-                date_of_birth: params.date_of_birth,
-                address: params.address,
-            };
-
-            if (!params.id) {
-                body.password = params.password;
+            // Create FormData for file upload
+            const formData = new FormData();
+            formData.append('first_name', params.first_name);
+            formData.append('last_name', params.last_name);
+            formData.append('email', params.email);
+            formData.append('user_type', params.user_type);
+            if (params.mobile_number) formData.append('mobile_number', params.mobile_number);
+            if (params.date_of_birth) formData.append('date_of_birth', params.date_of_birth);
+            if (params.address) formData.append('address', params.address);
+            
+            // Add password for new users
+            if (!params.id && params.password) {
+                formData.append('password', params.password);
             }
-
+            
+            // Add is_active for existing users
             if (params.id) {
-                body.is_active = params.is_active;
+                formData.append('is_active', params.is_active.toString());
+            }
+            
+            // Add profile picture if uploaded
+            if (uploadedPhoto) {
+                formData.append('profile_picture', uploadedPhoto);
             }
 
             const response = await fetch(url, {
                 method,
                 headers: {
-                    'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
                     'ngrok-skip-browser-warning': 'true',
+                    // DON'T set Content-Type - browser will set it with boundary for FormData
                 },
-                body: JSON.stringify(body),
+                body: formData,
             });
 
             const data = await response.json();
@@ -170,6 +235,8 @@ const ComponentsAppsContactsUsers = () => {
                 showMessage(`User has been ${params.id ? 'updated' : 'created'} successfully.`);
                 setAddContactModal(false);
                 fetchUsers();
+                setUploadedPhoto(null);
+                setPhotoPreview(null);
             } else {
                 showMessage(data.error || 'Operation failed', 'error');
             }
@@ -183,6 +250,9 @@ const ComponentsAppsContactsUsers = () => {
     const editUser = (user: any = null) => {
         const json = JSON.parse(JSON.stringify(defaultParams));
         setParams(json);
+        setUploadedPhoto(null);
+        setPhotoPreview(null);
+        
         if (user) {
             setParams({
                 id: user.id,
@@ -195,6 +265,7 @@ const ComponentsAppsContactsUsers = () => {
                 date_of_birth: user.date_of_birth ? user.date_of_birth.split('T')[0] : '',
                 address: user.address || '',
                 is_active: user.is_active !== false,
+                profile_picture: user.profile_picture || null,
             });
         }
         setAddContactModal(true);
@@ -369,11 +440,24 @@ const ComponentsAppsContactsUsers = () => {
                                     users.map((user: any) => (
                                         <tr key={user.id}>
                                             <td>
-                                                <div className="flex items-center">
-                                                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm ltr:mr-2 rtl:ml-2">
-                                                        {user.first_name?.[0]}{user.last_name?.[0]}
+                                                <div className="flex items-center gap-3">
+                                                    {user.profile_picture ? (
+                                                        <img 
+                                                            src={`http://localhost:8080${user.profile_picture}`} 
+                                                            alt={user.first_name}
+                                                            className="w-10 h-10 rounded-full object-cover"
+                                                            onError={(e: any) => {
+                                                                e.currentTarget.style.display = 'none';
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm">
+                                                            {user.first_name?.[0]}{user.last_name?.[0]}
+                                                        </div>
+                                                    )}
+                                                    <div>
+                                                        <div className="font-semibold">{user.first_name} {user.last_name}</div>
                                                     </div>
-                                                    <div>{user.first_name} {user.last_name}</div>
                                                 </div>
                                             </td>
                                             <td>{user.email}</td>
@@ -390,6 +474,14 @@ const ComponentsAppsContactsUsers = () => {
                                             </td>
                                             <td>
                                                 <div className="flex items-center justify-center gap-2">
+                                                    <button 
+                                                        type="button" 
+                                                        className={`btn btn-sm ${user.is_active ? 'btn-outline-warning' : 'btn-outline-success'}`}
+                                                        onClick={() => toggleUserStatus(user)}
+                                                        title={user.is_active ? 'Deactivate' : 'Activate'}
+                                                    >
+                                                        {user.is_active ? '🔒' : '✓'}
+                                                    </button>
                                                     <button 
                                                         type="button" 
                                                         className="btn btn-sm btn-outline-primary"
@@ -474,9 +566,20 @@ const ComponentsAppsContactsUsers = () => {
                         users.map((user: any) => (
                             <div className="panel overflow-hidden" key={user.id}>
                                 <div className="flex items-center justify-between mb-5">
-                                    <div className="h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-2xl">
-                                        {user.first_name?.[0]}{user.last_name?.[0]}
-                                    </div>
+                                    {user.profile_picture ? (
+                                        <img 
+                                            src={`http://localhost:8080${user.profile_picture}`} 
+                                            alt={user.first_name}
+                                            className="w-16 h-16 rounded-full object-cover"
+                                            onError={(e: any) => {
+                                                e.currentTarget.style.display = 'none';
+                                            }}
+                                        />
+                                    ) : (
+                                        <div className="h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-2xl">
+                                            {user.first_name?.[0]}{user.last_name?.[0]}
+                                        </div>
+                                    )}
                                     <span className={getUserTypeBadge(user.user_type)}>
                                         {user.user_type}
                                     </span>
@@ -502,6 +605,13 @@ const ComponentsAppsContactsUsers = () => {
                                     )}
                                 </div>
                                 <div className="mt-5 flex gap-2">
+                                    <button 
+                                        type="button" 
+                                        className={`btn ${user.is_active ? 'btn-outline-warning' : 'btn-outline-success'} flex-1`}
+                                        onClick={() => toggleUserStatus(user)}
+                                    >
+                                        {user.is_active ? 'Deactivate' : 'Activate'}
+                                    </button>
                                     <button 
                                         type="button" 
                                         className="btn btn-outline-primary flex-1"
@@ -659,6 +769,43 @@ const ComponentsAppsContactsUsers = () => {
                                                         value={params.address}
                                                         onChange={(e) => changeValue(e)}
                                                     ></textarea>
+                                                </div>
+                                                <div className="mb-5 col-span-2">
+                                                    <label htmlFor="profile_picture">Profile Picture</label>
+                                                    <input
+                                                        id="profile_picture"
+                                                        type="file"
+                                                        accept="image/*"
+                                                        className="form-input"
+                                                        onChange={handlePhotoUpload}
+                                                    />
+                                                    <p className="text-xs text-gray-500 mt-1">
+                                                        JPEG, PNG, GIF, or WebP - Max 5MB
+                                                    </p>
+                                                    
+                                                    {/* Show preview of newly selected photo */}
+                                                    {photoPreview && (
+                                                        <div className="mt-3">
+                                                            <p className="text-sm mb-2">New Photo Preview:</p>
+                                                            <img 
+                                                                src={photoPreview} 
+                                                                alt="Preview" 
+                                                                className="w-24 h-24 rounded-full object-cover border-2 border-primary"
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {/* Show existing photo if editing and no new photo selected */}
+                                                    {params.profile_picture && !photoPreview && (
+                                                        <div className="mt-3">
+                                                            <p className="text-sm mb-2">Current Photo:</p>
+                                                            <img 
+                                                                src={`http://localhost:8080${params.profile_picture}`} 
+                                                                alt="Current" 
+                                                                className="w-24 h-24 rounded-full object-cover border-2 border-gray-300"
+                                                            />
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="mt-8 flex items-center justify-end gap-3">

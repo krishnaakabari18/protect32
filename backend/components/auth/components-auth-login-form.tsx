@@ -74,23 +74,7 @@ const ComponentsAuthLoginForm = () => {
                 </div>
             )}
 
-            {/* Test Credentials Info */}
-            <div className="relative flex items-center border p-3.5 rounded text-info bg-info-light border-info ltr:border-l-[64px] rtl:border-r-[64px] dark:bg-info-dark-light">
-                <span className="absolute ltr:-left-11 rtl:-right-11 inset-y-0 text-white w-6 h-6 m-auto">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="16" x2="12" y2="12"></line>
-                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                    </svg>
-                </span>
-                <div className="ltr:pr-2 rtl:pl-2">
-                    <strong className="ltr:mr-1 rtl:ml-1">Test Credentials:</strong>
-                    <div className="text-xs mt-1">
-                        <div>Email: admin@dentist.com</div>
-                        <div>Password: password123</div>
-                    </div>
-                </div>
-            </div>
+           
 
             <div>
                 <label htmlFor="Email">Email</label>

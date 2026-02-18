@@ -1,0 +1,21 @@
+# API
+api/node_modules/
+api/.env
+api/*.log
+api/uploads/*
+!api/uploads/.gitkeep
+
+# Admin UI
+protect/node_modules/
+protect/.env.local
+protect/dist/
+protect/*.log
+
+# Development
+.dev-pids
+api.log
+ui.log
+
+# General
+*.log
+.DS_Store

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const ProviderController = require('../../controllers/providerController');
+const { uploadClinicPhotos } = require('../../controllers/providerController');
 
 /**
  * @swagger
@@ -39,13 +40,12 @@ const ProviderController = require('../../controllers/providerController');
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             required:
  *               - id
  *               - specialty
- *               - experience_years
  *               - clinic_name
  *               - contact_number
  *               - location
@@ -72,6 +72,7 @@ const ProviderController = require('../../controllers/providerController');
  *                 type: array
  *                 items:
  *                   type: string
+ *                   format: binary
  *               clinic_video_url:
  *                 type: string
  *               availability:
@@ -80,7 +81,7 @@ const ProviderController = require('../../controllers/providerController');
  *       201:
  *         description: Provider created successfully
  */
-router.post('/', ProviderController.createProvider);
+router.post('/', uploadClinicPhotos, ProviderController.createProvider);
 
 /**
  * @swagger
@@ -151,7 +152,7 @@ router.get('/:id', ProviderController.getProviderById);
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             properties:
@@ -169,13 +170,20 @@ router.get('/:id', ProviderController.getProviderById);
  *                 type: string
  *               availability:
  *                 type: string
+ *               clinic_photos:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *               clinic_video_url:
+ *                 type: string
  *     responses:
  *       200:
  *         description: Provider updated successfully
  *       404:
  *         description: Provider not found
  */
-router.put('/:id', ProviderController.updateProvider);
+router.put('/:id', uploadClinicPhotos, ProviderController.updateProvider);
 
 /**
  * @swagger

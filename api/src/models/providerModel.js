@@ -2,19 +2,59 @@ const pool = require('../config/database');
 
 class ProviderModel {
   static async create(providerData) {
-    const { id, specialty, experience_years, clinic_name, contact_number, location, coordinates, about, clinic_photos, clinic_video_url, availability } = providerData;
+    const { 
+      id, 
+      specialty, 
+      experience_years, 
+      clinic_name, 
+      contact_number, 
+      location, 
+      coordinates, 
+      about, 
+      clinic_photos, 
+      clinic_video_url, 
+      availability 
+    } = providerData;
+    
     const query = `
-      INSERT INTO providers (id, specialty, experience_years, clinic_name, contact_number, location, coordinates, about, clinic_photos, clinic_video_url, availability)
+      INSERT INTO providers (
+        id, specialty, experience_years, clinic_name, contact_number, 
+        location, coordinates, about, clinic_photos, clinic_video_url, availability
+      )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING *
     `;
-    const values = [id, specialty, experience_years, clinic_name, contact_number, location, coordinates, about, clinic_photos, clinic_video_url, availability];
+    
+    const values = [
+      id, 
+      specialty, 
+      experience_years || 0, 
+      clinic_name, 
+      contact_number, 
+      location, 
+      coordinates, 
+      about, 
+      clinic_photos || [], 
+      clinic_video_url, 
+      availability
+    ];
+    
     const result = await pool.query(query, values);
     return result.rows[0];
   }
 
   static async findAll(filters = {}) {
-    let query = 'SELECT p.*, u.first_name, u.last_name, u.email, u.profile_picture FROM providers p JOIN users u ON p.id = u.id WHERE 1=1';
+    let query = `
+      SELECT 
+        p.*, 
+        u.first_name, 
+        u.last_name, 
+        u.email, 
+        u.profile_picture 
+      FROM providers p 
+      LEFT JOIN users u ON p.id = u.id 
+      WHERE 1=1
+    `;
     const values = [];
     let paramCount = 1;
 
@@ -36,7 +76,17 @@ class ProviderModel {
   }
 
   static async findById(id) {
-    const query = 'SELECT p.*, u.first_name, u.last_name, u.email, u.profile_picture FROM providers p JOIN users u ON p.id = u.id WHERE p.id = $1';
+    const query = `
+      SELECT 
+        p.*, 
+        u.first_name, 
+        u.last_name, 
+        u.email, 
+        u.profile_picture 
+      FROM providers p 
+      LEFT JOIN users u ON p.id = u.id 
+      WHERE p.id = $1
+    `;
     const result = await pool.query(query, [id]);
     return result.rows[0];
   }
@@ -46,7 +96,21 @@ class ProviderModel {
     const values = [];
     let paramCount = 1;
 
-    Object.keys(providerData).forEach(key => {
+    // Only update fields that are provided
+    const allowedFields = [
+      'specialty', 
+      'experience_years', 
+      'clinic_name', 
+      'contact_number', 
+      'location', 
+      'coordinates', 
+      'about', 
+      'clinic_photos', 
+      'clinic_video_url', 
+      'availability'
+    ];
+
+    allowedFields.forEach(key => {
       if (providerData[key] !== undefined) {
         fields.push(`${key} = $${paramCount}`);
         values.push(providerData[key]);
@@ -54,8 +118,21 @@ class ProviderModel {
       }
     });
 
+    if (fields.length === 0) {
+      throw new Error('No fields to update');
+    }
+
+    // Add updated_at
+    fields.push(`updated_at = CURRENT_TIMESTAMP`);
+    
     values.push(id);
-    const query = `UPDATE providers SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING *`;
+    const query = `
+      UPDATE providers 
+      SET ${fields.join(', ')} 
+      WHERE id = $${paramCount} 
+      RETURNING *
+    `;
+    
     const result = await pool.query(query, values);
     return result.rows[0];
   }

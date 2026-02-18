@@ -44,6 +44,8 @@ const ProvidersCRUD = () => {
     
     const [modalMode, setModalMode] = useState<'create' | 'edit' | 'view'>('create');
     const [uploadedPhotos, setUploadedPhotos] = useState<File[]>([]);
+    const [photoModalOpen, setPhotoModalOpen] = useState(false);
+    const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
     useEffect(() => {
         fetchProviders();
@@ -343,6 +345,23 @@ const ProvidersCRUD = () => {
         return user ? `${user.first_name} ${user.last_name}` : userId;
     };
 
+    const isYouTubeUrl = (url: string) => {
+        if (!url) return false;
+        return url.includes('youtube.com') || url.includes('youtu.be');
+    };
+
+    const getYouTubeEmbedUrl = (url: string) => {
+        if (!url) return '';
+        if (url.includes('embed/')) return url;
+        const videoId = url.split('v=')[1]?.split('&')[0] || url.split('/').pop();
+        return `https://www.youtube.com/embed/${videoId}`;
+    };
+
+    const openPhotoModal = (photo: string) => {
+        setSelectedPhoto(photo);
+        setPhotoModalOpen(true);
+    };
+
     return (
         <div>
             <div className="flex flex-wrap items-center justify-between gap-4">
@@ -592,13 +611,59 @@ const ProvidersCRUD = () => {
                                                     <p className="text-gray-900 dark:text-white">{params.about || '-'}</p>
                                                 </div>
                                                 <div className="col-span-2">
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Clinic Video URL</label>
-                                                    <p className="text-gray-900 dark:text-white">{params.clinic_video_url || '-'}</p>
-                                                </div>
-                                                <div className="col-span-2">
                                                     <label className="block text-sm font-medium text-gray-700 mb-1">Availability</label>
                                                     <p className="text-gray-900 dark:text-white">{params.availability || '-'}</p>
                                                 </div>
+                                                
+                                                {/* Clinic Photos */}
+                                                {params.clinic_photos && params.clinic_photos.length > 0 && (
+                                                    <div className="col-span-2">
+                                                        <label className="block text-sm font-medium text-gray-700 mb-2">Clinic Photos</label>
+                                                        <div className="grid grid-cols-4 gap-3">
+                                                            {params.clinic_photos.map((photo: string, index: number) => (
+                                                                <div key={index} className="relative group">
+                                                                    <img 
+                                                                        src={`http://localhost:8080/${photo}`} 
+                                                                        alt={`Clinic ${index + 1}`}
+                                                                        className="w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-75 transition-opacity border-2 border-gray-200 hover:border-primary"
+                                                                        onClick={() => openPhotoModal(photo)}
+                                                                    />
+                                                                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center">
+                                                                        <span className="text-white opacity-0 group-hover:opacity-100 text-sm font-medium">
+                                                                            Click to view
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                
+                                                {/* Clinic Video */}
+                                                {params.clinic_video_url && (
+                                                    <div className="col-span-2">
+                                                        <label className="block text-sm font-medium text-gray-700 mb-2">Clinic Video</label>
+                                                        {isYouTubeUrl(params.clinic_video_url) ? (
+                                                            <div className="relative" style={{ paddingBottom: '56.25%' }}>
+                                                                <iframe
+                                                                    className="absolute top-0 left-0 w-full h-full rounded-lg"
+                                                                    src={getYouTubeEmbedUrl(params.clinic_video_url)}
+                                                                    frameBorder="0"
+                                                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                                    allowFullScreen
+                                                                ></iframe>
+                                                            </div>
+                                                        ) : (
+                                                            <video 
+                                                                controls 
+                                                                className="w-full rounded-lg"
+                                                                src={params.clinic_video_url}
+                                                            >
+                                                                Your browser does not support the video tag.
+                                                            </video>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
                                         ) : (
                                             <form>
@@ -728,6 +793,53 @@ const ProvidersCRUD = () => {
                                             </form>
                                         )}
                                     </div>
+                                </DialogPanel>
+                            </TransitionChild>
+                        </div>
+                    </div>
+                </Dialog>
+            </Transition>
+
+            {/* Photo Lightbox Modal */}
+            <Transition appear show={photoModalOpen} as={Fragment}>
+                <Dialog as="div" open={photoModalOpen} onClose={() => setPhotoModalOpen(false)} className="relative z-[60]">
+                    <TransitionChild
+                        as={Fragment}
+                        enter="ease-out duration-300"
+                        enterFrom="opacity-0"
+                        enterTo="opacity-100"
+                        leave="ease-in duration-200"
+                        leaveFrom="opacity-100"
+                        leaveTo="opacity-0"
+                    >
+                        <div className="fixed inset-0 bg-black/90" />
+                    </TransitionChild>
+                    <div className="fixed inset-0 overflow-y-auto">
+                        <div className="flex min-h-full items-center justify-center p-4">
+                            <TransitionChild
+                                as={Fragment}
+                                enter="ease-out duration-300"
+                                enterFrom="opacity-0 scale-95"
+                                enterTo="opacity-100 scale-100"
+                                leave="ease-in duration-200"
+                                leaveFrom="opacity-100 scale-100"
+                                leaveTo="opacity-0 scale-95"
+                            >
+                                <DialogPanel className="relative max-w-5xl">
+                                    <button
+                                        onClick={() => setPhotoModalOpen(false)}
+                                        className="absolute -top-12 right-0 text-white bg-black/50 rounded-full p-3 hover:bg-black/70 transition-colors"
+                                        title="Close"
+                                    >
+                                        <IconX className="w-6 h-6" />
+                                    </button>
+                                    {selectedPhoto && (
+                                        <img 
+                                            src={`http://localhost:8080/${selectedPhoto}`} 
+                                            alt="Clinic"
+                                            className="max-w-full max-h-[90vh] object-contain rounded-lg"
+                                        />
+                                    )}
                                 </DialogPanel>
                             </TransitionChild>
                         </div>

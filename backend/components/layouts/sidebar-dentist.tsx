@@ -165,6 +165,16 @@ const SidebarDentist = () => {
                                 </Link>
                             </li>
 
+                            {/* Provider Fees */}
+                            <li className="nav-item">
+                                <Link href="/management/provider-fees" className="group">
+                                    <div className="flex items-center">
+                                        <IconDollarSign className="shrink-0 group-hover:!text-primary" />
+                                        <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Treatment Fees</span>
+                                    </div>
+                                </Link>
+                            </li>
+
                             {/* Payments */}
                             <li className="nav-item">
                                 <Link href="/management/payments" className="group">

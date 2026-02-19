@@ -15,6 +15,8 @@ const chatRoutes = require('./chatRoutes');
 const documentRoutes = require('./documentRoutes');
 const reviewRoutes = require('./reviewRoutes');
 const treatmentPlanRoutes = require('./treatmentPlanRoutes');
+const providerFeeRoutes = require('./providerFeeRoutes');
+const procedureRoutes = require('./procedureRoutes');
 
 // Mount routes
 router.use('/auth', authRoutes);
@@ -30,5 +32,7 @@ router.use('/chat', chatRoutes);
 router.use('/documents', documentRoutes);
 router.use('/reviews', reviewRoutes);
 router.use('/treatment-plans', treatmentPlanRoutes);
+router.use('/provider-fees', providerFeeRoutes);
+router.use('/procedures', procedureRoutes);
 
 module.exports = router;

@@ -39,6 +39,12 @@ export const API_ENDPOINTS = {
   // Plans
   plans: `${API_BASE_URL}/plans`,
   
+  // Provider Fees
+  providerFees: `${API_BASE_URL}/provider-fees`,
+  
+  // Procedures
+  procedures: `${API_BASE_URL}/procedures`,
+  
   // Payments
   payments: `${API_BASE_URL}/payments`,
   

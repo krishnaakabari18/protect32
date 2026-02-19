@@ -63,8 +63,6 @@ const ProviderFeesCRUD = () => {
     
     const [newProcedure, setNewProcedure] = useState({
         name: '',
-        category: '',
-        description: '',
     });
 
     useEffect(() => {
@@ -293,7 +291,7 @@ const ProviderFeesCRUD = () => {
             if (response.ok) {
                 showMessage('Procedure added successfully');
                 setAddProcedureModal(false);
-                setNewProcedure({ name: '', category: '', description: '' });
+                setNewProcedure({ name: '' });
                 fetchProcedures();
                 // Set the newly added procedure as selected
                 setParams({ ...params, procedure: data.data.name });
@@ -587,7 +585,7 @@ const ProviderFeesCRUD = () => {
                                                     <option value="">Select Procedure</option>
                                                     {procedures.map((proc) => (
                                                         <option key={proc.id} value={proc.name}>
-                                                            {proc.name} {proc.category ? `(${proc.category})` : ''}
+                                                            {proc.name}
                                                         </option>
                                                     ))}
                                                 </select>
@@ -705,37 +703,7 @@ const ProviderFeesCRUD = () => {
                                                     placeholder="Enter procedure name"
                                                     value={newProcedure.name}
                                                     onChange={(e) => setNewProcedure({ ...newProcedure, name: e.target.value })}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label htmlFor="proc_category">Category</label>
-                                                <select
-                                                    id="proc_category"
-                                                    className="form-select"
-                                                    value={newProcedure.category}
-                                                    onChange={(e) => setNewProcedure({ ...newProcedure, category: e.target.value })}
-                                                >
-                                                    <option value="">Select Category</option>
-                                                    <option value="Diagnostic">Diagnostic</option>
-                                                    <option value="Preventive">Preventive</option>
-                                                    <option value="Restorative">Restorative</option>
-                                                    <option value="Endodontics">Endodontics</option>
-                                                    <option value="Periodontics">Periodontics</option>
-                                                    <option value="Prosthodontics">Prosthodontics</option>
-                                                    <option value="Orthodontics">Orthodontics</option>
-                                                    <option value="Oral Surgery">Oral Surgery</option>
-                                                    <option value="Cosmetic">Cosmetic</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label htmlFor="proc_description">Description</label>
-                                                <textarea
-                                                    id="proc_description"
-                                                    rows={3}
-                                                    className="form-textarea"
-                                                    placeholder="Enter description (optional)"
-                                                    value={newProcedure.description}
-                                                    onChange={(e) => setNewProcedure({ ...newProcedure, description: e.target.value })}
+                                                    autoFocus
                                                 />
                                             </div>
                                         </div>

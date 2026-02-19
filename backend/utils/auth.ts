@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+import { API_ENDPOINTS } from '@/config/api.config';
 
 export const logout = async () => {
     try {
@@ -7,7 +7,7 @@ export const logout = async () => {
 
         if (refreshToken && authToken) {
             // Call logout API
-            await fetch(`${API_URL}/auth/logout`, {
+            await fetch(API_ENDPOINTS.auth.logout, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

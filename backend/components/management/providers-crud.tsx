@@ -10,8 +10,7 @@ import IconEye from '@/components/icon/icon-eye';
 import { Transition, Dialog, TransitionChild, DialogPanel } from '@headlessui/react';
 import React, { Fragment, useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+import { API_ENDPOINTS, BASE_URL } from '@/config/api.config';
 
 const ProvidersCRUD = () => {
     const [addModal, setAddModal] = useState(false);
@@ -57,7 +56,7 @@ const ProvidersCRUD = () => {
             const token = localStorage.getItem('auth_token');
             
             // First, get all provider users
-            const usersResponse = await fetch(`${API_URL}/users?user_type=provider&limit=1000`, {
+            const usersResponse = await fetch(`${API_ENDPOINTS.users}?user_type=provider&limit=1000`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'ngrok-skip-browser-warning': 'true',
@@ -72,7 +71,7 @@ const ProvidersCRUD = () => {
             }
             
             // Get all existing providers
-            const providersResponse = await fetch(`${API_URL}/providers?limit=1000`, {
+            const providersResponse = await fetch(`${API_ENDPOINTS.providers}?limit=1000`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'ngrok-skip-browser-warning': 'true',
@@ -109,7 +108,7 @@ const ProvidersCRUD = () => {
                 limit: pagination.limit.toString(),
             });
 
-            const response = await fetch(`${API_URL}/providers?${queryParams}`, {
+            const response = await fetch(`${API_ENDPOINTS.providers}?${queryParams}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'ngrok-skip-browser-warning': 'true',
@@ -219,7 +218,7 @@ const ProvidersCRUD = () => {
                 formData.append('clinic_photos', photo);
             });
 
-            const url = params.id ? `${API_URL}/providers/${params.id}` : `${API_URL}/providers`;
+            const url = params.id ? `${API_ENDPOINTS.providers}/${params.id}` : API_ENDPOINTS.providers;
             const method = params.id ? 'PUT' : 'POST';
 
             const response = await fetch(url, {
@@ -304,7 +303,7 @@ const ProvidersCRUD = () => {
         if (result.isConfirmed) {
             try {
                 const token = localStorage.getItem('auth_token');
-                const response = await fetch(`${API_URL}/providers/${provider.id}`, {
+                const response = await fetch(`${API_ENDPOINTS.providers}/${provider.id}`, {
                     method: 'DELETE',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -623,7 +622,7 @@ const ProvidersCRUD = () => {
                                                             {params.clinic_photos.map((photo: string, index: number) => (
                                                                 <div key={index} className="relative group">
                                                                     <img 
-                                                                        src={`http://localhost:8080/${photo}`} 
+                                                                        src={`${BASE_URL}/${photo}`} 
                                                                         alt={`Clinic ${index + 1}`}
                                                                         className="w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-75 transition-opacity border-2 border-gray-200 hover:border-primary"
                                                                         onClick={() => openPhotoModal(photo)}
@@ -835,7 +834,7 @@ const ProvidersCRUD = () => {
                                     </button>
                                     {selectedPhoto && (
                                         <img 
-                                            src={`http://localhost:8080/${selectedPhoto}`} 
+                                            src={`${BASE_URL}/${selectedPhoto}`} 
                                             alt="Clinic"
                                             className="max-w-full max-h-[90vh] object-contain rounded-lg"
                                         />

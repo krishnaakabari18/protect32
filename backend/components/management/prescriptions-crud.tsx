@@ -1,8 +1,7 @@
 'use client';
 import GenericCRUD from '@/components/management/generic-crud';
 import { useEffect, useState } from 'react';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+import { API_ENDPOINTS } from '@/config/api.config';
 
 const PrescriptionsCRUD = () => {
     const [patients, setPatients] = useState<any[]>([]);
@@ -16,7 +15,7 @@ const PrescriptionsCRUD = () => {
     const fetchPatients = async () => {
         try {
             const token = localStorage.getItem('auth_token');
-            const response = await fetch(`${API_URL}/users?user_type=patient&limit=1000`, {
+            const response = await fetch(`${API_ENDPOINTS.users}?user_type=patient&limit=1000`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'ngrok-skip-browser-warning': 'true',
@@ -34,7 +33,7 @@ const PrescriptionsCRUD = () => {
     const fetchProviders = async () => {
         try {
             const token = localStorage.getItem('auth_token');
-            const response = await fetch(`${API_URL}/users?user_type=provider&limit=1000`, {
+            const response = await fetch(`${API_ENDPOINTS.users}?user_type=provider&limit=1000`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'ngrok-skip-browser-warning': 'true',

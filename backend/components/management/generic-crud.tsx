@@ -10,8 +10,7 @@ import IconEye from '@/components/icon/icon-eye';
 import { Transition, Dialog, TransitionChild, DialogPanel } from '@headlessui/react';
 import React, { Fragment, useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+import { API_BASE_URL } from '@/config/api.config';
 
 interface Column {
     key: string;
@@ -86,7 +85,7 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
                 ...(filterValue && filterField && { [filterField.key]: filterValue }),
             });
 
-            const response = await fetch(`${API_URL}/${endpoint}?${queryParams}`, {
+            const response = await fetch(`${API_BASE_URL}/${endpoint}?${queryParams}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'ngrok-skip-browser-warning': 'true',
@@ -157,7 +156,7 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
         setLoading(true);
         try {
             const token = localStorage.getItem('auth_token');
-            const url = params.id ? `${API_URL}/${endpoint}/${params.id}` : `${API_URL}/${endpoint}`;
+            const url = params.id ? `${API_BASE_URL}/${endpoint}/${params.id}` : `${API_BASE_URL}/${endpoint}`;
             const method = params.id ? 'PUT' : 'POST';
 
             const body: any = {};
@@ -216,7 +215,7 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
         if (result.isConfirmed) {
             try {
                 const token = localStorage.getItem('auth_token');
-                const response = await fetch(`${API_URL}/${endpoint}/${item.id}`, {
+                const response = await fetch(`${API_BASE_URL}/${endpoint}/${item.id}`, {
                     method: 'DELETE',
                     headers: {
                         'Authorization': `Bearer ${token}`,

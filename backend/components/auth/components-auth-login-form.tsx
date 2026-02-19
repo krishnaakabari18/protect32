@@ -3,8 +3,7 @@ import IconLockDots from '@/components/icon/icon-lock-dots';
 import IconMail from '@/components/icon/icon-mail';
 import { useRouter } from 'next/navigation';
 import React, { useState } from 'react';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+import { API_ENDPOINTS } from '@/config/api.config';
 
 const ComponentsAuthLoginForm = () => {
     const router = useRouter();
@@ -19,7 +18,7 @@ const ComponentsAuthLoginForm = () => {
         setLoading(true);
 
         try {
-            const response = await fetch(`${API_URL}/auth/login`, {
+            const response = await fetch(API_ENDPOINTS.auth.login, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -10,8 +10,7 @@ import IconTrash from '@/components/icon/icon-trash';
 import { Transition, Dialog, TransitionChild, DialogPanel } from '@headlessui/react';
 import React, { Fragment, useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+import { API_ENDPOINTS, BASE_URL } from '@/config/api.config';
 
 const ComponentsAppsContactsUsers = () => {
     const [addContactModal, setAddContactModal] = useState(false);
@@ -61,7 +60,7 @@ const ComponentsAppsContactsUsers = () => {
                 ...(filterType && { user_type: filterType }),
             });
 
-            const response = await fetch(`${API_URL}/users?${queryParams}`, {
+            const response = await fetch(`${API_ENDPOINTS.users}?${queryParams}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'ngrok-skip-browser-warning': 'true',
@@ -149,7 +148,7 @@ const ComponentsAppsContactsUsers = () => {
             const formData = new FormData();
             formData.append('is_active', (!user.is_active).toString());
             
-            const response = await fetch(`${API_URL}/users/${user.id}`, {
+            const response = await fetch(`${API_ENDPOINTS.users}/${user.id}`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -191,7 +190,7 @@ const ComponentsAppsContactsUsers = () => {
         setLoading(true);
         try {
             const token = localStorage.getItem('auth_token');
-            const url = params.id ? `${API_URL}/users/${params.id}` : `${API_URL}/users`;
+            const url = params.id ? `${API_ENDPOINTS.users}/${params.id}` : API_ENDPOINTS.users;
             const method = params.id ? 'PUT' : 'POST';
 
             // Create FormData for file upload
@@ -285,7 +284,7 @@ const ComponentsAppsContactsUsers = () => {
         if (result.isConfirmed) {
             try {
                 const token = localStorage.getItem('auth_token');
-                const response = await fetch(`${API_URL}/users/${user.id}`, {
+                const response = await fetch(`${API_ENDPOINTS.users}/${user.id}`, {
                     method: 'DELETE',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -443,7 +442,7 @@ const ComponentsAppsContactsUsers = () => {
                                                 <div className="flex items-center gap-3">
                                                     {user.profile_picture ? (
                                                         <img 
-                                                            src={`http://localhost:8080${user.profile_picture}`} 
+                                                            src={`${BASE_URL}${user.profile_picture}`} 
                                                             alt={user.first_name}
                                                             className="w-10 h-10 rounded-full object-cover"
                                                             onError={(e: any) => {
@@ -568,7 +567,7 @@ const ComponentsAppsContactsUsers = () => {
                                 <div className="flex items-center justify-between mb-5">
                                     {user.profile_picture ? (
                                         <img 
-                                            src={`http://localhost:8080${user.profile_picture}`} 
+                                            src={`${BASE_URL}${user.profile_picture}`} 
                                             alt={user.first_name}
                                             className="w-16 h-16 rounded-full object-cover"
                                             onError={(e: any) => {
@@ -800,7 +799,7 @@ const ComponentsAppsContactsUsers = () => {
                                                         <div className="mt-3">
                                                             <p className="text-sm mb-2">Current Photo:</p>
                                                             <img 
-                                                                src={`http://localhost:8080${params.profile_picture}`} 
+                                                                src={`${BASE_URL}${params.profile_picture}`} 
                                                                 alt="Current" 
                                                                 className="w-24 h-24 rounded-full object-cover border-2 border-gray-300"
                                                             />

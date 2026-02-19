@@ -11,8 +11,7 @@ import IconDollarSign from '@/components/icon/icon-dollar-sign';
 import { Transition, Dialog, TransitionChild, DialogPanel } from '@headlessui/react';
 import React, { Fragment, useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+import { API_ENDPOINTS } from '@/config/api.config';
 
 const PlansCRUD = () => {
     const [addModal, setAddModal] = useState(false);
@@ -55,7 +54,7 @@ const PlansCRUD = () => {
     const fetchProviders = async () => {
         try {
             const token = localStorage.getItem('auth_token');
-            const response = await fetch(`${API_URL}/users?user_type=provider&limit=1000`, {
+            const response = await fetch(`${API_ENDPOINTS.users}?user_type=provider&limit=1000`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'ngrok-skip-browser-warning': 'true',
@@ -80,7 +79,7 @@ const PlansCRUD = () => {
                 search: search,
             });
 
-            const response = await fetch(`${API_URL}/plans?${queryParams}`, {
+            const response = await fetch(`${API_ENDPOINTS.plans}?${queryParams}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'ngrok-skip-browser-warning': 'true',
@@ -125,7 +124,7 @@ const PlansCRUD = () => {
         setLoading(true);
         try {
             const token = localStorage.getItem('auth_token');
-            const url = params.id ? `${API_URL}/plans/${params.id}` : `${API_URL}/plans`;
+            const url = params.id ? `${API_ENDPOINTS.plans}/${params.id}` : API_ENDPOINTS.plans;
             const method = params.id ? 'PUT' : 'POST';
 
             const body: any = { ...params };
@@ -200,7 +199,7 @@ const PlansCRUD = () => {
             if (result.value) {
                 try {
                     const token = localStorage.getItem('auth_token');
-                    const response = await fetch(`${API_URL}/plans/${item.id}`, {
+                    const response = await fetch(`${API_ENDPOINTS.plans}/${item.id}`, {
                         method: 'DELETE',
                         headers: {
                             'Authorization': `Bearer ${token}`,

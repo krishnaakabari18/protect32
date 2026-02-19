@@ -12,12 +12,14 @@ class AppointmentController {
 
   static async getAllAppointments(req, res) {
     try {
-      const { patient_id, provider_id, status, date, page = 1, limit = 10 } = req.query;
+      const { patient_id, provider_id, status, date, from_date, to_date, page = 1, limit = 10 } = req.query;
       const filters = {};
       if (patient_id) filters.patient_id = patient_id;
       if (provider_id) filters.provider_id = provider_id;
       if (status) filters.status = status;
       if (date) filters.date = date;
+      if (from_date) filters.from_date = from_date;
+      if (to_date) filters.to_date = to_date;
 
       const appointments = await AppointmentModel.findAll(filters);
       

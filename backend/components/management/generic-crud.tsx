@@ -344,6 +344,7 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
                         <table className="table-striped table-hover">
                             <thead>
                                 <tr>
+                                    <th>#</th>
                                     {columns.map(col => (
                                         <th key={col.key}>{col.label}</th>
                                     ))}
@@ -353,13 +354,14 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
                             <tbody>
                                 {items.length === 0 ? (
                                     <tr>
-                                        <td colSpan={columns.length + 1} className="text-center py-8">
+                                        <td colSpan={columns.length + 2} className="text-center py-8">
                                             No data found
                                         </td>
                                     </tr>
                                 ) : (
-                                    items.map((item: any) => (
+                                    items.map((item: any, index: number) => (
                                         <tr key={item.id}>
+                                            <td>{(pagination.page - 1) * pagination.limit + index + 1}</td>
                                             {columns.map(col => (
                                                 <td key={col.key}>
                                                     {col.render ? col.render(item[col.key], item) : (item[col.key] || '-')}

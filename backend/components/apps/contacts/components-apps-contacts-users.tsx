@@ -420,6 +420,7 @@ const ComponentsAppsContactsUsers = () => {
                         <table className="table-striped table-hover">
                             <thead>
                                 <tr>
+                                    <th>#</th>
                                     <th>Name</th>
                                     <th>Email</th>
                                     <th>Type</th>
@@ -431,13 +432,14 @@ const ComponentsAppsContactsUsers = () => {
                             <tbody>
                                 {users.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6} className="text-center py-8">
+                                        <td colSpan={7} className="text-center py-8">
                                             No users found
                                         </td>
                                     </tr>
                                 ) : (
-                                    users.map((user: any) => (
+                                    users.map((user: any, index: number) => (
                                         <tr key={user.id}>
+                                            <td>{(pagination.page - 1) * pagination.limit + index + 1}</td>
                                             <td>
                                                 <div className="flex items-center gap-3">
                                                     {user.profile_picture ? (

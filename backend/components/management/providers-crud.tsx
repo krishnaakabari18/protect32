@@ -436,6 +436,7 @@ const ProvidersCRUD = () => {
                         <table className="table-striped table-hover">
                             <thead>
                                 <tr>
+                                    <th>#</th>
                                     <th>ID</th>
                                     <th>Provider Name</th>
                                     <th>Specialty</th>
@@ -449,13 +450,14 @@ const ProvidersCRUD = () => {
                             <tbody>
                                 {providers.length === 0 ? (
                                     <tr>
-                                        <td colSpan={8} className="text-center py-8">
+                                        <td colSpan={9} className="text-center py-8">
                                             No providers found
                                         </td>
                                     </tr>
                                 ) : (
-                                    providers.map((provider: any) => (
+                                    providers.map((provider: any, index: number) => (
                                         <tr key={provider.id}>
+                                            <td>{(pagination.page - 1) * pagination.limit + index + 1}</td>
                                             <td>{provider.id?.substring(0, 8)}...</td>
                                             <td>
                                                 {provider.first_name && provider.last_name 

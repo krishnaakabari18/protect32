@@ -8,8 +8,6 @@ const PatientsPage = () => {
             title="Patient"
             endpoint="patients"
             columns={[
-                { key: 'id', label: 'ID' },
-                { key: 'user_id', label: 'User ID' },
                 { key: 'blood_group', label: 'Blood Group' },
                 { key: 'emergency_contact_name', label: 'Emergency Contact' },
                 { key: 'emergency_contact_number', label: 'Contact Number' },

@@ -7,7 +7,6 @@ const AppointmentsPage = () => {
             title="Appointment"
             endpoint="appointments"
             columns={[
-                { key: 'id', label: 'ID' },
                 { 
                     key: 'patient_id', 
                     label: 'Patient Name',

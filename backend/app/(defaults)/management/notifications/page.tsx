@@ -7,8 +7,6 @@ const NotificationsPage = () => {
             title="Notification"
             endpoint="notifications"
             columns={[
-                { key: 'id', label: 'ID' },
-                { key: 'user_id', label: 'User ID' },
                 { key: 'notification_type', label: 'Type' },
                 { key: 'title', label: 'Title' },
                 { 

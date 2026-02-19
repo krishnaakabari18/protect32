@@ -7,7 +7,6 @@ const ReviewsPage = () => {
             title="Review"
             endpoint="reviews"
             columns={[
-                { key: 'id', label: 'ID' },
                 { 
                     key: 'patient_id', 
                     label: 'Patient Name',

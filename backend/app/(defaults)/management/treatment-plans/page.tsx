@@ -7,7 +7,6 @@ const TreatmentPlansPage = () => {
             title="Treatment Plan"
             endpoint="treatment-plans"
             columns={[
-                { key: 'id', label: 'ID' },
                 { 
                     key: 'patient_id', 
                     label: 'Patient Name',

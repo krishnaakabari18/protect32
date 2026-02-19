@@ -7,7 +7,6 @@ const PaymentsPage = () => {
             title="Payment"
             endpoint="payments"
             columns={[
-                { key: 'id', label: 'ID' },
                 { 
                     key: 'patient_id', 
                     label: 'Patient Name',

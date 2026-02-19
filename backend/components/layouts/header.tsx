@@ -538,7 +538,7 @@ const Header = () => {
                                 <Link href="/apps/scrumboard">{t('scrumboard')}</Link>
                             </li>
                             <li>
-                                <Link href="/apps/contacts">{t('contacts')}</Link>
+                                <Link href="/management/users">{t('users')}</Link>
                             </li>
                             <li className="relative">
                                 <button type="button">

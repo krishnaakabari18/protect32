@@ -61,6 +61,15 @@ const AppointmentsCRUD = () => {
         }
     };
 
+    // Helper function to get today's date in YYYY-MM-DD format
+    const getTodayDate = () => {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
     useEffect(() => {
         fetchPatients();
         fetchProviders();
@@ -663,6 +672,7 @@ const AppointmentsCRUD = () => {
                                                     className="form-input"
                                                     value={params.appointment_date}
                                                     onChange={changeValue}
+                                                    min={getTodayDate()}
                                                     disabled={modalMode === 'view'}
                                                 />
                                             </div>

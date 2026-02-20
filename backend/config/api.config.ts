@@ -45,6 +45,9 @@ export const API_ENDPOINTS = {
   // Procedures
   procedures: `${API_BASE_URL}/procedures`,
   
+  // Support Tickets
+  supportTickets: `${API_BASE_URL}/support-tickets`,
+  
   // Payments
   payments: `${API_BASE_URL}/payments`,
   

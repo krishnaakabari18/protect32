@@ -17,6 +17,7 @@ const reviewRoutes = require('./reviewRoutes');
 const treatmentPlanRoutes = require('./treatmentPlanRoutes');
 const providerFeeRoutes = require('./providerFeeRoutes');
 const procedureRoutes = require('./procedureRoutes');
+const supportTicketRoutes = require('./supportTicketRoutes');
 
 // Mount routes
 router.use('/auth', authRoutes);
@@ -34,5 +35,6 @@ router.use('/reviews', reviewRoutes);
 router.use('/treatment-plans', treatmentPlanRoutes);
 router.use('/provider-fees', providerFeeRoutes);
 router.use('/procedures', procedureRoutes);
+router.use('/support-tickets', supportTicketRoutes);
 
 module.exports = router;

@@ -16,6 +16,7 @@ import IconFile from '@/components/icon/icon-file';
 import IconStar from '@/components/icon/icon-star';
 import IconBell from '@/components/icon/icon-bell';
 import IconNotes from '@/components/icon/icon-notes';
+import IconHelp from '@/components/icon/icon-help-circle';
 import { usePathname } from 'next/navigation';
 
 const SidebarDentist = () => {
@@ -211,6 +212,16 @@ const SidebarDentist = () => {
                                     <div className="flex items-center">
                                         <IconBell className="shrink-0 group-hover:!text-primary" />
                                         <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Notifications</span>
+                                    </div>
+                                </Link>
+                            </li>
+
+                            {/* Support Tickets */}
+                            <li className="nav-item">
+                                <Link href="/management/support-tickets" className="group">
+                                    <div className="flex items-center">
+                                        <IconHelp className="shrink-0 group-hover:!text-primary" />
+                                        <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Support Tickets</span>
                                     </div>
                                 </Link>
                             </li>

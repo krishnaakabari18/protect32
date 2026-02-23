@@ -57,6 +57,12 @@ export const API_ENDPOINTS = {
   // Reviews
   reviews: `${API_BASE_URL}/reviews`,
   
+  // Patient Education
+  patientEducation: `${API_BASE_URL}/patient-education`,
+  
+  // Education Images (inline uploads)
+  educationImages: `${API_BASE_URL}/education-images`,
+  
   // Notifications
   notifications: `${API_BASE_URL}/notifications`,
   

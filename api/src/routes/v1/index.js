@@ -18,6 +18,8 @@ const treatmentPlanRoutes = require('./treatmentPlanRoutes');
 const providerFeeRoutes = require('./providerFeeRoutes');
 const procedureRoutes = require('./procedureRoutes');
 const supportTicketRoutes = require('./supportTicketRoutes');
+const patientEducationRoutes = require('./patientEducationRoutes');
+const educationImageRoutes = require('./educationImageRoutes');
 
 // Mount routes
 router.use('/auth', authRoutes);
@@ -36,5 +38,7 @@ router.use('/treatment-plans', treatmentPlanRoutes);
 router.use('/provider-fees', providerFeeRoutes);
 router.use('/procedures', procedureRoutes);
 router.use('/support-tickets', supportTicketRoutes);
+router.use('/patient-education', patientEducationRoutes);
+router.use('/education-images', educationImageRoutes);
 
 module.exports = router;

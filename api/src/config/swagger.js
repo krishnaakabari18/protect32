@@ -60,7 +60,11 @@ const options = {
       { name: 'Notifications', description: 'Notification system' },
       { name: 'Reviews', description: 'Provider reviews' },
       { name: 'TreatmentPlans', description: 'Treatment plan management' },
-      { name: 'Chats', description: 'Chat messaging' }
+      { name: 'Chats', description: 'Chat messaging' },
+      { name: 'Patient Education', description: 'Patient education content management with rich text editor' },
+      { name: 'Support Tickets', description: 'Support ticket management with replies' },
+      { name: 'Provider Fees', description: 'Provider fee management' },
+      { name: 'Procedures', description: 'Procedure master management' }
     ]
   },
   apis: ['./src/routes/v1/*.js']

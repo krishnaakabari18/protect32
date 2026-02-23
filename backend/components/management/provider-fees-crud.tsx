@@ -385,6 +385,7 @@ const ProviderFeesCRUD = () => {
                                 <table className="table-striped table-hover">
                                     <thead>
                                         <tr>
+                                            <th>#</th>
                                             <th>Procedure</th>
                                             <th>Provider</th>
                                             <th>Your Fee (₹)</th>
@@ -395,8 +396,9 @@ const ProviderFeesCRUD = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {items.map((item: any) => (
+                                        {items.map((item: any, index: number) => (
                                             <tr key={item.id}>
+                                                <td>{(pagination.page - 1) * pagination.limit + index + 1}</td>
                                                 <td>
                                                     <div className="whitespace-nowrap font-semibold">{item.procedure}</div>
                                                 </td>

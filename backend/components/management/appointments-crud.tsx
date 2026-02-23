@@ -454,6 +454,7 @@ const AppointmentsCRUD = () => {
                                 <table className="table-striped table-hover">
                                     <thead>
                                         <tr>
+                                            <th>#</th>
                                             <th>Patient</th>
                                             <th>Provider</th>
                                             <th>Date</th>
@@ -465,8 +466,9 @@ const AppointmentsCRUD = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {items.map((item: any) => (
+                                        {items.map((item: any, index: number) => (
                                             <tr key={item.id}>
+                                                <td>{(pagination.page - 1) * pagination.limit + index + 1}</td>
                                                 <td>
                                                     {item.patient_first_name && item.patient_last_name
                                                         ? `${item.patient_first_name} ${item.patient_last_name}`

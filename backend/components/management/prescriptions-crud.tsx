@@ -53,7 +53,6 @@ const PrescriptionsCRUD = () => {
             title="Prescription"
             endpoint="prescriptions"
             columns={[
-                { key: 'id', label: 'ID' },
                 { 
                     key: 'patient_id', 
                     label: 'Patient Name',

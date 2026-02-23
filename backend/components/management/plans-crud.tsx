@@ -304,6 +304,7 @@ const PlansCRUD = () => {
                                 <table className="table-striped table-hover">
                                     <thead>
                                         <tr>
+                                            <th>#</th>
                                             <th>Title</th>
                                             <th>Provider</th>
                                             <th>Price</th>
@@ -315,8 +316,9 @@ const PlansCRUD = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {items.map((item: any) => (
+                                        {items.map((item: any, index: number) => (
                                             <tr key={item.id}>
+                                                <td>{(pagination.page - 1) * pagination.limit + index + 1}</td>
                                                 <td>
                                                     <div className="whitespace-nowrap">{item.title}</div>
                                                 </td>

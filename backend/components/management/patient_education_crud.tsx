@@ -579,6 +579,7 @@ const PatientEducationCRUD = () => {
                                 <table className="table-striped table-hover">
                                     <thead>
                                         <tr>
+                                            <th>#</th>
                                             <th>Title</th>
                                             <th>Category</th>
                                             <th>Status</th>
@@ -588,8 +589,9 @@ const PatientEducationCRUD = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {items.map((item: any) => (
+                                        {items.map((item: any, index: number) => (
                                             <tr key={item.id}>
+                                                <td>{(pagination.page - 1) * pagination.limit + index + 1}</td>
                                                 <td className="font-semibold">{item.title}</td>
                                                 <td>
                                                     <span className="badge bg-primary">{item.category}</span>

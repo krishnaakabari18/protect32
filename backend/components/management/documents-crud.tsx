@@ -470,6 +470,7 @@ const DocumentsCRUD = () => {
                                 <table className="table-striped table-hover">
                                     <thead>
                                         <tr>
+                                            <th>#</th>
                                             <th>Document Name</th>
                                             <th>Patient</th>
                                             <th>Provider</th>
@@ -480,8 +481,9 @@ const DocumentsCRUD = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {items.map((item: any) => (
+                                        {items.map((item: any, index: number) => (
                                             <tr key={item.id}>
+                                                <td>{(pagination.page - 1) * pagination.limit + index + 1}</td>
                                                 <td className="font-semibold">{item.name}</td>
                                                 <td>
                                                     {item.patient_first_name && item.patient_last_name

@@ -1,275 +1,475 @@
 # Dentist Management System - API
 
-Node.js/Express REST API for the Dentist Management System.
+RESTful API backend for the Dentist Management System.
 
-## Quick Start
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18+
+- PostgreSQL 14+
+- npm or yarn
+
+### Installation
 
 ```bash
 # Install dependencies
 npm install
 
+# Configure environment
+cp .env.example .env
+# Edit .env with your settings
+
 # Setup database
-npm run db:create    # Create tables
-npm run db:seed      # Seed dummy data
+createdb dentist_newdb
+psql -U dentist -d dentist_newdb -f database/create-tables.sql
 
-# Start development server
-npm run dev
-
-# Start production server
+# Start server
 npm start
 ```
 
-## API Documentation
+### Access
+- **API:** http://localhost:8080
+- **Swagger:** http://localhost:8080/api-docs/
+- **Health Check:** http://localhost:8080/health
 
-- **Swagger UI**: http://localhost:8080/api-docs
-- **API Base URL**: http://localhost:8080/api/v1
+---
 
-## Environment Setup
+## 📚 Documentation
 
-Create a `.env` file:
+Complete API documentation is available in the [docs](docs/) folder.
 
-```env
-PORT=8080
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=dentist_newdb
-DB_USER=your_db_user
-DB_PASSWORD=your_db_password
-JWT_SECRET=your_jwt_secret_key_here
-JWT_EXPIRE=24h
-REFRESH_TOKEN_EXPIRE=7d
-OTP_LENGTH=6
-OTP_EXPIRE_MINUTES=10
-TWILIO_ACCOUNT_SID=your_twilio_sid
-TWILIO_AUTH_TOKEN=your_twilio_token
-TWILIO_PHONE_NUMBER=your_twilio_phone
+### Essential Guides
+- [📖 Documentation Index](docs/INDEX.md)
+- [📋 Complete API Documentation](docs/COMPLETE_API_DOCUMENTATION.md)
+- [⚡ Quick Reference](docs/API_QUICK_REFERENCE.md)
+- [🧪 Testing Guide](docs/API_TESTING_GUIDE.md)
+
+---
+
+## 🔌 API Endpoints
+
+### Base URL
+```
+http://localhost:8080/api/v1
 ```
 
-## Test Credentials
+### Main Endpoints
 
-After running `npm run db:seed`:
+#### Authentication
+- `POST /auth/register` - Register user
+- `POST /auth/login` - Login
+- `POST /auth/mobile-register` - Mobile registration (auto OTP)
+- `POST /auth/send-otp` - Send OTP
+- `POST /auth/verify-otp` - Verify OTP
+- `POST /auth/refresh-token` - Refresh token
 
-**Admin:**
-- Email: `admin@dentist.com`
-- Password: `password123`
+#### Users
+- `GET /users` - Get all users
+- `GET /users/:id` - Get user by ID
+- `PUT /users/:id` - Update user
+- `DELETE /users/:id` - Delete user
 
-**Provider:**
-- Email: `dr.smith@dentist.com`
-- Password: `password123`
+#### Providers
+- `GET /providers` - Get all providers
+- `POST /providers` - Create provider
+- `PUT /providers/:id` - Update provider
 
-**Patient:**
-- Email: `john.doe@email.com`
-- Password: `password123`
+#### Appointments
+- `GET /appointments` - Get all appointments
+- `POST /appointments` - Create appointment
+- `PUT /appointments/:id` - Update appointment
 
-## Project Structure
+#### Documents
+- `GET /documents` - Get all documents
+- `POST /documents` - Upload document
+
+#### Patient Education
+- `GET /patient-education` - Get all content
+- `POST /patient-education` - Create content
+- `PUT /patient-education/:id` - Update content
+
+#### Reviews
+- `GET /reviews` - Get all reviews
+- `POST /reviews` - Create review
+
+#### Support Tickets
+- `GET /support-tickets` - Get all tickets
+- `POST /support-tickets` - Create ticket
+
+---
+
+## 🛠️ Technology Stack
+
+- **Runtime:** Node.js 18+
+- **Framework:** Express.js
+- **Database:** PostgreSQL 14+
+- **Authentication:** JWT (jsonwebtoken)
+- **File Upload:** Multer
+- **OTP:** Twilio (optional)
+- **Documentation:** Swagger/OpenAPI
+- **Validation:** Express Validator
+
+---
+
+## 📁 Project Structure
 
 ```
 api/
 ├── src/
-│   ├── config/          # Configuration files
-│   ├── controllers/     # Request handlers
-│   ├── middleware/      # Express middleware
-│   ├── models/          # Database models
-│   ├── routes/          # API routes
-│   │   └── v1/         # Version 1 routes
-│   ├── utils/          # Utility functions
-│   ├── app.js          # Express app setup
-│   └── server.js       # Server entry point
-├── database/
-│   ├── schema.sql      # Database schema
-│   ├── create-tables.js # Table creation script
-│   ├── seed-data.js    # Seed script
-│   └── clear-data.js   # Clear data script
-├── uploads/            # File uploads (role-based)
-└── package.json
+│   ├── controllers/      # API controllers
+│   ├── models/           # Database models
+│   ├── routes/           # API routes
+│   │   └── v1/          # Version 1 routes
+│   ├── middleware/       # Middleware (auth, validation)
+│   ├── utils/            # Utilities (JWT, OTP, upload)
+│   ├── config/           # Configuration (database, swagger)
+│   ├── app.js           # Express app setup
+│   └── server.js        # Server entry point
+├── database/            # SQL migration scripts
+├── uploads/             # File uploads directory
+├── docs/                # API documentation
+├── .env                 # Environment variables
+├── package.json         # Dependencies
+└── README.md           # This file
 ```
 
-## API Endpoints
+---
 
-### Authentication
-- `POST /api/v1/auth/register` - Register with email/password
-- `POST /api/v1/auth/login` - Login with email/password
-- `POST /api/v1/auth/send-otp` - Send OTP to mobile
-- `POST /api/v1/auth/verify-otp` - Verify OTP and login
-- `POST /api/v1/auth/google` - Google OAuth
-- `POST /api/v1/auth/facebook` - Facebook OAuth
-- `POST /api/v1/auth/apple` - Apple OAuth
-- `POST /api/v1/auth/refresh-token` - Refresh access token
-- `POST /api/v1/auth/logout` - Logout
-- `GET /api/v1/auth/profile` - Get current user profile
-- `POST /api/v1/auth/change-password` - Change password
+## ⚙️ Configuration
 
-### Users
-- `POST /api/v1/users` - Create user (with file upload)
-- `GET /api/v1/users` - Get all users
-- `GET /api/v1/users/:id` - Get user by ID
-- `PUT /api/v1/users/:id` - Update user (with file upload)
-- `DELETE /api/v1/users/:id` - Delete user
-- `POST /api/v1/users/:id/profile-picture` - Upload profile picture
+### Environment Variables (.env)
 
-### Patients
-- `POST /api/v1/patients` - Create patient
-- `GET /api/v1/patients` - Get all patients
-- `GET /api/v1/patients/:id` - Get patient by ID
-- `PUT /api/v1/patients/:id` - Update patient
-- `DELETE /api/v1/patients/:id` - Delete patient
+```env
+# Server
+PORT=8080
+NODE_ENV=development
 
-### Providers
-- `POST /api/v1/providers` - Create provider
-- `GET /api/v1/providers` - Get all providers
-- `GET /api/v1/providers/:id` - Get provider by ID
-- `PUT /api/v1/providers/:id` - Update provider
-- `DELETE /api/v1/providers/:id` - Delete provider
+# Database
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=dentist_newdb
+DB_USER=dentist
+DB_PASS=dentist@345
 
-### Appointments
-- `POST /api/v1/appointments` - Create appointment
-- `GET /api/v1/appointments` - Get all appointments
-- `GET /api/v1/appointments/:id` - Get appointment by ID
-- `PUT /api/v1/appointments/:id` - Update appointment
-- `DELETE /api/v1/appointments/:id` - Delete appointment
+# JWT
+JWT_SECRET=your-secret-key
+JWT_EXPIRE=7d
+JWT_REFRESH_EXPIRE=30d
 
-### Treatment Plans
-- `POST /api/v1/plans` - Create treatment plan
-- `GET /api/v1/plans` - Get all plans
-- `GET /api/v1/plans/:id` - Get plan by ID
-- `PUT /api/v1/plans/:id` - Update plan
-- `DELETE /api/v1/plans/:id` - Delete plan
+# OTP
+OTP_TEST_MODE=true
+OTP_TEST_CODE=123456
+OTP_LENGTH=6
+OTP_EXPIRE_MINUTES=10
 
-### Prescriptions
-- `POST /api/v1/prescriptions` - Create prescription
-- `GET /api/v1/prescriptions` - Get all prescriptions
-- `GET /api/v1/prescriptions/:id` - Get prescription by ID
-- `PUT /api/v1/prescriptions/:id` - Update prescription
-- `DELETE /api/v1/prescriptions/:id` - Delete prescription
+# Twilio (Optional)
+TWILIO_ACCOUNT_SID=your_sid
+TWILIO_AUTH_TOKEN=your_token
+TWILIO_PHONE_NUMBER=your_number
+```
 
-### Payments
-- `POST /api/v1/payments` - Create payment
-- `GET /api/v1/payments` - Get all payments
-- `GET /api/v1/payments/:id` - Get payment by ID
-- `PUT /api/v1/payments/:id` - Update payment
-- `DELETE /api/v1/payments/:id` - Delete payment
+---
 
-### Documents
-- `POST /api/v1/documents` - Upload document
-- `GET /api/v1/documents` - Get all documents
-- `GET /api/v1/documents/:id` - Get document by ID
-- `DELETE /api/v1/documents/:id` - Delete document
+## 🔐 Authentication
 
-### Chat
-- `POST /api/v1/chat/messages` - Send message
-- `GET /api/v1/chat/messages` - Get messages
-- `GET /api/v1/chat/rooms` - Get chat rooms
+### JWT Tokens
 
-### Notifications
-- `POST /api/v1/notifications` - Create notification
-- `GET /api/v1/notifications` - Get notifications
-- `PUT /api/v1/notifications/:id/read` - Mark as read
+**Access Token:**
+- Expiry: 7 days (configurable)
+- Usage: API requests
+- Header: `Authorization: Bearer <token>`
 
-### Reviews
-- `POST /api/v1/reviews` - Create review
-- `GET /api/v1/reviews` - Get reviews
-- `GET /api/v1/reviews/:id` - Get review by ID
-- `PUT /api/v1/reviews/:id` - Update review
-- `DELETE /api/v1/reviews/:id` - Delete review
+**Refresh Token:**
+- Expiry: 30 days (configurable)
+- Usage: Get new access token
+- Endpoint: `POST /auth/refresh-token`
 
-## File Uploads
-
-### Profile Pictures
-- **Endpoint**: POST with `multipart/form-data`
-- **Field name**: `profile_picture`
-- **Allowed formats**: JPEG, PNG, GIF, WebP
-- **Max size**: 5MB
-- **Storage**: `uploads/{user_type}/profile_pictures/`
-
-### Documents
-- **Endpoint**: POST with `multipart/form-data`
-- **Field name**: `document`
-- **Allowed formats**: Images, PDF, Word
-- **Max size**: 10MB
-- **Storage**: `uploads/{user_type}/documents/`
-
-See `FILE_UPLOAD_GUIDE.md` for detailed upload documentation.
-
-## Testing with ngrok
+### Example
 
 ```bash
-ngrok http 8080
+# Login
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"admin@dentist.com","password":"password123"}'
+
+# Use token
+curl -X GET http://localhost:8080/api/v1/users \
+  -H 'Authorization: Bearer <your_token>'
 ```
 
-Add header to all requests:
-```
-ngrok-skip-browser-warning: true
-```
+---
 
-See `NGROK_USAGE_GUIDE.md` for details.
+## 📱 Mobile API
 
-## Database Scripts
+### Registration with Auto OTP
 
 ```bash
-# Create all tables
-npm run db:create
+# Register (OTP sent automatically)
+curl -X POST http://localhost:8080/api/v1/auth/mobile-register \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "mobile_number": "+1234567890",
+    "full_name": "John Doe"
+  }'
 
-# Seed dummy data
-npm run db:seed
-
-# Clear all data (use with caution)
-node database/clear-data.js
+# Verify OTP (Test mode: 123456)
+curl -X POST http://localhost:8080/api/v1/auth/verify-otp \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "mobile_number": "+1234567890",
+    "otp_code": "123456",
+    "purpose": "mobile_verification"
+  }'
 ```
 
-## Additional Documentation
+---
 
-- `API_QUICK_REFERENCE.md` - Quick API reference
-- `API_TESTING_GUIDE.md` - Testing guide with examples
-- `FILE_UPLOAD_GUIDE.md` - File upload documentation
-- `NGROK_USAGE_GUIDE.md` - ngrok setup and usage
-- `SWAGGER_STATUS.md` - Swagger documentation status
-- `COMPLETE_API_DOCUMENTATION.md` - Complete API docs
+## 🧪 Testing
 
-## Technology Stack
-
-- **Runtime**: Node.js v18+
-- **Framework**: Express.js
-- **Database**: PostgreSQL
-- **Authentication**: JWT + bcrypt
-- **File Upload**: Multer
-- **Documentation**: Swagger/OpenAPI
-- **Validation**: express-validator
-- **OTP**: Twilio SMS
-- **Email**: Nodemailer
-
-## Development
+### Test Scripts
 
 ```bash
-# Start with auto-reload
-npm run dev
+# Test mobile registration
+../test-mobile-register-api.sh
 
-# Check syntax
-node -c src/server.js
+# Test OTP flow
+../test-otp-flow.sh
 
-# Run specific script
-node database/seed-data.js
+# Test auto OTP
+../test-auto-otp-flow.sh
 ```
 
-## Production
+### Test Mode
+
+```env
+OTP_TEST_MODE=true
+OTP_TEST_CODE=123456
+```
+
+**Default Test OTP:** `123456`
+
+---
+
+## 📖 Swagger Documentation
+
+### Access Swagger UI
+```
+http://localhost:8080/api-docs/
+```
+
+### Features
+- Interactive API testing
+- Request/Response schemas
+- Authentication support
+- Example values
+- Try it out functionality
+
+---
+
+## 🗄️ Database
+
+### Connection
+
+```javascript
+const pool = require('./src/config/database');
+
+// Query example
+const result = await pool.query('SELECT * FROM users');
+```
+
+### Migrations
 
 ```bash
-# Start production server
-npm start
+# Run all migrations
+psql -U dentist -d dentist_newdb -f database/create-tables.sql
 
-# Or with PM2
+# Run specific migration
+psql -U dentist -d dentist_newdb -f database/create-appointments-table.sql
+```
+
+### Main Tables
+- `users` - User accounts
+- `providers` - Healthcare providers
+- `appointments` - Appointments
+- `documents` - Documents
+- `patient_education_content` - Educational content
+- `reviews` - Reviews
+- `support_tickets` - Support tickets
+- `otps` - OTP codes
+- `refresh_tokens` - JWT refresh tokens
+
+---
+
+## 📦 File Uploads
+
+### Configuration
+
+```javascript
+// Multer setup
+const multer = require('multer');
+const upload = multer({
+  dest: 'uploads/',
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    // Validate file type
+  }
+});
+```
+
+### Upload Endpoints
+- `POST /users/:id/profile-picture` - Profile picture
+- `POST /documents` - Documents
+- `POST /patient-education` - Feature image
+- `POST /education-images/upload` - Inline images
+
+### Storage Structure
+```
+uploads/
+├── users/           # Profile pictures
+├── documents/       # Documents
+└── education/       # Educational content images
+    └── YYYY/MM/DD/  # Date-based folders
+```
+
+---
+
+## 🚀 Deployment
+
+### Production Checklist
+
+1. **Environment:**
+   - Set `NODE_ENV=production`
+   - Configure production database
+   - Set secure JWT secret
+   - Disable test mode: `OTP_TEST_MODE=false`
+
+2. **Database:**
+   - Run migrations
+   - Create indexes
+   - Set up backups
+
+3. **Security:**
+   - Enable HTTPS
+   - Configure CORS
+   - Set up rate limiting
+   - Enable logging
+
+4. **OTP:**
+   - Configure Twilio credentials
+   - Test SMS delivery
+
+### Start Production
+
+```bash
+# Using PM2
 pm2 start src/server.js --name dentist-api
+
+# Using systemd
+sudo systemctl start dentist-api
 ```
 
-## Security
+---
 
-- JWT tokens for authentication
-- bcrypt password hashing
-- CORS enabled
-- File type validation
-- File size limits
-- SQL injection prevention (parameterized queries)
-- XSS protection
+## 🔧 Development
 
-## Support
+### Start Development Server
 
-For issues or questions, check the documentation files or API documentation at `/api-docs`.
+```bash
+npm run dev
+```
+
+### Watch Mode
+
+```bash
+npm run watch
+```
+
+### Linting
+
+```bash
+npm run lint
+```
+
+---
+
+## 📊 API Statistics
+
+- **Total Endpoints:** 100+
+- **API Version:** v1
+- **Authentication:** JWT
+- **File Upload:** Multer
+- **Documentation:** Swagger/OpenAPI
+- **Database:** PostgreSQL
+
+---
+
+## 🆘 Troubleshooting
+
+### Port Already in Use
+
+```bash
+# Kill process on port 8080
+pkill -f "node src/server.js"
+```
+
+### Database Connection Failed
+
+```bash
+# Check PostgreSQL
+sudo systemctl status postgresql
+
+# Test connection
+psql -U dentist -d dentist_newdb -c "SELECT 1"
+```
+
+### OTP Not Working
+
+1. Check `OTP_TEST_MODE=true` in .env
+2. Check server logs for OTP code
+3. Use default OTP: `123456`
+
+---
+
+## 📝 Scripts
+
+```json
+{
+  "start": "node src/server.js",
+  "dev": "nodemon src/server.js",
+  "test": "jest",
+  "lint": "eslint src/"
+}
+```
+
+---
+
+## 🔗 Related Documentation
+
+- [Project README](../README.md)
+- [Complete Documentation](../docs/README.md)
+- [Mobile App Guide](../docs/MOBILE_APP_COMPLETE_GUIDE.md)
+- [OTP Testing](../docs/OTP_TESTING_GUIDE.md)
+
+---
+
+## 📞 Support
+
+- **Documentation:** [docs/INDEX.md](docs/INDEX.md)
+- **Swagger:** http://localhost:8080/api-docs/
+- **Issues:** GitHub Issues
+
+---
+
+## 📅 Version
+
+**Version:** 1.0.0
+
+**Last Updated:** February 24, 2026
+
+**Status:** Production Ready ✓
+
+---
+
+**Made with ❤️ for dental clinics**

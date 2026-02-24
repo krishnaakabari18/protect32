@@ -1,229 +1,412 @@
 # Dentist Management System
 
-A complete dental practice management system with Node.js API backend and React admin UI.
+Complete dental clinic management system with API backend and Next.js frontend.
 
-## Project Structure
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18+
+- PostgreSQL 14+
+- npm or yarn
+
+### Installation
+
+```bash
+# Clone repository
+git clone <repository-url>
+cd protect32
+
+# Install API dependencies
+cd api
+npm install
+
+# Install Frontend dependencies
+cd ../backend
+npm install
+```
+
+### Configuration
+
+1. **Database Setup:**
+   ```bash
+   # Create database
+   createdb dentist_newdb
+   
+   # Run migrations
+   cd api/database
+   psql -U dentist -d dentist_newdb -f create-tables.sql
+   ```
+
+2. **Environment Variables:**
+   ```bash
+   # API (.env)
+   cp api/.env.example api/.env
+   # Edit api/.env with your configuration
+   
+   # Frontend (.env.local)
+   cp backend/.env.example backend/.env.local
+   # Edit backend/.env.local with your configuration
+   ```
+
+### Running the Application
+
+```bash
+# Start API server (port 8080)
+cd api
+npm start
+
+# Start Frontend (port 3000)
+cd backend
+npm run dev
+```
+
+### Access
+
+- **Frontend:** http://localhost:3000
+- **API:** http://localhost:8080
+- **Swagger Docs:** http://localhost:8080/api-docs/
+- **Admin Panel:** http://localhost:3000/management
+
+### Default Credentials
+
+- **Email:** admin@dentist.com
+- **Password:** password123
+
+---
+
+## 📚 Documentation
+
+Complete documentation is available in the [docs](docs/) folder.
+
+### Essential Guides
+
+- [📖 Complete Documentation Index](docs/README.md)
+- [🚀 Quick Reference](docs/QUICK_REFERENCE.md)
+- [⚙️ Setup Guide](docs/SETUP_COMPLETE.md)
+- [🏃 Running Guide](docs/PROJECT_RUNNING_GUIDE.md)
+
+### API Documentation
+
+- [🔐 Authentication](docs/AUTH_IMPLEMENTATION_SUMMARY.md)
+- [📱 Mobile Registration](docs/MOBILE_REGISTRATION_API.md)
+- [🔢 OTP Testing](docs/OTP_TESTING_GUIDE.md)
+- [📡 API Configuration](docs/API_CONFIGURATION_REFACTORING.md)
+
+### Module Documentation
+
+- [👥 Users & Providers](docs/USERS_COMPLETE_WITH_PHOTOS_AND_STATUS.md)
+- [📅 Appointments](docs/APPOINTMENTS_MODULE_COMPLETE.md)
+- [📄 Documents](docs/DOCUMENTS_MODULE_COMPLETE.md)
+- [📚 Patient Education](docs/PATIENT_EDUCATION_MODULE_COMPLETE.md)
+- [⭐ Reviews](docs/REVIEWS_MODULE_TESTING.md)
+- [🎫 Support Tickets](docs/SUPPORT_TICKETS_MODULE_COMPLETE.md)
+
+### Mobile App Integration
+
+- [📱 Complete Mobile Guide](docs/MOBILE_APP_COMPLETE_GUIDE.md)
+- [🔐 Auto OTP Registration](docs/AUTO_OTP_REGISTRATION_GUIDE.md)
+- [✅ OTP Verification](docs/VERIFY_OTP_API_UPDATED.md)
+
+---
+
+## 🏗️ Project Structure
 
 ```
 protect32/
-├── api/                    # Node.js Backend API
-│   ├── src/               # API source code
-│   ├── database/          # Database scripts and seeds
-│   ├── uploads/           # File uploads (role-based)
-│   ├── package.json       # API dependencies
-│   └── .env              # API environment variables
+├── api/                      # Backend API (Node.js + Express)
+│   ├── src/
+│   │   ├── controllers/      # API controllers
+│   │   ├── models/           # Database models
+│   │   ├── routes/           # API routes
+│   │   ├── middleware/       # Middleware
+│   │   ├── utils/            # Utilities
+│   │   └── config/           # Configuration
+│   ├── database/             # SQL scripts
+│   ├── uploads/              # File uploads
+│   └── .env                  # Environment variables
 │
-├── protect/               # React Admin UI
-│   ├── components/        # React components
-│   ├── services/          # API service layer
-│   ├── utils/            # Utility functions
-│   ├── package.json      # UI dependencies
-│   └── .env.local        # UI environment variables
+├── backend/                  # Frontend (Next.js + React)
+│   ├── app/                  # Next.js app directory
+│   ├── components/           # React components
+│   ├── config/               # Frontend config
+│   ├── utils/                # Utilities
+│   └── public/               # Static files
 │
-└── README.md             # This file
+├── docs/                     # Documentation
+│   ├── README.md             # Documentation index
+│   └── *.md                  # All documentation files
+│
+└── README.md                 # This file
 ```
 
-## Quick Start
+---
 
-### 1. Setup API (Backend)
+## 🔑 Key Features
+
+### Backend API
+- ✅ RESTful API with versioning (v1)
+- ✅ JWT authentication
+- ✅ Role-based access control
+- ✅ File upload (images, documents)
+- ✅ OTP verification (SMS)
+- ✅ Swagger/OpenAPI documentation
+- ✅ PostgreSQL database
+- ✅ Error handling & logging
+
+### Frontend
+- ✅ Next.js 14 with App Router
+- ✅ TypeScript
+- ✅ Responsive design
+- ✅ Admin dashboard
+- ✅ User management
+- ✅ Appointment scheduling
+- ✅ Document management
+- ✅ Rich text editor
+
+### Mobile API
+- ✅ Mobile registration
+- ✅ Auto OTP sending
+- ✅ OTP verification
+- ✅ JWT tokens
+- ✅ Test mode (OTP: 123456)
+
+---
+
+## 🛠️ Technology Stack
+
+### Backend
+- **Runtime:** Node.js 18+
+- **Framework:** Express.js
+- **Database:** PostgreSQL 14+
+- **Authentication:** JWT (jsonwebtoken)
+- **File Upload:** Multer
+- **OTP:** Twilio (optional)
+- **Documentation:** Swagger/OpenAPI
+- **Validation:** Express Validator
+
+### Frontend
+- **Framework:** Next.js 14
+- **Language:** TypeScript
+- **UI Library:** React 18
+- **Styling:** Tailwind CSS
+- **State Management:** React Hooks
+- **HTTP Client:** Fetch API
+- **Rich Text:** React Quill
+
+### Database
+- **RDBMS:** PostgreSQL 14+
+- **ORM:** Raw SQL queries
+- **Migrations:** SQL scripts
+
+---
+
+## 📡 API Endpoints
+
+### Base URLs
+- **Local:** http://localhost:8080/api/v1
+- **Production:** https://abbey-stateliest-treva.ngrok-free.dev/api/v1
+
+### Main Endpoints
+
+#### Authentication
+- `POST /auth/register` - Register user
+- `POST /auth/login` - Login
+- `POST /auth/mobile-register` - Mobile registration (auto OTP)
+- `POST /auth/send-otp` - Send OTP
+- `POST /auth/verify-otp` - Verify OTP
+- `POST /auth/refresh-token` - Refresh token
+- `GET /auth/profile` - Get profile
+
+#### Users
+- `GET /users` - Get all users
+- `GET /users/:id` - Get user by ID
+- `PUT /users/:id` - Update user
+- `DELETE /users/:id` - Delete user
+
+#### Providers
+- `GET /providers` - Get all providers
+- `POST /providers` - Create provider
+- `PUT /providers/:id` - Update provider
+- `DELETE /providers/:id` - Delete provider
+
+#### Appointments
+- `GET /appointments` - Get all appointments
+- `POST /appointments` - Create appointment
+- `PUT /appointments/:id` - Update appointment
+- `DELETE /appointments/:id` - Delete appointment
+
+#### Documents
+- `GET /documents` - Get all documents
+- `POST /documents` - Upload document
+- `DELETE /documents/:id` - Delete document
+
+#### Patient Education
+- `GET /patient-education` - Get all content
+- `POST /patient-education` - Create content
+- `PUT /patient-education/:id` - Update content
+- `DELETE /patient-education/:id` - Delete content
+
+#### Reviews
+- `GET /reviews` - Get all reviews
+- `POST /reviews` - Create review
+- `PUT /reviews/:id` - Update review
+
+#### Support Tickets
+- `GET /support-tickets` - Get all tickets
+- `POST /support-tickets` - Create ticket
+- `POST /support-tickets/:id/replies` - Add reply
+
+---
+
+## 🧪 Testing
+
+### API Testing
 
 ```bash
-cd api
-npm install
-npm run db:create    # Create database tables
-npm run db:seed      # Seed with dummy data
-npm run dev          # Start development server
+# Test mobile registration
+./test-mobile-register-api.sh
+
+# Test OTP flow
+./test-otp-flow.sh
+
+# Test auto OTP registration
+./test-auto-otp-flow.sh
+
+# Test patient education API
+./test-patient-education-api.sh
 ```
 
-API will run on: `http://localhost:8080`
-API Documentation: `http://localhost:8080/api-docs`
+### Test Mode Configuration
 
-### 2. Setup Admin UI (Frontend)
-
-```bash
-cd protect
-npm install
-npm run dev          # Start development server
-```
-
-Admin UI will run on: `http://localhost:5173` (or similar)
-
-## API Backend
-
-### Technology Stack
-- Node.js + Express
-- PostgreSQL database
-- JWT authentication
-- Swagger/OpenAPI documentation
-- Multer for file uploads
-- bcrypt for password hashing
-
-### Key Features
-- User management (patients, providers, admins)
-- Authentication (email/password, OTP, social login)
-- Appointment scheduling
-- Treatment plans and prescriptions
-- Payment processing
-- Document management
-- Real-time chat
-- Notifications
-- Reviews and ratings
-
-### API Endpoints
-All endpoints are versioned: `/api/v1/*`
-
-Main modules:
-- `/api/v1/auth` - Authentication
-- `/api/v1/users` - User management
-- `/api/v1/patients` - Patient records
-- `/api/v1/providers` - Provider profiles
-- `/api/v1/appointments` - Appointments
-- `/api/v1/plans` - Treatment plans
-- `/api/v1/prescriptions` - Prescriptions
-- `/api/v1/payments` - Payments
-- `/api/v1/documents` - Documents
-- `/api/v1/chat` - Chat messages
-- `/api/v1/notifications` - Notifications
-- `/api/v1/reviews` - Reviews
-
-See `api/API_README.md` for detailed API documentation.
-
-## Admin UI
-
-### Technology Stack
-- React + TypeScript
-- Vite build tool
-- Modern UI components
-- API integration
-
-### Features
-- Dashboard overview
-- User management
-- Appointment management
-- Patient records
-- Provider management
-- Treatment plans
-- Payment tracking
-- Document management
-- Reports and analytics
-
-## Database
-
-### PostgreSQL Setup
-Database name: `dentist_newdb`
-
-Tables include:
-- users, patients, providers
-- appointments, appointment_forms
-- treatment_plans, prescriptions
-- payments, settlements
-- documents, chat_messages
-- notifications, reviews
-- and more...
-
-### Test Credentials
-After seeding, use these credentials:
-
-**Admin:**
-- Email: `admin@dentist.com`
-- Password: `password123`
-
-**Provider:**
-- Email: `dr.smith@dentist.com`
-- Password: `password123`
-
-**Patient:**
-- Email: `john.doe@email.com`
-- Password: `password123`
-
-## Environment Variables
-
-### API (.env in api folder)
 ```env
-PORT=8080
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=dentist_newdb
-DB_USER=your_db_user
-DB_PASSWORD=your_db_password
-JWT_SECRET=your_jwt_secret
-JWT_EXPIRE=24h
-REFRESH_TOKEN_EXPIRE=7d
-OTP_LENGTH=6
-OTP_EXPIRE_MINUTES=10
+# api/.env
+OTP_TEST_MODE=true
+OTP_TEST_CODE=123456
 ```
 
-### Admin UI (.env.local in protect folder)
-```env
-VITE_API_URL=http://localhost:8080/api/v1
+### Default Test OTP
+```
+123456
 ```
 
-## Development
+---
 
-### API Development
-```bash
-cd api
-npm run dev          # Start with nodemon (auto-reload)
-npm start            # Start production server
-npm run db:create    # Create database tables
-npm run db:seed      # Seed dummy data
-```
+## 🔐 Security
 
-### UI Development
-```bash
-cd protect
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run preview      # Preview production build
-```
+### Authentication
+- JWT tokens with expiry
+- Refresh tokens
+- Password hashing (bcrypt)
+- Role-based access control
 
-## Deployment
+### API Security
+- CORS enabled
+- Request validation
+- SQL injection prevention
+- File upload validation
+- Rate limiting (recommended)
 
-### Using ngrok for Testing
-```bash
-# In api folder
-ngrok http 8080
-```
+### OTP Security
+- 10-minute expiry
+- Max 3 attempts
+- One-time use
+- Purpose-based validation
 
-When using ngrok, add header to requests:
-```
-ngrok-skip-browser-warning: true
-```
+---
 
-See `api/NGROK_USAGE_GUIDE.md` for details.
+## 🚢 Deployment
 
-## File Uploads
+### Production Checklist
 
-Profile pictures and documents are organized by user role:
-```
-api/uploads/
-├── patient/
-│   ├── profile_pictures/
-│   └── documents/
-├── provider/
-│   ├── profile_pictures/
-│   └── documents/
-└── admin/
-    ├── profile_pictures/
-    └── documents/
-```
+1. **Environment Variables:**
+   - Set `NODE_ENV=production`
+   - Configure production database
+   - Set secure JWT secret
+   - Configure Twilio for SMS
 
-See `api/FILE_UPLOAD_GUIDE.md` for upload API documentation.
+2. **Database:**
+   - Run migrations
+   - Create indexes
+   - Set up backups
 
-## Documentation
+3. **API:**
+   - Enable HTTPS
+   - Configure CORS
+   - Set up logging
+   - Enable rate limiting
 
-- `api/API_README.md` - Complete API documentation
-- `api/API_QUICK_REFERENCE.md` - Quick API reference
-- `api/API_TESTING_GUIDE.md` - Testing guide
-- `api/FILE_UPLOAD_GUIDE.md` - File upload guide
-- `api/NGROK_USAGE_GUIDE.md` - ngrok setup guide
-- `api/SWAGGER_STATUS.md` - Swagger documentation status
-- `protect/README.md` - Admin UI documentation
+4. **Frontend:**
+   - Build production bundle
+   - Configure API URLs
+   - Enable caching
 
-## Support
+5. **OTP:**
+   - Set `OTP_TEST_MODE=false`
+   - Configure Twilio credentials
 
-For issues or questions, refer to the documentation files in the respective folders.
+---
 
-## License
+## 📊 Database Schema
 
-ISC
+### Main Tables
+- `users` - User accounts
+- `providers` - Healthcare providers
+- `appointments` - Appointment bookings
+- `documents` - Document storage
+- `patient_education_content` - Educational content
+- `reviews` - Provider reviews
+- `support_tickets` - Support tickets
+- `otps` - OTP verification codes
+- `refresh_tokens` - JWT refresh tokens
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit changes (`git commit -m 'Add AmazingFeature'`)
+4. Push to branch (`git push origin feature/AmazingFeature`)
+5. Open Pull Request
+
+---
+
+## 📝 License
+
+This project is proprietary and confidential.
+
+---
+
+## 📞 Support
+
+For support and questions:
+- 📧 Email: support@dentist.com
+- 📚 Documentation: [docs/README.md](docs/README.md)
+- 🐛 Issues: GitHub Issues
+
+---
+
+## 🎉 Acknowledgments
+
+- Next.js team for the amazing framework
+- Express.js community
+- PostgreSQL team
+- All contributors
+
+---
+
+## 📅 Version History
+
+### v1.0.0 (February 24, 2026)
+- ✅ Initial release
+- ✅ Complete API implementation
+- ✅ Frontend dashboard
+- ✅ Mobile registration with auto OTP
+- ✅ All modules implemented
+- ✅ Complete documentation
+
+---
+
+**Made with ❤️ for dental clinics**

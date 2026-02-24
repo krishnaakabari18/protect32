@@ -147,7 +147,7 @@ class AuthController {
   // Verify OTP and Login/Register
   static async verifyOTP(req, res) {
     try {
-      const { mobile_number, otp_code, purpose, user_data } = req.body;
+    const { mobile_number, otp_code, purpose, user_data } = req.body;
 
       const otpRecord = await AuthModel.verifyOTP(mobile_number, otp_code, purpose);
       

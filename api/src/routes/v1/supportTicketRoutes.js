@@ -9,7 +9,7 @@ router.use(authenticate);
 
 /**
  * @swagger
- * /api/v1/support-tickets:
+ * /support-tickets:
  *   get:
  *     summary: Get all support tickets
  *     tags: [Support Tickets]
@@ -53,7 +53,7 @@ router.get('/', SupportTicketController.getAllTickets);
 
 /**
  * @swagger
- * /api/v1/support-tickets/{id}:
+ * /support-tickets/{id}:
  *   get:
  *     summary: Get support ticket by ID
  *     tags: [Support Tickets]
@@ -73,7 +73,7 @@ router.get('/:id', SupportTicketController.getTicketById);
 
 /**
  * @swagger
- * /api/v1/support-tickets:
+ * /support-tickets:
  *   post:
  *     summary: Create a new support ticket
  *     tags: [Support Tickets]
@@ -107,7 +107,7 @@ router.post('/', SupportTicketController.createTicket);
 
 /**
  * @swagger
- * /api/v1/support-tickets/{id}:
+ * /support-tickets/{id}:
  *   put:
  *     summary: Update support ticket
  *     tags: [Support Tickets]
@@ -133,7 +133,7 @@ router.put('/:id', SupportTicketController.updateTicket);
 
 /**
  * @swagger
- * /api/v1/support-tickets/{id}:
+ * /support-tickets/{id}:
  *   delete:
  *     summary: Delete support ticket
  *     tags: [Support Tickets]

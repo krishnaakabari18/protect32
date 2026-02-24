@@ -7,6 +7,7 @@ import IconUserPlus from '@/components/icon/icon-user-plus';
 import IconX from '@/components/icon/icon-x';
 import IconPencil from '@/components/icon/icon-pencil';
 import IconTrash from '@/components/icon/icon-trash';
+import IconFile from '@/components/icon/icon-file';
 import { Transition, Dialog, TransitionChild, DialogPanel } from '@headlessui/react';
 import React, { Fragment, useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
@@ -320,6 +321,46 @@ const ComponentsAppsContactsUsers = () => {
         });
     };
 
+    const exportToCSV = () => {
+        if (users.length === 0) {
+            showMessage('No data to export', 'error');
+            return;
+        }
+
+        const headers = ['#', 'Name', 'Email', 'Type', 'Mobile', 'Status'];
+        const rows = users.map((user, index) => {
+            const rowNumber = (pagination.page - 1) * pagination.limit + index + 1;
+            return [
+                rowNumber,
+                `${user.first_name} ${user.last_name}`,
+                user.email,
+                user.user_type,
+                user.mobile_number || '',
+                user.is_active ? 'Active' : 'Inactive'
+            ];
+        });
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.map(cell => {
+                const cellStr = String(cell).replace(/"/g, '""');
+                return cellStr.includes(',') ? `"${cellStr}"` : cellStr;
+            }).join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `users_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showMessage('Data exported successfully');
+    };
+
     const getUserTypeBadge = (type: string) => {
         const badges: any = {
             admin: 'badge bg-danger',
@@ -369,7 +410,7 @@ const ComponentsAppsContactsUsers = () => {
 
             {/* Filters */}
             <div className="panel mt-5 p-4">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
                     <div>
                         <label className="block text-sm font-medium mb-1">User Type</label>
                         <select
@@ -397,11 +438,16 @@ const ComponentsAppsContactsUsers = () => {
                             <option value={25}>25</option>
                             <option value={50}>50</option>
                             <option value={100}>100</option>
+                            <option value={pagination.total || 1000}>All</option>
                         </select>
                     </div>
-                    <div className="flex items-end">
-                        <button onClick={fetchUsers} className="btn btn-primary w-full">
+                    <div className="flex items-end gap-2">
+                        <button onClick={fetchUsers} className="btn btn-primary flex-1">
                             Refresh
+                        </button>
+                        <button onClick={exportToCSV} className="btn btn-success flex-1">
+                            {/* <IconFile className="w-5 h-5 ltr:mr-2 rtl:ml-2" /> */}
+                            Export CSV
                         </button>
                     </div>
                 </div>

@@ -1,5 +1,6 @@
 const PatientEducationModel = require('../models/patientEducationModel');
 const { deleteImage } = require('../utils/educationImageUpload');
+const { convertEducationUrls } = require('../utils/urlHelper');
 
 class PatientEducationController {
   static async create(req, res) {
@@ -32,9 +33,12 @@ class PatientEducationController {
         feature_image
       });
 
+      // Convert relative paths to absolute URLs
+      const dataWithUrls = convertEducationUrls(data);
+
       res.status(201).json({ 
         message: 'Patient education content created successfully', 
-        data 
+        data: dataWithUrls 
       });
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -52,20 +56,23 @@ class PatientEducationController {
 
       const data = await PatientEducationModel.findAll(filters);
       
+      // Convert relative paths to absolute URLs for all content
+      const dataWithUrls = data.map(item => convertEducationUrls(item));
+      
       // Pagination
       const pageNum = parseInt(page);
       const limitNum = parseInt(limit);
       const startIndex = (pageNum - 1) * limitNum;
       const endIndex = startIndex + limitNum;
-      const paginatedData = data.slice(startIndex, endIndex);
+      const paginatedData = dataWithUrls.slice(startIndex, endIndex);
       
       res.json({ 
         data: paginatedData,
         pagination: {
           page: pageNum,
           limit: limitNum,
-          total: data.length,
-          totalPages: Math.ceil(data.length / limitNum)
+          total: dataWithUrls.length,
+          totalPages: Math.ceil(dataWithUrls.length / limitNum)
         }
       });
     } catch (error) {
@@ -83,7 +90,10 @@ class PatientEducationController {
       // Increment view count
       await PatientEducationModel.incrementViewCount(req.params.id);
 
-      res.json({ data });
+      // Convert relative paths to absolute URLs
+      const dataWithUrls = convertEducationUrls(data);
+
+      res.json({ data: dataWithUrls });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
@@ -135,9 +145,12 @@ class PatientEducationController {
         feature_image
       });
 
+      // Convert relative paths to absolute URLs
+      const dataWithUrls = convertEducationUrls(data);
+
       res.json({ 
         message: 'Patient education content updated successfully', 
-        data 
+        data: dataWithUrls 
       });
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -158,9 +171,12 @@ class PatientEducationController {
         return res.status(404).json({ error: 'Content not found' });
       }
 
+      // Convert relative paths to absolute URLs
+      const dataWithUrls = convertEducationUrls(data);
+
       res.json({ 
         message: `Content status updated to ${status}`, 
-        data 
+        data: dataWithUrls 
       });
     } catch (error) {
       res.status(500).json({ error: error.message });

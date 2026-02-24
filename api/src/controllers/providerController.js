@@ -3,6 +3,7 @@ const pool = require('../config/database');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { convertProviderUrls } = require('../utils/urlHelper');
 
 // Configure storage for provider clinic photos with date-based folder structure
 const storage = multer.diskStorage({
@@ -130,7 +131,10 @@ class ProviderController {
       const provider = await ProviderModel.create(providerData);
       console.log('Provider created successfully:', provider);
       
-      res.status(201).json({ message: 'Provider created successfully', data: provider });
+      // Convert relative paths to absolute URLs
+      const providerWithUrls = convertProviderUrls(provider);
+      
+      res.status(201).json({ message: 'Provider created successfully', data: providerWithUrls });
     } catch (error) {
       console.error('Create provider error:', error);
       res.status(500).json({ error: error.message });
@@ -146,20 +150,23 @@ class ProviderController {
 
       const providers = await ProviderModel.findAll(filters);
       
+      // Convert relative paths to absolute URLs for all providers
+      const providersWithUrls = providers.map(provider => convertProviderUrls(provider));
+      
       // Pagination
       const pageNum = parseInt(page);
       const limitNum = parseInt(limit);
       const startIndex = (pageNum - 1) * limitNum;
       const endIndex = startIndex + limitNum;
-      const paginatedData = providers.slice(startIndex, endIndex);
+      const paginatedData = providersWithUrls.slice(startIndex, endIndex);
       
       res.json({ 
         data: paginatedData,
         pagination: {
           page: pageNum,
           limit: limitNum,
-          total: providers.length,
-          totalPages: Math.ceil(providers.length / limitNum)
+          total: providersWithUrls.length,
+          totalPages: Math.ceil(providersWithUrls.length / limitNum)
         }
       });
     } catch (error) {
@@ -173,7 +180,11 @@ class ProviderController {
       if (!provider) {
         return res.status(404).json({ error: 'Provider not found' });
       }
-      res.json({ data: provider });
+      
+      // Convert relative paths to absolute URLs
+      const providerWithUrls = convertProviderUrls(provider);
+      
+      res.json({ data: providerWithUrls });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
@@ -217,8 +228,11 @@ class ProviderController {
         return res.status(404).json({ error: 'Provider not found' });
       }
       
+      // Convert relative paths to absolute URLs
+      const providerWithUrls = convertProviderUrls(provider);
+      
       console.log('Provider updated successfully:', provider);
-      res.json({ message: 'Provider updated successfully', data: provider });
+      res.json({ message: 'Provider updated successfully', data: providerWithUrls });
     } catch (error) {
       console.error('Update provider error:', error);
       res.status(500).json({ error: error.message });

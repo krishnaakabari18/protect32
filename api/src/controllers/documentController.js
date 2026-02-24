@@ -1,5 +1,6 @@
 const DocumentModel = require('../models/documentModel');
 const { deleteFiles, getFileInfo } = require('../utils/documentUpload');
+const { convertDocumentUrls } = require('../utils/urlHelper');
 
 class DocumentController {
   static async create(req, res) {
@@ -25,9 +26,13 @@ class DocumentController {
       };
 
       const data = await DocumentModel.create(documentData);
+      
+      // Convert relative paths to absolute URLs
+      const dataWithUrls = convertDocumentUrls(data);
+      
       res.status(201).json({ 
         message: 'Document created successfully', 
-        data,
+        data: dataWithUrls,
         filesUploaded: files.length
       });
     } catch (error) {
@@ -51,20 +56,23 @@ class DocumentController {
 
       const data = await DocumentModel.findAll(filters);
       
+      // Convert relative paths to absolute URLs for all documents
+      const dataWithUrls = data.map(doc => convertDocumentUrls(doc));
+      
       // Pagination
       const pageNum = parseInt(page);
       const limitNum = parseInt(limit);
       const startIndex = (pageNum - 1) * limitNum;
       const endIndex = startIndex + limitNum;
-      const paginatedData = data.slice(startIndex, endIndex);
+      const paginatedData = dataWithUrls.slice(startIndex, endIndex);
       
       res.json({ 
         data: paginatedData,
         pagination: {
           page: pageNum,
           limit: limitNum,
-          total: data.length,
-          totalPages: Math.ceil(data.length / limitNum)
+          total: dataWithUrls.length,
+          totalPages: Math.ceil(dataWithUrls.length / limitNum)
         }
       });
     } catch (error) {
@@ -78,7 +86,11 @@ class DocumentController {
       if (!data) {
         return res.status(404).json({ error: 'Document not found' });
       }
-      res.json({ data });
+      
+      // Convert relative paths to absolute URLs
+      const dataWithUrls = convertDocumentUrls(data);
+      
+      res.json({ data: dataWithUrls });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
@@ -138,9 +150,13 @@ class DocumentController {
       };
 
       const data = await DocumentModel.update(req.params.id, documentData);
+      
+      // Convert relative paths to absolute URLs
+      const dataWithUrls = convertDocumentUrls(data);
+      
       res.json({ 
         message: 'Document updated successfully', 
-        data,
+        data: dataWithUrls,
         filesCount: files.length
       });
     } catch (error) {
@@ -227,9 +243,13 @@ class DocumentController {
       };
 
       const data = await DocumentModel.update(id, documentData);
+      
+      // Convert relative paths to absolute URLs
+      const dataWithUrls = convertDocumentUrls(data);
+      
       res.json({ 
         message: 'File deleted successfully', 
-        data,
+        data: dataWithUrls,
         remainingFiles: files.length
       });
     } catch (error) {

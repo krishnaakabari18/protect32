@@ -4,6 +4,7 @@ const AuthModel = require('../models/authModel');
 const JWTUtil = require('../utils/jwt');
 const OTPUtil = require('../utils/otp');
 const { deleteFile, getFileUrl } = require('../utils/upload');
+const { convertUserUrls } = require('../utils/urlHelper');
 
 class AuthController {
   // Register with Email/Password
@@ -357,7 +358,11 @@ class AuthController {
     try {
       const user = req.user;
       delete user.password_hash;
-      res.json({ data: user });
+      
+      // Convert relative paths to absolute URLs
+      const userWithUrls = convertUserUrls(user);
+      
+      res.json({ data: userWithUrls });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }

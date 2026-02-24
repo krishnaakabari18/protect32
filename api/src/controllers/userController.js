@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { convertUserUrls } = require('../utils/urlHelper');
 
 // Configure storage for user profile pictures with user ID-based folder structure
 const storage = multer.diskStorage({
@@ -128,7 +129,11 @@ class UserController {
       }
 
       delete user.password_hash;
-      res.status(201).json({ message: 'User created successfully', data: user });
+      
+      // Convert relative paths to absolute URLs
+      const userWithUrls = convertUserUrls(user);
+      
+      res.status(201).json({ message: 'User created successfully', data: userWithUrls });
     } catch (error) {
       console.error('Create user error:', error);
       if (req.file) deleteFile(req.file.path);
@@ -146,20 +151,23 @@ class UserController {
       const allUsers = await UserModel.findAll(filters);
       allUsers.forEach(user => delete user.password_hash);
       
+      // Convert relative paths to absolute URLs for all users
+      const usersWithUrls = allUsers.map(user => convertUserUrls(user));
+      
       // Pagination
       const pageNum = parseInt(page);
       const limitNum = parseInt(limit);
       const startIndex = (pageNum - 1) * limitNum;
       const endIndex = startIndex + limitNum;
-      const paginatedData = allUsers.slice(startIndex, endIndex);
+      const paginatedData = usersWithUrls.slice(startIndex, endIndex);
       
       res.json({ 
         data: paginatedData,
         pagination: {
           page: pageNum,
           limit: limitNum,
-          total: allUsers.length,
-          totalPages: Math.ceil(allUsers.length / limitNum)
+          total: usersWithUrls.length,
+          totalPages: Math.ceil(usersWithUrls.length / limitNum)
         }
       });
     } catch (error) {
@@ -174,7 +182,11 @@ class UserController {
         return res.status(404).json({ error: 'User not found' });
       }
       delete user.password_hash;
-      res.json({ data: user });
+      
+      // Convert relative paths to absolute URLs
+      const userWithUrls = convertUserUrls(user);
+      
+      res.json({ data: userWithUrls });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
@@ -222,7 +234,11 @@ class UserController {
 
       const user = await UserModel.update(req.params.id, updateData);
       delete user.password_hash;
-      res.json({ message: 'User updated successfully', data: user });
+      
+      // Convert relative paths to absolute URLs
+      const userWithUrls = convertUserUrls(user);
+      
+      res.json({ message: 'User updated successfully', data: userWithUrls });
     } catch (error) {
       console.error('Update user error:', error);
       if (req.file) deleteFile(req.file.path);

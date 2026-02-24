@@ -54,6 +54,7 @@ Complete documentation for the Dentist Management System API.
 | Document | Description | Priority |
 |----------|-------------|----------|
 | [FILE_UPLOAD_GUIDE.md](FILE_UPLOAD_GUIDE.md) | File upload implementation | 🟡 Important |
+| [URL_CONVERSION_IMPLEMENTATION.md](URL_CONVERSION_IMPLEMENTATION.md) | URL conversion for images/documents | 🟡 Important |
 | [SWAGGER_STATUS.md](SWAGGER_STATUS.md) | Swagger documentation | 🟡 Important |
 | [LOGIN_FIX_SUMMARY.md](LOGIN_FIX_SUMMARY.md) | Login fixes | 🟢 Optional |
 
@@ -75,7 +76,9 @@ Complete documentation for the Dentist Management System API.
 
 ### File Uploads
 - [FILE_UPLOAD_GUIDE.md](FILE_UPLOAD_GUIDE.md)
+- [URL_CONVERSION_IMPLEMENTATION.md](URL_CONVERSION_IMPLEMENTATION.md)
 - Profile pictures, documents, images
+- Absolute URL conversion
 
 ### API Testing
 - [API_TESTING_GUIDE.md](API_TESTING_GUIDE.md)
@@ -233,9 +236,9 @@ npm run dev
 
 | Status | Count | Description |
 |--------|-------|-------------|
-| ✅ Complete | 10 | Fully documented |
+| ✅ Complete | 11 | Fully documented |
 | 🔄 Updated | 3 | Recently updated |
-| 📚 Reference | 13 | Total documents |
+| 📚 Reference | 14 | Total documents |
 
 ---
 
@@ -243,7 +246,7 @@ npm run dev
 
 **Date:** February 24, 2026
 
-**Total Documents:** 13
+**Total Documents:** 14
 
 **Status:** Production Ready ✓
 

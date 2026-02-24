@@ -7,6 +7,7 @@ import IconX from '@/components/icon/icon-x';
 import IconPencil from '@/components/icon/icon-pencil';
 import IconTrash from '@/components/icon/icon-trash';
 import IconEye from '@/components/icon/icon-eye';
+import IconFile from '@/components/icon/icon-file';
 import { Transition, Dialog, TransitionChild, DialogPanel } from '@headlessui/react';
 import React, { Fragment, useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
@@ -251,6 +252,73 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
         });
     };
 
+    const exportToCSV = () => {
+        if (items.length === 0) {
+            showMessage('No data to export', 'error');
+            return;
+        }
+
+        // Prepare CSV headers
+        const headers = ['#', ...columns.map(col => col.label)];
+        
+        // Prepare CSV rows
+        const rows = items.map((item, index) => {
+            const rowNumber = (pagination.page - 1) * pagination.limit + index + 1;
+            const rowData = columns.map(col => {
+                let value = item[col.key];
+                
+                // Handle rendered values
+                if (col.render) {
+                    const rendered = col.render(value, item);
+                    // Extract text from React elements
+                    if (typeof rendered === 'object' && rendered !== null) {
+                        return ''; // Skip complex renders
+                    }
+                    return rendered || '';
+                }
+                
+                // Handle null/undefined
+                if (value === null || value === undefined) return '';
+                
+                // Handle dates
+                if (col.key.includes('date') || col.key.includes('_at')) {
+                    try {
+                        return new Date(value).toLocaleDateString();
+                    } catch {
+                        return value;
+                    }
+                }
+                
+                return value;
+            });
+            
+            return [rowNumber, ...rowData];
+        });
+
+        // Combine headers and rows
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.map(cell => {
+                // Escape commas and quotes in cell content
+                const cellStr = String(cell).replace(/"/g, '""');
+                return cellStr.includes(',') ? `"${cellStr}"` : cellStr;
+            }).join(','))
+        ].join('\n');
+
+        // Create and download file
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `${title.toLowerCase().replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showMessage('Data exported successfully');
+    };
+
     return (
         <div>
             <div className="flex flex-wrap items-center justify-between gap-4">
@@ -291,7 +359,7 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
 
             {/* Filters */}
             <div className="panel mt-5 p-4">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
                     {filterField && (
                         <div>
                             <label className="block text-sm font-medium mb-1">{filterField.label}</label>
@@ -321,11 +389,16 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
                             <option value={25}>25</option>
                             <option value={50}>50</option>
                             <option value={100}>100</option>
+                            <option value={pagination.total || 1000}>All</option>
                         </select>
                     </div>
-                    <div className="flex items-end">
-                        <button onClick={fetchItems} className="btn btn-primary w-full">
+                    <div className="flex items-end gap-2">
+                        <button onClick={fetchItems} className="btn btn-primary flex-1">
                             Refresh
+                        </button>
+                        <button onClick={exportToCSV} className="btn btn-success flex-1">
+                            {/* <IconFile className="w-5 h-5 ltr:mr-2 rtl:ml-2" /> */}
+                            Export CSV
                         </button>
                     </div>
                 </div>

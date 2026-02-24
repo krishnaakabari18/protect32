@@ -8,7 +8,7 @@ router.use(authenticate);
 
 /**
  * @swagger
- * /api/v1/support-tickets/{ticket_id}/replies:
+ * /support-tickets/{ticket_id}/replies:
  *   get:
  *     summary: Get all replies for a ticket
  *     tags: [Ticket Replies]
@@ -28,7 +28,7 @@ router.get('/:ticket_id/replies', TicketReplyController.getRepliesByTicket);
 
 /**
  * @swagger
- * /api/v1/support-tickets/{ticket_id}/replies:
+ * /support-tickets/{ticket_id}/replies:
  *   post:
  *     summary: Add a reply to a ticket
  *     tags: [Ticket Replies]
@@ -61,7 +61,7 @@ router.post('/:ticket_id/replies', TicketReplyController.createReply);
 
 /**
  * @swagger
- * /api/v1/ticket-replies/{id}:
+ * /ticket-replies/{id}:
  *   put:
  *     summary: Update a reply
  *     tags: [Ticket Replies]
@@ -94,7 +94,7 @@ router.put('/replies/:id', TicketReplyController.updateReply);
 
 /**
  * @swagger
- * /api/v1/ticket-replies/{id}:
+ * /ticket-replies/{id}:
  *   delete:
  *     summary: Delete a reply
  *     tags: [Ticket Replies]

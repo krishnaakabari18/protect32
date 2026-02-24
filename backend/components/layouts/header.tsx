@@ -33,6 +33,7 @@ import IconMenuPages from '@/components/icon/menu/icon-menu-pages';
 import IconMenuMore from '@/components/icon/menu/icon-menu-more';
 import { usePathname, useRouter } from 'next/navigation';
 import { getTranslation } from '@/i18n';
+import { BASE_URL } from '@/config/api.config';
 
 const Header = () => {
     const pathname = usePathname();
@@ -48,7 +49,11 @@ const Header = () => {
         const userStr = localStorage.getItem('user');
         if (userStr) {
             try {
-                setCurrentUser(JSON.parse(userStr));
+                const userData = JSON.parse(userStr);
+                console.log('Current user data:', userData);
+                console.log('Profile picture path:', userData?.profile_picture);
+                console.log('Avatar URL:', userData?.avatar_url);
+                setCurrentUser(userData);
             } catch (error) {
                 console.error('Error parsing user data:', error);
             }
@@ -423,18 +428,61 @@ const Header = () => {
                                 offset={[0, 8]}
                                 placement={`${isRtl ? 'bottom-start' : 'bottom-end'}`}
                                 btnClassName="relative group block"
-                                button={<img className="h-9 w-9 rounded-full object-cover saturate-50 group-hover:saturate-100" src="/assets/images/user-profile.jpeg" alt="userProfile" />}
+                                button={
+                                    <div className="relative">
+                                        {(currentUser?.profile_picture || currentUser?.avatar_url) ? (
+                                            <>
+                                                <img 
+                                                    className="h-9 w-9 rounded-full object-cover saturate-50 group-hover:saturate-100" 
+                                                    src={`${BASE_URL}${currentUser.profile_picture || currentUser.avatar_url}`} 
+                                                    alt="userProfile"
+                                                    onError={(e: any) => {
+                                                        console.error('Failed to load profile image:', `${BASE_URL}${currentUser.profile_picture || currentUser.avatar_url}`);
+                                                        e.currentTarget.style.display = 'none';
+                                                        const fallback = e.currentTarget.nextElementSibling;
+                                                        if (fallback) fallback.style.display = 'flex';
+                                                    }}
+                                                />
+                                                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm saturate-50 group-hover:saturate-100" style={{ display: 'none' }}>
+                                                    {currentUser?.first_name?.[0]}{currentUser?.last_name?.[0]}
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="h-9 w-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm saturate-50 group-hover:saturate-100">
+                                                {currentUser?.first_name?.[0]}{currentUser?.last_name?.[0]}
+                                            </div>
+                                        )}
+                                    </div>
+                                }
                             >
                                 <ul className="w-[230px] !py-0 font-semibold text-dark dark:text-white-dark dark:text-white-light/90">
                                     <li>
                                         <div className="flex items-center px-4 py-4">
-                                            <div className="h-10 w-10 rounded-md bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
-                                                {currentUser?.first_name?.[0]}{currentUser?.last_name?.[0]}
-                                            </div>
+                                            {(currentUser?.profile_picture || currentUser?.avatar_url) ? (
+                                                <>
+                                                    <img 
+                                                        className="h-10 w-10 rounded-md object-cover" 
+                                                        src={`${BASE_URL}${currentUser.profile_picture || currentUser.avatar_url}`} 
+                                                        alt="profile"
+                                                        onError={(e: any) => {
+                                                            e.currentTarget.style.display = 'none';
+                                                            const fallback = e.currentTarget.nextElementSibling;
+                                                            if (fallback) fallback.style.display = 'flex';
+                                                        }}
+                                                    />
+                                                    <div className="h-10 w-10 rounded-md bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold" style={{ display: 'none' }}>
+                                                        {currentUser?.first_name?.[0]}{currentUser?.last_name?.[0]}
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <div className="h-10 w-10 rounded-md bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
+                                                    {currentUser?.first_name?.[0]}{currentUser?.last_name?.[0]}
+                                                </div>
+                                            )}
                                             <div className="truncate ltr:pl-4 rtl:pr-4">
                                                 <h4 className="text-base">
                                                     {currentUser?.first_name} {currentUser?.last_name}
-                                                    <span className="rounded bg-success-light px-1 text-xs text-success ltr:ml-2 rtl:ml-2 uppercase">{currentUser?.user_type || 'Admin'}</span>
+                                                    <span className="rounded bg-success-light px-1 text-xs text-success ltr:ml-2 rtl:ml-2 uppercase">{currentUser?.role || currentUser?.user_type || 'User'}</span>
                                                 </h4>
                                                 <button type="button" className="text-black/60 hover:text-primary dark:text-dark-light/60 dark:hover:text-white">
                                                     {currentUser?.email}

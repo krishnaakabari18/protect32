@@ -2,6 +2,13 @@ const crypto = require('crypto');
 
 class OTPUtil {
   static generate(length = 6) {
+    // In test mode, always return the test OTP
+    if (process.env.OTP_TEST_MODE === 'true' && process.env.OTP_TEST_CODE) {
+      console.log('🔐 TEST MODE: Using default OTP:', process.env.OTP_TEST_CODE);
+      return process.env.OTP_TEST_CODE;
+    }
+    
+    // Generate random OTP for production
     const digits = '0123456789';
     let otp = '';
     for (let i = 0; i < length; i++) {
@@ -15,7 +22,14 @@ class OTPUtil {
   }
 
   static async sendSMS(phoneNumber, otp) {
-    // Twilio implementation
+    // Test mode: just log the OTP
+    if (process.env.OTP_TEST_MODE === 'true') {
+      console.log(`📱 TEST MODE - OTP for ${phoneNumber}: ${otp}`);
+      console.log(`   Use this OTP to verify: ${otp}`);
+      return true;
+    }
+    
+    // Twilio implementation for production
     if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
       try {
         const twilio = require('twilio');
@@ -26,15 +40,16 @@ class OTPUtil {
           from: process.env.TWILIO_PHONE_NUMBER,
           to: phoneNumber
         });
+        console.log(`✅ SMS sent to ${phoneNumber}`);
         return true;
       } catch (error) {
-        console.error('SMS sending failed:', error);
+        console.error('❌ SMS sending failed:', error);
         return false;
       }
     }
     
-    // For development: just log the OTP
-    console.log(`OTP for ${phoneNumber}: ${otp}`);
+    // For development without Twilio: just log the OTP
+    console.log(`📱 DEV MODE - OTP for ${phoneNumber}: ${otp}`);
     return true;
   }
 

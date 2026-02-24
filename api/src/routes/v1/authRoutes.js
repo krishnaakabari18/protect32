@@ -168,8 +168,14 @@ router.post('/send-otp', AuthController.sendOTP);
  * @swagger
  * /auth/verify-otp:
  *   post:
- *     summary: Verify OTP and login/register
+ *     summary: Verify OTP and login/register/verify mobile
  *     tags: [Authentication]
+ *     description: |
+ *       Verify OTP code sent to mobile number.
+ *       - For mobile_verification: Verifies and activates existing user's mobile number
+ *       - For registration: Creates new user account
+ *       - For login: Authenticates existing user
+ *       - For password_reset: Allows password reset
  *     requestBody:
  *       required: true
  *       content:
@@ -183,14 +189,20 @@ router.post('/send-otp', AuthController.sendOTP);
  *             properties:
  *               mobile_number:
  *                 type: string
+ *                 example: "+1234567890"
+ *                 description: Mobile number with country code
  *               otp_code:
  *                 type: string
+ *                 example: "123456"
+ *                 description: 6-digit OTP code (123456 in test mode)
  *               purpose:
  *                 type: string
- *                 enum: [registration, login, password_reset]
+ *                 enum: [registration, login, password_reset, mobile_verification]
+ *                 example: "mobile_verification"
+ *                 description: Purpose of OTP verification
  *               user_data:
  *                 type: object
- *                 description: Required for registration purpose
+ *                 description: Required only for registration purpose
  *                 properties:
  *                   first_name:
  *                     type: string
@@ -206,7 +218,50 @@ router.post('/send-otp', AuthController.sendOTP);
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/AuthResponse'
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "OTP verified successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                           format: uuid
+ *                         mobile_number:
+ *                           type: string
+ *                         first_name:
+ *                           type: string
+ *                         last_name:
+ *                           type: string
+ *                         mobile_verified:
+ *                           type: boolean
+ *                           example: true
+ *                         is_verified:
+ *                           type: boolean
+ *                           example: true
+ *                         user_type:
+ *                           type: string
+ *                     accessToken:
+ *                       type: string
+ *                       description: JWT access token
+ *                     refreshToken:
+ *                       type: string
+ *                       description: JWT refresh token
+ *       400:
+ *         description: Invalid or expired OTP
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Invalid or expired OTP"
  */
 router.post('/verify-otp', AuthController.verifyOTP);
 
@@ -403,5 +458,107 @@ router.get('/profile', AuthMiddleware.authenticate, AuthController.getProfile);
  *         description: Password changed successfully
  */
 router.post('/change-password', AuthMiddleware.authenticate, AuthController.changePassword);
+
+/**
+ * @swagger
+ * /auth/mobile-register:
+ *   post:
+ *     summary: Register user with mobile number and full name (for Mobile App)
+ *     tags: [Authentication]
+ *     description: |
+ *       Register a new user using mobile number and full name.
+ *       - Full name will be automatically split into first_name and last_name
+ *       - First word becomes first_name (required)
+ *       - Remaining words become last_name (optional)
+ *       - No password required for mobile registration
+ *       - OTP is automatically sent to the mobile number after registration
+ *       - User should verify mobile number using the OTP received
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - mobile_number
+ *               - full_name
+ *             properties:
+ *               mobile_number:
+ *                 type: string
+ *                 example: "+1234567890"
+ *                 description: Mobile number with country code
+ *               full_name:
+ *                 type: string
+ *                 example: "John Doe"
+ *                 description: Full name (will be split into first and last name)
+ *               user_type:
+ *                 type: string
+ *                 enum: [patient, provider, admin]
+ *                 default: patient
+ *                 description: User type (defaults to patient)
+ *     responses:
+ *       201:
+ *         description: User registered successfully and OTP sent
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "User registered successfully. OTP sent to your mobile number."
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                           format: uuid
+ *                         mobile_number:
+ *                           type: string
+ *                         first_name:
+ *                           type: string
+ *                         last_name:
+ *                           type: string
+ *                         user_type:
+ *                           type: string
+ *                         mobile_verified:
+ *                           type: boolean
+ *                         is_verified:
+ *                           type: boolean
+ *                         created_at:
+ *                           type: string
+ *                           format: date-time
+ *                     accessToken:
+ *                       type: string
+ *                       description: JWT access token
+ *                     refreshToken:
+ *                       type: string
+ *                       description: JWT refresh token
+ *                     otp_sent:
+ *                       type: boolean
+ *                       example: true
+ *                       description: Indicates OTP was sent
+ *                     otp_expires_in_minutes:
+ *                       type: number
+ *                       example: 10
+ *                       description: OTP expiry time in minutes
+ *                     note:
+ *                       type: string
+ *                       example: "Please verify your mobile number using the OTP sent to your phone"
+ *       400:
+ *         description: Bad request - Missing required fields or user already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Mobile number and full name are required"
+ */
+router.post('/mobile-register', AuthController.mobileRegister);
 
 module.exports = router;

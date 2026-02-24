@@ -176,7 +176,7 @@ class AuthController {
           mobile_verified: true,
           is_verified: true
         });
-      } else if (purpose === 'login') {
+      } else if (purpose === 'login' || purpose === 'mobile_verification') {
         // Find existing user
         const query = 'SELECT * FROM users WHERE mobile_number = $1';
         const result = await pool.query(query, [mobile_number]);
@@ -380,6 +380,77 @@ class AuthController {
       await UserModel.update(req.user.id, { password_hash });
 
       res.json({ message: 'Password changed successfully' });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  // Mobile Registration (for Mobile App)
+  static async mobileRegister(req, res) {
+    try {
+      const { mobile_number, full_name, user_type } = req.body;
+
+      // Validate required fields
+      if (!mobile_number || !full_name) {
+        return res.status(400).json({ error: 'Mobile number and full name are required' });
+      }
+
+      // Check if user already exists with this mobile number
+      const pool = require('../config/database');
+      const existingUserQuery = 'SELECT * FROM users WHERE mobile_number = $1';
+      const existingUserResult = await pool.query(existingUserQuery, [mobile_number]);
+      
+      if (existingUserResult.rows[0]) {
+        return res.status(400).json({ error: 'User already exists with this mobile number' });
+      }
+
+      // Split full name into first_name and last_name
+      const nameParts = full_name.trim().split(/\s+/);
+      const first_name = nameParts[0];
+      const last_name = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+
+      // Create user without password (mobile-only registration)
+      const user = await UserModel.create({
+        mobile_number,
+        first_name,
+        last_name: last_name || null,
+        user_type: user_type || 'patient',
+        mobile_verified: false,
+        is_verified: false,
+        email: null,
+        password_hash: null
+      });
+
+      delete user.password_hash;
+
+      // Generate tokens
+      const accessToken = JWTUtil.generateAccessToken(user.id, user.user_type);
+      const refreshToken = JWTUtil.generateRefreshToken(user.id);
+      
+      // Store refresh token
+      const deviceInfo = {
+        userAgent: req.headers['user-agent'] || 'unknown',
+        platform: req.headers['sec-ch-ua-platform'] || 'mobile'
+      };
+      
+      await AuthModel.createRefreshToken(user.id, refreshToken, deviceInfo, req.ip);
+
+      // Automatically send OTP after registration
+      const otp = OTPUtil.generate(parseInt(process.env.OTP_LENGTH) || 6);
+      await AuthModel.createOTP(user.id, mobile_number, otp, 'mobile_verification');
+      await OTPUtil.sendSMS(mobile_number, otp);
+
+      res.status(201).json({
+        message: 'User registered successfully. OTP sent to your mobile number.',
+        data: { 
+          user, 
+          accessToken, 
+          refreshToken,
+          otp_sent: true,
+          otp_expires_in_minutes: process.env.OTP_EXPIRE_MINUTES || 10,
+          note: 'Please verify your mobile number using the OTP sent to your phone'
+        }
+      });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }

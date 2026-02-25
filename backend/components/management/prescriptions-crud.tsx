@@ -15,7 +15,7 @@ const PrescriptionsCRUD = () => {
     const fetchPatients = async () => {
         try {
             const token = localStorage.getItem('auth_token');
-            const response = await fetch(`${API_ENDPOINTS.users}?user_type=patient&limit=1000`, {
+            const response = await fetch(`${API_ENDPOINTS.patients}?limit=1000`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'ngrok-skip-browser-warning': 'true',
@@ -33,7 +33,7 @@ const PrescriptionsCRUD = () => {
     const fetchProviders = async () => {
         try {
             const token = localStorage.getItem('auth_token');
-            const response = await fetch(`${API_ENDPOINTS.users}?user_type=provider&limit=1000`, {
+            const response = await fetch(`${API_ENDPOINTS.providers}?limit=1000`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'ngrok-skip-browser-warning': 'true',
@@ -71,6 +71,11 @@ const PrescriptionsCRUD = () => {
                 { key: 'dosage', label: 'Dosage' },
                 { key: 'frequency', label: 'Frequency' },
                 {
+                    key: 'date_prescribed',
+                    label: 'Date Prescribed',
+                    render: (value) => value ? new Date(value).toLocaleDateString() : '-'
+                },
+                {
                     key: 'start_date',
                     label: 'Start Date',
                     render: (value) => value ? new Date(value).toLocaleDateString() : '-'
@@ -87,10 +92,13 @@ const PrescriptionsCRUD = () => {
                     label: 'Patient', 
                     type: 'select', 
                     required: true,
-                    options: patients.map(p => ({
-                        value: p.id,
-                        label: `${p.first_name} ${p.last_name} (${p.email})`
-                    })),
+                    options: [
+                        { value: '', label: 'Select Patient' },
+                        ...patients.map(p => ({
+                            value: p.id,
+                            label: `${p.first_name} ${p.last_name} (${p.email || p.mobile_number || 'No contact'})`
+                        }))
+                    ],
                     placeholder: 'Select Patient'
                 },
                 { 
@@ -98,16 +106,20 @@ const PrescriptionsCRUD = () => {
                     label: 'Provider', 
                     type: 'select', 
                     required: true,
-                    options: providers.map(p => ({
-                        value: p.id,
-                        label: `${p.first_name} ${p.last_name} (${p.email})`
-                    })),
+                    options: [
+                        { value: '', label: 'Select Provider' },
+                        ...providers.map(p => ({
+                            value: p.id,
+                            label: `${p.first_name} ${p.last_name} (${p.email || p.mobile_number || 'No contact'})`
+                        }))
+                    ],
                     placeholder: 'Select Provider'
                 },
                 { key: 'medication_name', label: 'Medication Name', type: 'text', required: true, placeholder: 'Enter medication name' },
                 { key: 'dosage', label: 'Dosage', type: 'text', required: true, placeholder: 'e.g., 500mg' },
                 { key: 'frequency', label: 'Frequency', type: 'text', required: true, placeholder: 'e.g., Twice daily' },
                 { key: 'duration', label: 'Duration', type: 'text', placeholder: 'e.g., 7 days' },
+                { key: 'date_prescribed', label: 'Date Prescribed', type: 'date', placeholder: 'Defaults to today if not set' },
                 { key: 'instructions', label: 'Instructions', type: 'textarea', colSpan: 2, placeholder: 'Special instructions' },
                 { key: 'start_date', label: 'Start Date', type: 'date' },
                 { key: 'end_date', label: 'End Date', type: 'date' },
@@ -120,9 +132,10 @@ const PrescriptionsCRUD = () => {
                 dosage: '',
                 frequency: '',
                 duration: '',
+                date_prescribed: null,
                 instructions: '',
-                start_date: '',
-                end_date: '',
+                start_date: null,
+                end_date: null,
             }}
             searchFields={['medication_name', 'dosage', 'frequency']}
         />

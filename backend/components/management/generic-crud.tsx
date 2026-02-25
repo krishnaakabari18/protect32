@@ -165,7 +165,12 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
                 if (modalMode === 'edit' && field.hideOnEdit) return;
                 if (modalMode === 'create' && field.hideOnCreate) return;
                 if (params[field.key] !== undefined && params[field.key] !== null) {
-                    body[field.key] = params[field.key];
+                    // Convert empty strings to null for date fields
+                    if (field.type === 'date' || field.type === 'datetime-local') {
+                        body[field.key] = params[field.key] === '' ? null : params[field.key];
+                    } else {
+                        body[field.key] = params[field.key];
+                    }
                 }
             });
 
@@ -198,7 +203,48 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
     const openModal = (mode: 'create' | 'edit' | 'view', item: any = null) => {
         setModalMode(mode);
         const json = JSON.parse(JSON.stringify(defaultValues));
-        setParams(item || json);
+        
+        if (item) {
+            // Format dates for date input fields (YYYY-MM-DD format)
+            const formattedItem = { ...item };
+            formFields.forEach(field => {
+                if ((field.type === 'date' || field.type === 'datetime-local') && formattedItem[field.key]) {
+                    const dateValue = formattedItem[field.key];
+                    if (dateValue) {
+                        if (field.type === 'date') {
+                            // For date fields, extract YYYY-MM-DD directly from the string
+                            // This avoids timezone conversion issues
+                            if (typeof dateValue === 'string') {
+                                // Extract date part (YYYY-MM-DD) from ISO string or date string
+                                const extractedDate = dateValue.split('T')[0];
+                                console.log(`Date field ${field.key}: Original="${dateValue}" Extracted="${extractedDate}"`);
+                                formattedItem[field.key] = extractedDate;
+                            } else {
+                                const date = new Date(dateValue);
+                                if (!isNaN(date.getTime())) {
+                                    formattedItem[field.key] = date.toISOString().split('T')[0];
+                                }
+                            }
+                        } else {
+                            // For datetime-local, format as YYYY-MM-DDTHH:mm
+                            const date = new Date(dateValue);
+                            if (!isNaN(date.getTime())) {
+                                const year = date.getFullYear();
+                                const month = String(date.getMonth() + 1).padStart(2, '0');
+                                const day = String(date.getDate()).padStart(2, '0');
+                                const hours = String(date.getHours()).padStart(2, '0');
+                                const minutes = String(date.getMinutes()).padStart(2, '0');
+                                formattedItem[field.key] = `${year}-${month}-${day}T${hours}:${minutes}`;
+                            }
+                        }
+                    }
+                }
+            });
+            setParams(formattedItem);
+        } else {
+            setParams(json);
+        }
+        
         setAddModal(true);
     };
 

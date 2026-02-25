@@ -167,12 +167,26 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
                 if (params[field.key] !== undefined && params[field.key] !== null) {
                     // Convert empty strings to null for date fields
                     if (field.type === 'date' || field.type === 'datetime-local') {
-                        body[field.key] = params[field.key] === '' ? null : params[field.key];
+                        if (params[field.key] === '') {
+                            body[field.key] = null;
+                        } else {
+                            // For date fields, ensure we send only YYYY-MM-DD format
+                            // This prevents timezone conversion issues
+                            if (field.type === 'date') {
+                                const dateValue = params[field.key];
+                                // Extract just the date part if it has time component
+                                body[field.key] = typeof dateValue === 'string' ? dateValue.split('T')[0] : dateValue;
+                            } else {
+                                body[field.key] = params[field.key];
+                            }
+                        }
                     } else {
                         body[field.key] = params[field.key];
                     }
                 }
             });
+
+            console.log('Sending to API:', body); // Debug log
 
             const response = await fetch(url, {
                 method,

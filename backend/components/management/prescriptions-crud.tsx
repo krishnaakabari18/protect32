@@ -70,21 +70,21 @@ const PrescriptionsCRUD = () => {
                 { key: 'medication_name', label: 'Medication' },
                 { key: 'dosage', label: 'Dosage' },
                 { key: 'frequency', label: 'Frequency' },
-                {
-                    key: 'date_prescribed',
-                    label: 'Date Prescribed',
-                    render: (value) => value ? new Date(value).toLocaleDateString() : '-'
-                },
-                {
-                    key: 'start_date',
-                    label: 'Start Date',
-                    render: (value) => value ? new Date(value).toLocaleDateString() : '-'
-                },
-                {
-                    key: 'end_date',
-                    label: 'End Date',
-                    render: (value) => value ? new Date(value).toLocaleDateString() : '-'
-                },
+                    {
+                        key: 'date_prescribed',
+                        label: 'Date Prescribed',
+                        render: v => v ? v.split('T')[0] : '-'
+                    },
+                    {
+                        key: 'start_date',
+                        label: 'Start Date',
+                        render: v => v ? v.split('T')[0] : '-'
+                    },
+                    {
+                        key: 'end_date',
+                        label: 'End Date',
+                        render: v => v ? v.split('T')[0] : '-'
+                    }
             ]}
             formFields={[
                 { 

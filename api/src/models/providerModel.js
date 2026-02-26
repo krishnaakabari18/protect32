@@ -13,15 +13,16 @@ class ProviderModel {
       about, 
       clinic_photos, 
       clinic_video_url, 
-      availability 
+      availability,
+      time_slots
     } = providerData;
     
     const query = `
       INSERT INTO providers (
         id, specialty, experience_years, clinic_name, contact_number, 
-        location, coordinates, about, clinic_photos, clinic_video_url, availability
+        location, coordinates, about, clinic_photos, clinic_video_url, availability, time_slots
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *
     `;
     
@@ -36,7 +37,8 @@ class ProviderModel {
       about, 
       clinic_photos || [], 
       clinic_video_url, 
-      availability
+      availability,
+      time_slots ? JSON.stringify(time_slots) : null
     ];
     
     const result = await pool.query(query, values);
@@ -107,14 +109,22 @@ class ProviderModel {
       'about', 
       'clinic_photos', 
       'clinic_video_url', 
-      'availability'
+      'availability',
+      'time_slots'
     ];
 
     allowedFields.forEach(key => {
       if (providerData[key] !== undefined) {
-        fields.push(`${key} = $${paramCount}`);
-        values.push(providerData[key]);
-        paramCount++;
+        // Handle JSON fields
+        if (key === 'time_slots' && providerData[key]) {
+          fields.push(`${key} = $${paramCount}`);
+          values.push(JSON.stringify(providerData[key]));
+          paramCount++;
+        } else {
+          fields.push(`${key} = $${paramCount}`);
+          values.push(providerData[key]);
+          paramCount++;
+        }
       }
     });
 

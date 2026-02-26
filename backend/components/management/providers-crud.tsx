@@ -12,6 +12,23 @@ import React, { Fragment, useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
 import { API_ENDPOINTS, BASE_URL } from '@/config/api.config';
 
+interface TimeSlot {
+    enabled: boolean;
+    start: string;
+    end: string;
+}
+
+interface TimeSlots {
+    monday: TimeSlot;
+    tuesday: TimeSlot;
+    wednesday: TimeSlot;
+    thursday: TimeSlot;
+    friday: TimeSlot;
+    saturday: TimeSlot;
+    sunday: TimeSlot;
+    [key: string]: TimeSlot;
+}
+
 const ProvidersCRUD = () => {
     const [addModal, setAddModal] = useState(false);
     const [viewMode, setViewMode] = useState('list');
@@ -39,6 +56,15 @@ const ProvidersCRUD = () => {
         clinic_photos: [],
         clinic_video_url: '',
         availability: '',
+        time_slots: {
+            monday: { enabled: false, start: '09:00', end: '17:00' },
+            tuesday: { enabled: false, start: '09:00', end: '17:00' },
+            wednesday: { enabled: false, start: '09:00', end: '17:00' },
+            thursday: { enabled: false, start: '09:00', end: '17:00' },
+            friday: { enabled: false, start: '09:00', end: '17:00' },
+            saturday: { enabled: false, start: '09:00', end: '17:00' },
+            sunday: { enabled: false, start: '09:00', end: '17:00' },
+        },
     });
     
     const [modalMode, setModalMode] = useState<'create' | 'edit' | 'view'>('create');
@@ -163,6 +189,133 @@ const ProvidersCRUD = () => {
         setParams({ ...params, [id]: type === 'checkbox' ? checked : value });
     };
 
+    const handleTimeSlotChange = (day: string, field: 'enabled' | 'start' | 'end', value: any) => {
+        const timeSlots = params.time_slots as TimeSlots;
+        setParams({
+            ...params,
+            time_slots: {
+                ...timeSlots,
+                [day]: {
+                    ...timeSlots[day],
+                    [field]: value
+                }
+            }
+        });
+    };
+
+    const formatTimeSlots = (timeSlots: TimeSlots) => {
+        if (!timeSlots) return '';
+        
+        const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+        const enabledDays = days.filter(day => timeSlots[day]?.enabled);
+        
+        if (enabledDays.length === 0) return '';
+        
+        // Group consecutive days with same time
+        const groups: any[] = [];
+        let currentGroup: any = null;
+        
+        enabledDays.forEach(day => {
+            const slot = timeSlots[day];
+            const timeStr = `${slot.start}-${slot.end}`;
+            
+            if (!currentGroup || currentGroup.time !== timeStr) {
+                if (currentGroup) groups.push(currentGroup);
+                currentGroup = { days: [day], time: timeStr, start: slot.start, end: slot.end };
+            } else {
+                currentGroup.days.push(day);
+            }
+        });
+        if (currentGroup) groups.push(currentGroup);
+        
+        // Format output
+        return groups.map(group => {
+            const dayNames = group.days.map((d: string) => d.charAt(0).toUpperCase() + d.slice(1, 3));
+            const dayRange = dayNames.length > 2 
+                ? `${dayNames[0]}-${dayNames[dayNames.length - 1]}`
+                : dayNames.join(', ');
+            
+            // Convert 24h to 12h format
+            const formatTime = (time: string) => {
+                const [hours, minutes] = time.split(':');
+                const h = parseInt(hours);
+                const ampm = h >= 12 ? 'pm' : 'am';
+                const h12 = h % 12 || 12;
+                return `${h12}${minutes !== '00' ? ':' + minutes : ''}${ampm}`;
+            };
+            
+            return `${dayRange}: ${formatTime(group.start)}-${formatTime(group.end)}`;
+        }).join(', ');
+    };
+
+    const parseTimeSlots = (availabilityStr: string): TimeSlots => {
+        const defaultSlots: TimeSlots = {
+            monday: { enabled: false, start: '09:00', end: '17:00' },
+            tuesday: { enabled: false, start: '09:00', end: '17:00' },
+            wednesday: { enabled: false, start: '09:00', end: '17:00' },
+            thursday: { enabled: false, start: '09:00', end: '17:00' },
+            friday: { enabled: false, start: '09:00', end: '17:00' },
+            saturday: { enabled: false, start: '09:00', end: '17:00' },
+            sunday: { enabled: false, start: '09:00', end: '17:00' },
+        };
+        
+        if (!availabilityStr) return defaultSlots;
+        
+        // Try to parse if it's JSON
+        try {
+            const parsed = JSON.parse(availabilityStr);
+            if (parsed.monday) return parsed;
+        } catch (e) {
+            // Not JSON, continue with string parsing
+        }
+        
+        // Parse string format like "Mon-Fri: 8am-5pm"
+        const dayMap: any = {
+            'mon': 'monday', 'tue': 'tuesday', 'wed': 'wednesday',
+            'thu': 'thursday', 'fri': 'friday', 'sat': 'saturday', 'sun': 'sunday'
+        };
+        
+        const parts = availabilityStr.split(',').map(s => s.trim());
+        parts.forEach(part => {
+            const match = part.match(/([A-Za-z\-]+):\s*(\d+):?(\d*)([ap]m)\s*-\s*(\d+):?(\d*)([ap]m)/i);
+            if (match) {
+                const [, dayRange, startH, startM, startAP, endH, endM, endAP] = match;
+                
+                // Convert to 24h
+                const to24h = (h: string, m: string, ap: string) => {
+                    let hour = parseInt(h);
+                    if (ap.toLowerCase() === 'pm' && hour !== 12) hour += 12;
+                    if (ap.toLowerCase() === 'am' && hour === 12) hour = 0;
+                    return `${hour.toString().padStart(2, '0')}:${(m || '00').padStart(2, '0')}`;
+                };
+                
+                const start = to24h(startH, startM, startAP);
+                const end = to24h(endH, endM, endAP);
+                
+                // Handle day range
+                const dayParts = dayRange.toLowerCase().split('-');
+                if (dayParts.length === 2) {
+                    const startDay = dayMap[dayParts[0]];
+                    const endDay = dayMap[dayParts[1]];
+                    const allDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+                    const startIdx = allDays.indexOf(startDay);
+                    const endIdx = allDays.indexOf(endDay);
+                    
+                    for (let i = startIdx; i <= endIdx; i++) {
+                        defaultSlots[allDays[i]] = { enabled: true, start, end };
+                    }
+                } else {
+                    const day = dayMap[dayParts[0]];
+                    if (day) {
+                        defaultSlots[day] = { enabled: true, start, end };
+                    }
+                }
+            }
+        });
+        
+        return defaultSlots;
+    };
+
     const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
             const files = Array.from(e.target.files);
@@ -201,6 +354,14 @@ const ProvidersCRUD = () => {
         try {
             const token = localStorage.getItem('auth_token');
             
+            // Format time slots as string for availability field
+            const availabilityStr = formatTimeSlots(params.time_slots);
+            
+            console.log('=== SAVE PROVIDER DEBUG ===');
+            console.log('Time Slots Object:', params.time_slots);
+            console.log('Formatted Availability:', availabilityStr);
+            console.log('Time Slots JSON:', JSON.stringify(params.time_slots));
+            
             // Create FormData for file upload
             const formData = new FormData();
             formData.append('id', params.user_id);
@@ -211,7 +372,13 @@ const ProvidersCRUD = () => {
             formData.append('location', params.location);
             if (params.about) formData.append('about', params.about);
             if (params.clinic_video_url) formData.append('clinic_video_url', params.clinic_video_url);
-            if (params.availability) formData.append('availability', params.availability);
+            
+            // Save both formatted string and JSON
+            formData.append('availability', availabilityStr);
+            formData.append('time_slots', JSON.stringify(params.time_slots));
+            
+            console.log('FormData availability:', formData.get('availability'));
+            console.log('FormData time_slots:', formData.get('time_slots'));
             
             // Add photos
             uploadedPhotos.forEach((photo) => {
@@ -220,6 +387,9 @@ const ProvidersCRUD = () => {
 
             const url = params.id ? `${API_ENDPOINTS.providers}/${params.id}` : API_ENDPOINTS.providers;
             const method = params.id ? 'PUT' : 'POST';
+
+            console.log('Sending request to:', url);
+            console.log('Method:', method);
 
             const response = await fetch(url, {
                 method,
@@ -231,6 +401,8 @@ const ProvidersCRUD = () => {
             });
 
             const data = await response.json();
+            
+            console.log('API Response:', data);
 
             if (response.ok) {
                 showMessage(`Provider has been ${params.id ? 'updated' : 'created'} successfully.`);
@@ -242,6 +414,7 @@ const ProvidersCRUD = () => {
                 showMessage(data.error || 'Operation failed', 'error');
             }
         } catch (error: any) {
+            console.error('Save provider error:', error);
             showMessage('Error: ' + error.message, 'error');
         } finally {
             setLoading(false);
@@ -257,6 +430,18 @@ const ProvidersCRUD = () => {
         }
         
         if (provider) {
+            console.log('=== OPEN MODAL DEBUG ===');
+            console.log('Provider data:', provider);
+            console.log('Provider time_slots:', provider.time_slots);
+            console.log('Provider availability:', provider.availability);
+            
+            // Use time_slots from database if available, otherwise parse availability string
+            const timeSlots = provider.time_slots 
+                ? (typeof provider.time_slots === 'string' ? JSON.parse(provider.time_slots) : provider.time_slots)
+                : parseTimeSlots(provider.availability || '');
+            
+            console.log('Parsed time_slots:', timeSlots);
+            
             setParams({
                 id: provider.id,
                 user_id: provider.id,
@@ -269,6 +454,7 @@ const ProvidersCRUD = () => {
                 clinic_photos: provider.clinic_photos || [],
                 clinic_video_url: provider.clinic_video_url || '',
                 availability: provider.availability || '',
+                time_slots: timeSlots,
             });
         } else {
             setParams({
@@ -283,6 +469,15 @@ const ProvidersCRUD = () => {
                 clinic_photos: [],
                 clinic_video_url: '',
                 availability: '',
+                time_slots: {
+                    monday: { enabled: false, start: '09:00', end: '17:00' },
+                    tuesday: { enabled: false, start: '09:00', end: '17:00' },
+                    wednesday: { enabled: false, start: '09:00', end: '17:00' },
+                    thursday: { enabled: false, start: '09:00', end: '17:00' },
+                    friday: { enabled: false, start: '09:00', end: '17:00' },
+                    saturday: { enabled: false, start: '09:00', end: '17:00' },
+                    sunday: { enabled: false, start: '09:00', end: '17:00' },
+                },
             });
         }
         setUploadedPhotos([]);
@@ -761,6 +956,49 @@ const ProvidersCRUD = () => {
                                                             onChange={changeValue}
                                                         />
                                                     </div>
+                                                    
+                                                    {/* Weekly Time Slots */}
+                                                    <div className="mb-5 col-span-2">
+                                                        <label className="block text-sm font-medium mb-3">Weekly Availability</label>
+                                                        <div className="space-y-3 border rounded-lg p-4 bg-gray-50 dark:bg-gray-800">
+                                                            {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map(day => (
+                                                                <div key={day} className="flex items-center gap-4">
+                                                                    <label className="inline-flex items-center cursor-pointer min-w-[120px]">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            className="form-checkbox"
+                                                                            checked={params.time_slots[day]?.enabled || false}
+                                                                            onChange={(e) => handleTimeSlotChange(day, 'enabled', e.target.checked)}
+                                                                        />
+                                                                        <span className="ltr:ml-2 rtl:mr-2 capitalize font-medium">
+                                                                            {day}
+                                                                        </span>
+                                                                    </label>
+                                                                    {params.time_slots[day]?.enabled && (
+                                                                        <div className="flex items-center gap-2 flex-1">
+                                                                            <input
+                                                                                type="time"
+                                                                                className="form-input w-32"
+                                                                                value={params.time_slots[day]?.start || '09:00'}
+                                                                                onChange={(e) => handleTimeSlotChange(day, 'start', e.target.value)}
+                                                                            />
+                                                                            <span className="text-gray-500">to</span>
+                                                                            <input
+                                                                                type="time"
+                                                                                className="form-input w-32"
+                                                                                value={params.time_slots[day]?.end || '17:00'}
+                                                                                onChange={(e) => handleTimeSlotChange(day, 'end', e.target.value)}
+                                                                            />
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                        <p className="text-xs text-gray-500 mt-2">
+                                                            Preview: {formatTimeSlots(params.time_slots) || 'No availability set'}
+                                                        </p>
+                                                    </div>
+                                                    
                                                     <div className="mb-5 col-span-2">
                                                         <label htmlFor="clinic_photos">Clinic Photos</label>
                                                         <input

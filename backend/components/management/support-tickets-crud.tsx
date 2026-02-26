@@ -575,29 +575,54 @@ const SupportTicketsCRUD = () => {
                     )}
 
                     {/* Pagination */}
-                    <div className="flex justify-between items-center mt-5">
-                        <div>
-                            Showing {items.length} of {pagination.total} entries
+                    {/* Pagination */}
+                    {pagination.totalPages > 1 && (
+                        <div className="flex items-center justify-between border-t p-4">
+                            <div className="text-sm">
+                                Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} entries
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-primary"
+                                    onClick={() => setPagination({ ...pagination, page: pagination.page - 1 })}
+                                    disabled={pagination.page === 1}
+                                >
+                                    Previous
+                                </button>
+                                {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                                    let pageNum;
+                                    if (pagination.totalPages <= 5) {
+                                        pageNum = i + 1;
+                                    } else if (pagination.page <= 3) {
+                                        pageNum = i + 1;
+                                    } else if (pagination.page >= pagination.totalPages - 2) {
+                                        pageNum = pagination.totalPages - 4 + i;
+                                    } else {
+                                        pageNum = pagination.page - 2 + i;
+                                    }
+                                    return (
+                                        <button
+                                            key={pageNum}
+                                            type="button"
+                                            className={`btn btn-sm ${pagination.page === pageNum ? 'btn-primary' : 'btn-outline-primary'}`}
+                                            onClick={() => setPagination({ ...pagination, page: pageNum })}
+                                        >
+                                            {pageNum}
+                                        </button>
+                                    );
+                                })}
+                                <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-primary"
+                                    onClick={() => setPagination({ ...pagination, page: pagination.page + 1 })}
+                                    disabled={pagination.page === pagination.totalPages}
+                                >
+                                    Next
+                                </button>
+                            </div>
                         </div>
-                        <div className="flex gap-2">
-                            <button
-                                type="button"
-                                className="btn btn-primary"
-                                onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
-                                disabled={pagination.page === 1}
-                            >
-                                Previous
-                            </button>
-                            <button
-                                type="button"
-                                className="btn btn-primary"
-                                onClick={() => setPagination(prev => ({ ...prev, page: Math.min(prev.totalPages, prev.page + 1) }))}
-                                disabled={pagination.page === pagination.totalPages}
-                            >
-                                Next
-                            </button>
-                        </div>
-                    </div>
+                    )}
                 </>
             )}
 

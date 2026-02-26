@@ -100,9 +100,20 @@ class ProviderController {
         about: req.body.about || null,
         clinic_video_url: req.body.clinic_video_url || null,
         availability: req.body.availability || null,
-        time_slots: req.body.time_slots || null,
         coordinates: req.body.coordinates || null,
       };
+      
+      // Handle time_slots JSON - parse if it's a string
+      if (req.body.time_slots) {
+        try {
+          providerData.time_slots = typeof req.body.time_slots === 'string' 
+            ? JSON.parse(req.body.time_slots) 
+            : req.body.time_slots;
+        } catch (e) {
+          console.error('Error parsing time_slots:', e);
+          providerData.time_slots = req.body.time_slots;
+        }
+      }
       
       console.log('Provider Data:', providerData);
       console.log('Time Slots:', providerData.time_slots);
@@ -209,7 +220,18 @@ class ProviderController {
       if (req.body.about !== undefined) providerData.about = req.body.about;
       if (req.body.clinic_video_url !== undefined) providerData.clinic_video_url = req.body.clinic_video_url;
       if (req.body.availability !== undefined) providerData.availability = req.body.availability;
-      if (req.body.time_slots !== undefined) providerData.time_slots = req.body.time_slots;
+      
+      // Handle time_slots JSON - parse if it's a string
+      if (req.body.time_slots !== undefined) {
+        try {
+          providerData.time_slots = typeof req.body.time_slots === 'string' 
+            ? JSON.parse(req.body.time_slots) 
+            : req.body.time_slots;
+        } catch (e) {
+          console.error('Error parsing time_slots:', e);
+          providerData.time_slots = req.body.time_slots;
+        }
+      }
       
       console.log('Availability:', providerData.availability);
       console.log('Time Slots:', providerData.time_slots);

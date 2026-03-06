@@ -12,23 +12,125 @@ import React, { Fragment, useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
 import { API_ENDPOINTS } from '@/config/api.config';
 
-const COMMON_PROCEDURES = [
-    'Initial Check-up',
-    'Teeth Cleaning & Polishing',
-    'Dental X-Ray (IOPA)',
-    'Tooth Filling (Composite)',
-    'Root Canal Treatment (RCT)',
-    'Dental Crown (Zirconia/Porcelain)',
-    'Wisdom Tooth Extraction',
-    'Metal Braces',
-    'Teeth Whitening (In-Office)',
-    'Dental Implant',
-    'Teeth Scaling',
-    'Gum Treatment',
-    'Dentures (Complete)',
-    'Dentures (Partial)',
-    'Tooth Extraction (Simple)',
-    'Tooth Extraction (Surgical)',
+const PROCEDURE_CATEGORIES = [
+    {
+        label: 'Diagnostic & Preventive',
+        procedures: [
+            'Check up (Exam)',
+            'Digital X-Ray (IOPA)',
+            'OPG',
+            'Other X-Rays',
+            'Blood glucose level test – in-office using a glucose meter',
+            'Pulp vitality tests',
+            'Diagnostic casts',
+            'Teeth Cleaning / Oral Prophylaxis',
+            'Topical Fluoride',
+            'Nutritional counseling for control of dental disease',
+            'Tobacco counseling for control and prevention of oral disease',
+            'Oral hygiene instructions',
+            'Sealant – per tooth',
+            'Preventive resin restoration – Permanent tooth',
+            'Application of caries arresting medicament – per tooth',
+            'Space maintainer',
+        ]
+    },
+    {
+        label: 'Restorative',
+        procedures: [
+            'Amalgam (surfaces - 1234)',
+            'Resin-based composite (Surfaces - 1234) (Anterior / Posterior)',
+            'Crown – resin-based composite',
+            'Crown -- Different types (Metal / PFM / Zirconia)',
+            'Core-Build Up (Amalgam / Composite)',
+            'Pin Retention - per tooth in restoration',
+            'Post & Core - per tooth',
+            'Veneer - Per tooth',
+        ]
+    },
+    {
+        label: 'Endodontic',
+        procedures: [
+            'Pulp cap only (Direct / Indirect)',
+            'Therapeutic pulpotomy',
+            'RCT (Anterior / Bicuspid / Molar)',
+            'Re-RCT (Anterior / Bicuspid / Molar)',
+            'Apexification per tooth',
+            'Apicoectomy (Anterior / Bicuspid / Molar) - No of roots',
+            'Bone graft in conjunction with periradicular surgery – per tooth, single site',
+            'Retrograde filling – per root',
+            'Root amputation – per root',
+        ]
+    },
+    {
+        label: 'Periodontal',
+        procedures: [
+            'Gingivectomy or Gingivoplasty -- (to allow access for restorative procedure, per tooth / 1 to 3 contiguous teeth or tooth bounded spaces per quadrant / 4 or more contiguous teeth or tooth-bounded spaces per quadrant)',
+            'Gingival flap procedure (1 to 3 contiguous teeth or tooth bounded spaces per quadrant / 4 or more contiguous teeth or tooth-bounded spaces per quadrant)',
+            'Clinical crown lengthening hard tissue',
+            'Osseous surgery (including flap and closure -- 1234)',
+            'Bone replacement graft per site',
+        ]
+    },
+    {
+        label: 'Prosthodontics, Removable',
+        procedures: [
+            'Complete denture - per arch',
+            'Immediate denture - per arch',
+            'RPD - per arch (Resin base / Cast Metal / Flexible Base)',
+            'Denture repair -- CD, RPD etc.',
+            'Overdenture - per arch',
+        ]
+    },
+    {
+        label: 'Implant',
+        procedures: [
+            'Surgical placement of implant body - per endosteal implant',
+            'Implant removal',
+            'Debridement of a peri-implant defect',
+            'Bone graft at time of implant placement per tooth',
+        ]
+    },
+    {
+        label: 'Prosthodontics, Fixed',
+        procedures: [
+            'Pontic (Different types)',
+            'Crown (Different types)',
+            'Re-cement or re-bond bridge',
+            'Stress breaker',
+            'Precision attachments',
+        ]
+    },
+    {
+        label: 'OS',
+        procedures: [
+            'Extraction – coronal remnants, deciduous tooth per tooth',
+            'Extraction – erupted tooth or exposed root (elevation and/or forcep removal) per tooth',
+            'Surgical removal of an erupted tooth',
+            'Removal of impacted tooth – soft tissue, partially bony, completely bony',
+            'Surgical removal of residual tooth roots',
+            'Alveoloplasty in conjunction with extractions',
+            'Alveoloplasty not in conjunction with extractions',
+            'Vestibuloplasty',
+            'Excision of benign lesion (up to 1.25 cm / > 1.25 cm / complicated)',
+            'Frenectomy per site',
+        ]
+    },
+    {
+        label: 'Ortho',
+        procedures: [
+            'Orthodontic Treatment - (Metal, Ceramic, Aligners)',
+        ]
+    },
+    {
+        label: 'Adjunctive',
+        procedures: [
+            'Administration of nitrous oxide/anxiolysis, analgesia',
+            'Fabrication of athletic mouth-guard / Occlusal Guard',
+            'External bleaching – per tooth / Arch',
+            'Internal bleaching – per tooth',
+            'Teledentistry',
+        ]
+    },
 ];
 
 const ProviderFeesCRUD = () => {
@@ -610,10 +712,14 @@ const ProviderFeesCRUD = () => {
                                                     disabled={modalMode === 'view' || modalMode === 'edit'}
                                                 >
                                                     <option value="">Select Procedure</option>
-                                                    {procedures.map((proc) => (
-                                                        <option key={proc.id} value={proc.name}>
-                                                            {proc.name}
-                                                        </option>
+                                                    {PROCEDURE_CATEGORIES.map((category) => (
+                                                        <optgroup key={category.label} label={category.label}>
+                                                            {category.procedures.map((proc) => (
+                                                                <option key={proc} value={proc}>
+                                                                    {proc}
+                                                                </option>
+                                                            ))}
+                                                        </optgroup>
                                                     ))}
                                                 </select>
                                             </div>

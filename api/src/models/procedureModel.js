@@ -1,28 +1,27 @@
 const pool = require('../config/database');
 
 class ProcedureModel {
-  static async create(procedureData) {
-    const { name, description, category, is_active } = procedureData;
+  static async create(data) {
+    const { name, category, description, is_active, display_order } = data;
+    
     const query = `
-      INSERT INTO procedures (name, description, category, is_active)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO procedures (name, category, description, is_active, display_order)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING *
     `;
-    const values = [name, description || null, category || null, is_active !== undefined ? is_active : true];
+    
+    const values = [name, category, description || null, is_active !== undefined ? is_active : true, display_order || 0];
     const result = await pool.query(query, values);
     return result.rows[0];
   }
 
   static async findAll(filters = {}) {
-    let query = 'SELECT * FROM procedures WHERE 1=1';
+    let query = `
+      SELECT * FROM procedures
+      WHERE 1=1
+    `;
     const values = [];
     let paramCount = 1;
-
-    if (filters.is_active !== undefined) {
-      query += ` AND is_active = $${paramCount}`;
-      values.push(filters.is_active);
-      paramCount++;
-    }
 
     if (filters.category) {
       query += ` AND category = $${paramCount}`;
@@ -30,13 +29,19 @@ class ProcedureModel {
       paramCount++;
     }
 
+    if (filters.is_active !== undefined) {
+      query += ` AND is_active = $${paramCount}`;
+      values.push(filters.is_active);
+      paramCount++;
+    }
+
     if (filters.search) {
-      query += ` AND (name ILIKE $${paramCount} OR description ILIKE $${paramCount})`;
+      query += ` AND name ILIKE $${paramCount}`;
       values.push(`%${filters.search}%`);
       paramCount++;
     }
 
-    query += ' ORDER BY name ASC';
+    query += ' ORDER BY category, display_order, name';
     const result = await pool.query(query, values);
     return result.rows;
   }
@@ -47,15 +52,50 @@ class ProcedureModel {
     return result.rows[0];
   }
 
-  static async update(id, procedureData) {
+  static async findByCategory() {
+    const query = `
+      SELECT 
+        category,
+        json_agg(
+          json_build_object(
+            'id', id,
+            'name', name,
+            'description', description,
+            'display_order', display_order
+          ) ORDER BY display_order, name
+        ) as procedures
+      FROM procedures
+      WHERE is_active = true
+      GROUP BY category
+      ORDER BY category
+    `;
+    const result = await pool.query(query);
+    return result.rows;
+  }
+
+  static async getCategories() {
+    const query = `
+      SELECT DISTINCT category, COUNT(*) as count
+      FROM procedures
+      WHERE is_active = true
+      GROUP BY category
+      ORDER BY category
+    `;
+    const result = await pool.query(query);
+    return result.rows;
+  }
+
+  static async update(id, data) {
     const fields = [];
     const values = [];
     let paramCount = 1;
 
-    Object.keys(procedureData).forEach(key => {
-      if (procedureData[key] !== undefined && key !== 'id') {
+    const allowedFields = ['name', 'category', 'description', 'is_active', 'display_order'];
+
+    allowedFields.forEach(key => {
+      if (data[key] !== undefined) {
         fields.push(`${key} = $${paramCount}`);
-        values.push(procedureData[key]);
+        values.push(data[key]);
         paramCount++;
       }
     });
@@ -65,8 +105,15 @@ class ProcedureModel {
     }
 
     fields.push(`updated_at = CURRENT_TIMESTAMP`);
+    
     values.push(id);
-    const query = `UPDATE procedures SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING *`;
+    const query = `
+      UPDATE procedures 
+      SET ${fields.join(', ')} 
+      WHERE id = $${paramCount} 
+      RETURNING *
+    `;
+    
     const result = await pool.query(query, values);
     return result.rows[0];
   }

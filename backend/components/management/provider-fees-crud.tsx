@@ -140,6 +140,7 @@ const ProviderFeesCRUD = () => {
     const [items, setItems] = useState<any[]>([]);
     const [providers, setProviders] = useState<any[]>([]);
     const [procedures, setProcedures] = useState<any[]>([]);
+    const [procedureCategories, setProcedureCategories] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [selectedProvider, setSelectedProvider] = useState('');
@@ -165,11 +166,12 @@ const ProviderFeesCRUD = () => {
     
     const [newProcedure, setNewProcedure] = useState({
         name: '',
+        category: 'Diagnostic & Preventive',
     });
 
     useEffect(() => {
         fetchProviders();
-        fetchProcedures();
+        fetchProceduresByCategory();
         fetchItems();
     }, [pagination.page, pagination.limit, selectedProvider]);
 
@@ -206,6 +208,29 @@ const ProviderFeesCRUD = () => {
             }
         } catch (error) {
             console.error('Error fetching procedures:', error);
+        }
+    };
+
+    const fetchProceduresByCategory = async () => {
+        try {
+            const token = localStorage.getItem('auth_token');
+            const response = await fetch(`${API_ENDPOINTS.procedures}/by-category`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'ngrok-skip-browser-warning': 'true',
+                },
+            });
+            const data = await response.json();
+            if (response.ok && data.success) {
+                // Transform the data to match our component structure
+                const categories = data.data.map((item: any) => ({
+                    label: item.category,
+                    procedures: item.procedures.map((p: any) => p.name)
+                }));
+                setProcedureCategories(categories);
+            }
+        } catch (error) {
+            console.error('Error fetching procedures by category:', error);
         }
     };
 
@@ -405,8 +430,8 @@ const ProviderFeesCRUD = () => {
             if (response.ok) {
                 showMessage('Procedure added successfully');
                 setAddProcedureModal(false);
-                setNewProcedure({ name: '' });
-                fetchProcedures();
+                setNewProcedure({ name: '', category: 'Diagnostic & Preventive' });
+                fetchProceduresByCategory();
                 // Set the newly added procedure as selected
                 setParams({ ...params, procedure: data.data.name });
             } else {
@@ -724,9 +749,9 @@ const ProviderFeesCRUD = () => {
                                                     disabled={modalMode === 'view'}
                                                 >
                                                     <option value="">Select Procedure</option>
-                                                    {PROCEDURE_CATEGORIES.map((category) => (
+                                                    {procedureCategories.map((category) => (
                                                         <optgroup key={category.label} label={category.label}>
-                                                            {category.procedures.map((proc) => {
+                                                            {category.procedures.map((proc: string) => {
                                                                 const isUsed = isProcedureUsed(proc);
                                                                 return (
                                                                     <option 
@@ -847,6 +872,26 @@ const ProviderFeesCRUD = () => {
                                     </div>
                                     <div className="p-5">
                                         <div className="space-y-4">
+                                            <div>
+                                                <label htmlFor="proc_category">Category *</label>
+                                                <select
+                                                    id="proc_category"
+                                                    className="form-select"
+                                                    value={newProcedure.category}
+                                                    onChange={(e) => setNewProcedure({ ...newProcedure, category: e.target.value })}
+                                                >
+                                                    <option value="Diagnostic & Preventive">Diagnostic & Preventive</option>
+                                                    <option value="Restorative">Restorative</option>
+                                                    <option value="Endodontic">Endodontic</option>
+                                                    <option value="Periodontal">Periodontal</option>
+                                                    <option value="Prosthodontics, Removable">Prosthodontics, Removable</option>
+                                                    <option value="Implant">Implant</option>
+                                                    <option value="Prosthodontics, Fixed">Prosthodontics, Fixed</option>
+                                                    <option value="OS">OS</option>
+                                                    <option value="Ortho">Ortho</option>
+                                                    <option value="Adjunctive">Adjunctive</option>
+                                                </select>
+                                            </div>
                                             <div>
                                                 <label htmlFor="proc_name">Procedure Name *</label>
                                                 <input

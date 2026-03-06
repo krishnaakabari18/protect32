@@ -369,6 +369,18 @@ const ProviderFeesCRUD = () => {
         return fee - (fee * discount / 100);
     };
 
+    // Check if a procedure is already added for the current provider
+    const isProcedureUsed = (procedureName: string) => {
+        if (modalMode !== 'edit') return false;
+        
+        // Find all procedures for the current provider, excluding the current item being edited
+        return items.some(item => 
+            item.provider_id === params.provider_id && 
+            item.procedure === procedureName &&
+            item.id !== params.id
+        );
+    };
+
     const saveProcedure = async () => {
         if (!newProcedure.name) {
             showMessage('Please enter procedure name', 'error');
@@ -709,16 +721,24 @@ const ProviderFeesCRUD = () => {
                                                     className="form-select"
                                                     value={params.procedure}
                                                     onChange={changeValue}
-                                                    disabled={modalMode === 'view' || modalMode === 'edit'}
+                                                    disabled={modalMode === 'view'}
                                                 >
                                                     <option value="">Select Procedure</option>
                                                     {PROCEDURE_CATEGORIES.map((category) => (
                                                         <optgroup key={category.label} label={category.label}>
-                                                            {category.procedures.map((proc) => (
-                                                                <option key={proc} value={proc}>
-                                                                    {proc}
-                                                                </option>
-                                                            ))}
+                                                            {category.procedures.map((proc) => {
+                                                                const isUsed = isProcedureUsed(proc);
+                                                                return (
+                                                                    <option 
+                                                                        key={proc} 
+                                                                        value={proc}
+                                                                        disabled={isUsed}
+                                                                        style={isUsed ? { color: '#999', fontStyle: 'italic' } : {}}
+                                                                    >
+                                                                        {proc}{isUsed ? ' (Already added)' : ''}
+                                                                    </option>
+                                                                );
+                                                            })}
                                                         </optgroup>
                                                     ))}
                                                 </select>

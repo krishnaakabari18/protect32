@@ -94,11 +94,11 @@ Complete documentation for the Dentist Management System API.
 
 ### Base URLs
 - **Local:** http://localhost:8080/api/v1
-- **Production:** https://abbey-stateliest-treva.ngrok-free.dev/api/v1
+- **Production:** https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1
 
 ### Swagger Documentation
 - **Local:** http://localhost:8080/api-docs/
-- **Production:** https://abbey-stateliest-treva.ngrok-free.dev/api-docs/
+- **Production:** https://occupiable-milissa-ennuyante.ngrok-free.dev/api-docs/
 
 ### Authentication
 - **Type:** JWT Bearer Token

@@ -348,7 +348,7 @@ const DocumentsCRUD = () => {
     };
 
     const downloadFile = (filePath: string, filename: string) => {
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://abbey-stateliest-treva.ngrok-free.dev';
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://occupiable-milissa-ennuyante.ngrok-free.dev';
         const fileUrl = `${baseUrl}/${filePath}`;
         window.open(fileUrl, '_blank');
     };

@@ -22,7 +22,7 @@ Created a comprehensive utility for converting relative paths to absolute URLs:
 ### 2. Environment Configuration
 Updated `api/.env` to include:
 ```env
-BASE_URL=https://abbey-stateliest-treva.ngrok-free.dev
+BASE_URL=https://occupiable-milissa-ennuyante.ngrok-free.dev
 ```
 
 ### 3. Updated Controllers
@@ -69,8 +69,8 @@ BASE_URL=https://abbey-stateliest-treva.ngrok-free.dev
 ### After (Absolute URLs)
 ```json
 {
-  "clinic_photos": ["https://abbey-stateliest-treva.ngrok-free.dev/uploads/provider/2026/02/24/image.jpg"],
-  "profile_picture": "https://abbey-stateliest-treva.ngrok-free.dev/uploads/users/user-id/profile.jpg"
+  "clinic_photos": ["https://occupiable-milissa-ennuyante.ngrok-free.dev/uploads/provider/2026/02/24/image.jpg"],
+  "profile_picture": "https://occupiable-milissa-ennuyante.ngrok-free.dev/uploads/users/user-id/profile.jpg"
 }
 ```
 
@@ -101,19 +101,19 @@ BASE_URL=https://abbey-stateliest-treva.ngrok-free.dev
 ### Manual Testing
 ```bash
 # Test Provider API
-curl -X GET "https://abbey-stateliest-treva.ngrok-free.dev/api/v1/providers" \
+curl -X GET "https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1/providers" \
   -H "Authorization: Bearer YOUR_TOKEN"
 
 # Test User API
-curl -X GET "https://abbey-stateliest-treva.ngrok-free.dev/api/v1/users" \
+curl -X GET "https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1/users" \
   -H "Authorization: Bearer YOUR_TOKEN"
 
 # Test Documents API
-curl -X GET "https://abbey-stateliest-treva.ngrok-free.dev/api/v1/documents" \
+curl -X GET "https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1/documents" \
   -H "Authorization: Bearer YOUR_TOKEN"
 
 # Test Patient Education API
-curl -X GET "https://abbey-stateliest-treva.ngrok-free.dev/api/v1/patient-education" \
+curl -X GET "https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1/patient-education" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 

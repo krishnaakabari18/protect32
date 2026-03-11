@@ -8,7 +8,7 @@ echo "Testing All API URL Conversions"
 echo "=========================================="
 echo ""
 
-BASE_URL="https://abbey-stateliest-treva.ngrok-free.dev"
+BASE_URL="https://occupiable-milissa-ennuyante.ngrok-free.dev"
 API_URL="${BASE_URL}/api/v1"
 
 # Login to get token

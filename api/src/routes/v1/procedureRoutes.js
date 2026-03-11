@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
+const AuthMiddleware = require('../../middleware/auth');
+
+// Import controller
 const ProcedureController = require('../../controllers/procedureController');
-const { authenticateToken } = require('../../middleware/auth');
 
 /**
  * @swagger
@@ -10,15 +12,222 @@ const { authenticateToken } = require('../../middleware/auth');
  *   description: Dental procedures management
  */
 
-// Public routes (or add authenticateToken if you want them protected)
-router.get('/', ProcedureController.getAll);
-router.get('/by-category', ProcedureController.getByCategory);
-router.get('/categories', ProcedureController.getCategories);
-router.get('/:id', ProcedureController.getById);
+/**
+ * @swagger
+ * /procedures/by-category:
+ *   get:
+ *     summary: Get procedures grouped by category (for dropdowns)
+ *     tags: [Procedures]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Procedures grouped by category
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       category:
+ *                         type: string
+ *                         example: "Diagnostic & Preventive"
+ *                       procedures:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             id:
+ *                               type: string
+ *                               format: uuid
+ *                             name:
+ *                               type: string
+ *                               example: "Check up (Exam)"
+ *                             description:
+ *                               type: string
+ *                             category:
+ *                               type: string
+ *                             is_active:
+ *                               type: boolean
+ */
+router.get('/by-category', AuthMiddleware.authenticate, ProcedureController.getByCategory);
 
-// Protected routes (require authentication)
-router.post('/', authenticateToken, ProcedureController.create);
-router.put('/:id', authenticateToken, ProcedureController.update);
-router.delete('/:id', authenticateToken, ProcedureController.delete);
+/**
+ * @swagger
+ * /procedures/categories:
+ *   get:
+ *     summary: Get all procedure categories
+ *     tags: [Procedures]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of categories
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: ["Diagnostic & Preventive", "Restorative", "Endodontic"]
+ */
+router.get('/categories', AuthMiddleware.authenticate, ProcedureController.getCategories);
+
+/**
+ * @swagger
+ * /procedures/{id}:
+ *   get:
+ *     summary: Get procedure by ID
+ *     tags: [Procedures]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Procedure details
+ *       404:
+ *         description: Procedure not found
+ */
+router.get('/:id', AuthMiddleware.authenticate, ProcedureController.getById);
+
+/**
+ * @swagger
+ * /procedures:
+ *   get:
+ *     summary: Get all procedures
+ *     tags: [Procedures]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *         description: Filter by category
+ *       - in: query
+ *         name: is_active
+ *         schema:
+ *           type: boolean
+ *         description: Filter by active status
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search in procedure names
+ *     responses:
+ *       200:
+ *         description: List of procedures
+ */
+router.get('/', AuthMiddleware.authenticate, ProcedureController.getAll);
+
+/**
+ * @swagger
+ * /procedures:
+ *   post:
+ *     summary: Create new procedure
+ *     tags: [Procedures]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - category
+ *               - name
+ *             properties:
+ *               category:
+ *                 type: string
+ *                 example: "Diagnostic & Preventive"
+ *               name:
+ *                 type: string
+ *                 example: "Check up (Exam)"
+ *               description:
+ *                 type: string
+ *                 example: "Routine dental examination"
+ *               is_active:
+ *                 type: boolean
+ *                 default: true
+ *     responses:
+ *       201:
+ *         description: Procedure created successfully
+ */
+router.post('/', AuthMiddleware.authenticate, ProcedureController.create);
+
+/**
+ * @swagger
+ * /procedures/{id}:
+ *   put:
+ *     summary: Update procedure
+ *     tags: [Procedures]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               category:
+ *                 type: string
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               is_active:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Procedure updated successfully
+ */
+router.put('/:id', AuthMiddleware.authenticate, ProcedureController.update);
+
+/**
+ * @swagger
+ * /procedures/{id}:
+ *   delete:
+ *     summary: Delete procedure
+ *     tags: [Procedures]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Procedure deleted successfully
+ */
+router.delete('/:id', AuthMiddleware.authenticate, ProcedureController.delete);
 
 module.exports = router;

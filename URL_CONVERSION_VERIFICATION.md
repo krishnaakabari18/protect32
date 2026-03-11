@@ -17,15 +17,15 @@ February 24, 2026 at 17:26
 ```json
 {
   "clinic_photos": [
-    "https://abbey-stateliest-treva.ngrok-free.dev/uploads/provider/2026/02/18/1771412670759_our-legacy-logoArtboard-5.png",
-    "https://abbey-stateliest-treva.ngrok-free.dev/uploads/provider/2026/02/18/1771412670764_our-legacy-logoArtboard-4.png"
+    "https://occupiable-milissa-ennuyante.ngrok-free.dev/uploads/provider/2026/02/18/1771412670759_our-legacy-logoArtboard-5.png",
+    "https://occupiable-milissa-ennuyante.ngrok-free.dev/uploads/provider/2026/02/18/1771412670764_our-legacy-logoArtboard-4.png"
   ],
-  "profile_picture": "https://abbey-stateliest-treva.ngrok-free.dev/uploads/users/a0985a0c-6681-4316-a418-97613135d4dd/profile_1771483351858.jpeg"
+  "profile_picture": "https://occupiable-milissa-ennuyante.ngrok-free.dev/uploads/users/a0985a0c-6681-4316-a418-97613135d4dd/profile_1771483351858.jpeg"
 }
 ```
 
 ✅ All image URLs are absolute
-✅ Format: `https://abbey-stateliest-treva.ngrok-free.dev/uploads/...`
+✅ Format: `https://occupiable-milissa-ennuyante.ngrok-free.dev/uploads/...`
 
 ### 2. User API - ✅ WORKING
 
@@ -34,7 +34,7 @@ February 24, 2026 at 17:26
 **Result:**
 ```json
 {
-  "profile_picture": "https://abbey-stateliest-treva.ngrok-free.dev/uploads/users/a0985a0c-6681-4316-a418-97613135d4dd/profile_1771483351858.jpeg"
+  "profile_picture": "https://occupiable-milissa-ennuyante.ngrok-free.dev/uploads/users/a0985a0c-6681-4316-a418-97613135d4dd/profile_1771483351858.jpeg"
 }
 ```
 
@@ -53,7 +53,7 @@ February 24, 2026 at 17:26
 
 ### Environment Configuration
 ```env
-BASE_URL=https://abbey-stateliest-treva.ngrok-free.dev
+BASE_URL=https://occupiable-milissa-ennuyante.ngrok-free.dev
 PORT=8080
 ```
 
@@ -63,7 +63,7 @@ PORT=8080
    - Example: `uploads/provider/2026/02/18/image.png`
 
 2. **API Response:** Paths are converted to absolute URLs
-   - Example: `https://abbey-stateliest-treva.ngrok-free.dev/uploads/provider/2026/02/18/image.png`
+   - Example: `https://occupiable-milissa-ennuyante.ngrok-free.dev/uploads/provider/2026/02/18/image.png`
 
 3. **Conversion Function:**
    ```javascript

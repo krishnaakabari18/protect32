@@ -263,7 +263,7 @@ Complete documentation for the Dentist Management System API and Frontend.
 
 ### API Endpoints
 - **Base URL (Local):** http://localhost:8080/api/v1
-- **Base URL (Production):** https://abbey-stateliest-treva.ngrok-free.dev/api/v1
+- **Base URL (Production):** https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1
 - **Swagger UI:** http://localhost:8080/api-docs/
 
 ### Default Credentials
@@ -277,7 +277,7 @@ Complete documentation for the Dentist Management System API and Frontend.
 
 ### Swagger Documentation
 - Local: http://localhost:8080/api-docs/
-- Production: https://abbey-stateliest-treva.ngrok-free.dev/api-docs/
+- Production: https://occupiable-milissa-ennuyante.ngrok-free.dev/api-docs/
 
 ### Frontend
 - Local: http://localhost:3000

@@ -14,7 +14,7 @@ const options = {
     },
     servers: [
       {
-        url: `https://abbey-stateliest-treva.ngrok-free.dev/api/v1`,
+        url: `https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1`,
         description: 'Production server - API v1'
       },
       {

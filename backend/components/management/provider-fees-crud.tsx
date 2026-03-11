@@ -222,12 +222,10 @@ const ProviderFeesCRUD = () => {
             });
             const data = await response.json();
             if (response.ok && data.success) {
-                // Transform the data to match our component structure
-                const categories = data.data.map((item: any) => ({
-                    label: item.category,
-                    procedures: item.procedures.map((p: any) => p.name)
-                }));
-                setProcedureCategories(categories);
+                // Store the data as-is from the API
+                setProcedureCategories(data.data || []);
+            } else {
+                console.error('Failed to fetch procedures:', data);
             }
         } catch (error) {
             console.error('Error fetching procedures by category:', error);
@@ -741,29 +739,34 @@ const ProviderFeesCRUD = () => {
                                                     )}
                                                 </div>
                                                 <select
-                                                    id="procedure"
-                                                    name="procedure"
+                                                    id="procedure_id"
+                                                    name="procedure_id"
                                                     className="form-select"
-                                                    value={params.procedure}
-                                                    onChange={changeValue}
+                                                    value={params.procedure_id || ''}
+                                                    onChange={(e) => {
+                                                        const selectedId = e.target.value;
+                                                        const selectedProc = procedureCategories
+                                                            .flatMap((cat: any) => cat.procedures)
+                                                            .find((p: any) => p.id === selectedId);
+                                                        setParams({ 
+                                                            ...params, 
+                                                            procedure_id: selectedId,
+                                                            procedure: selectedProc?.name || ''
+                                                        });
+                                                    }}
                                                     disabled={modalMode === 'view'}
                                                 >
                                                     <option value="">Select Procedure</option>
-                                                    {procedureCategories.map((category) => (
-                                                        <optgroup key={category.label} label={category.label}>
-                                                            {category.procedures.map((proc: string) => {
-                                                                const isUsed = isProcedureUsed(proc);
-                                                                return (
-                                                                    <option 
-                                                                        key={proc} 
-                                                                        value={proc}
-                                                                        disabled={isUsed}
-                                                                        style={isUsed ? { color: '#999', fontStyle: 'italic' } : {}}
-                                                                    >
-                                                                        {proc}{isUsed ? ' (Already added)' : ''}
-                                                                    </option>
-                                                                );
-                                                            })}
+                                                    {procedureCategories.map((category: any) => (
+                                                        <optgroup key={category.category} label={category.category}>
+                                                            {category.procedures.map((proc: any) => (
+                                                                <option 
+                                                                    key={proc.id} 
+                                                                    value={proc.id}
+                                                                >
+                                                                    {proc.name}
+                                                                </option>
+                                                            ))}
                                                         </optgroup>
                                                     ))}
                                                 </select>

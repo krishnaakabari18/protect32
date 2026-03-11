@@ -1,30 +1,37 @@
 #!/bin/bash
 
-# Test procedures API endpoints
-
-# Get auth token first
-TOKEN=$(curl -s -X POST https://abbey-stateliest-treva.ngrok-free.dev/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -H "ngrok-skip-browser-warning: true" \
-  -d '{"email":"admin@example.com","password":"password123"}' | jq -r '.token')
-
-echo "Token: ${TOKEN:0:20}..."
+echo "Testing Procedures API..."
 echo ""
 
-# Test 1: Get procedures grouped by category
-echo "=== Test 1: Get Procedures Grouped by Category ==="
-curl -s -X GET "https://abbey-stateliest-treva.ngrok-free.dev/api/v1/procedures/grouped" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "ngrok-skip-browser-warning: true" | jq '.'
+# First, login to get a token
+echo "1. Getting auth token..."
+LOGIN_RESPONSE=$(wget -q -O - --post-data='{"email":"admin@dentist.com","password":"password123"}' \
+  --header="Content-Type: application/json" \
+  --header="ngrok-skip-browser-warning: true" \
+  http://localhost:8080/api/v1/auth/login 2>&1)
 
-echo ""
-echo "=== Test 2: Get All Categories ==="
-curl -s -X GET "https://abbey-stateliest-treva.ngrok-free.dev/api/v1/procedures/categories" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "ngrok-skip-browser-warning: true" | jq '.'
+TOKEN=$(echo $LOGIN_RESPONSE | grep -o '"token":"[^"]*' | cut -d'"' -f4)
 
+if [ -z "$TOKEN" ]; then
+    echo "Failed to get token. Response:"
+    echo "$LOGIN_RESPONSE"
+    exit 1
+fi
+
+echo "Token obtained: ${TOKEN:0:20}..."
 echo ""
-echo "=== Test 3: Get Procedures by Category (Restorative) ==="
-curl -s -X GET "https://abbey-stateliest-treva.ngrok-free.dev/api/v1/procedures/category/Restorative" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "ngrok-skip-browser-warning: true" | jq '.'
+
+# Test procedures by-category endpoint
+echo "2. Testing /api/v1/procedures/by-category..."
+PROCEDURES_RESPONSE=$(wget -q -O - \
+  --header="Authorization: Bearer $TOKEN" \
+  --header="ngrok-skip-browser-warning: true" \
+  http://localhost:8080/api/v1/procedures/by-category 2>&1)
+
+echo "Response:"
+echo "$PROCEDURES_RESPONSE" | head -50
+echo ""
+
+# Count categories
+CATEGORY_COUNT=$(echo "$PROCEDURES_RESPONSE" | grep -o '"category"' | wc -l)
+echo "Number of categories found: $CATEGORY_COUNT"

@@ -206,4 +206,44 @@ router.put('/:id', uploadClinicPhotos, ProviderController.updateProvider);
  */
 router.delete('/:id', ProviderController.deleteProvider);
 
+/**
+ * @swagger
+ * /providers/{id}/images/{imageType}:
+ *   delete:
+ *     summary: Delete specific provider image
+ *     tags: [Providers]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: path
+ *         name: imageType
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [clinic_photos, profile_photo, state_dental_council_reg_photo]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               imagePath:
+ *                 type: string
+ *                 description: Path of the image to delete
+ *               imageIndex:
+ *                 type: number
+ *                 description: Index of image in array (for clinic_photos)
+ *     responses:
+ *       200:
+ *         description: Image deleted successfully
+ *       404:
+ *         description: Provider or image not found
+ */
+router.delete('/:id/images/:imageType', ProviderController.deleteProviderImage);
+
 module.exports = router;

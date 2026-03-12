@@ -84,14 +84,26 @@ const ProvidersCRUD = () => {
             }
         ],
         
-        // Legacy fields
+        // Missing Legacy fields that need to be included
         specialty: '',
         experience_years: 0,
         clinic_name: '',
         contact_number: '',
         location: '',
+        coordinates: null,
         about: '',
-        availability: ''
+        availability: '',
+        time_slots: [
+            { day: 'Monday', is_open: true, open_time: '09:00', close_time: '18:00' },
+            { day: 'Tuesday', is_open: true, open_time: '09:00', close_time: '18:00' },
+            { day: 'Wednesday', is_open: true, open_time: '09:00', close_time: '18:00' },
+            { day: 'Thursday', is_open: true, open_time: '09:00', close_time: '18:00' },
+            { day: 'Friday', is_open: true, open_time: '09:00', close_time: '18:00' },
+            { day: 'Saturday', is_open: true, open_time: '09:00', close_time: '14:00' },
+            { day: 'Sunday', is_open: false, open_time: '09:00', close_time: '18:00' }
+        ],
+        clinic_photos: [],
+        clinic_video_url: ''
     };
 
     const [params, setParams] = useState<any>(JSON.parse(JSON.stringify(defaultValues)));
@@ -113,6 +125,19 @@ const ProvidersCRUD = () => {
         fetchUsers();
         fetchItems();
     }, [pagination.page, pagination.limit]);
+
+    // Cleanup object URLs to prevent memory leaks
+    useEffect(() => {
+        return () => {
+            if (params.clinic_photos && Array.isArray(params.clinic_photos)) {
+                params.clinic_photos.forEach((photo: any) => {
+                    if (photo instanceof File) {
+                        URL.revokeObjectURL(URL.createObjectURL(photo));
+                    }
+                });
+            }
+        };
+    }, [params.clinic_photos]);
 
     const fetchUsers = async () => {
         try {
@@ -174,12 +199,20 @@ const ProvidersCRUD = () => {
     };
 
     const validateForm = () => {
-        if (!params.id) {
+        if (modalMode === 'create' && !params.id) {
             showMessage('Please select a user', 'error');
             return false;
         }
         if (!params.full_name) {
             showMessage('Please enter full name', 'error');
+            return false;
+        }
+        if (!params.specialty) {
+            showMessage('Please enter specialty', 'error');
+            return false;
+        }
+        if (!params.clinic_name) {
+            showMessage('Please enter clinic name', 'error');
             return false;
         }
         return true;
@@ -196,13 +229,20 @@ const ProvidersCRUD = () => {
             // Add all form fields
             Object.keys(params).forEach(key => {
                 if (params[key] !== null && params[key] !== undefined) {
-                    if (key === 'specialists_availability' || key === 'clinics') {
+                    if (key === 'specialists_availability' || key === 'clinics' || key === 'time_slots' || key === 'coordinates') {
                         formData.append(key, JSON.stringify(params[key]));
                     } else if (key === 'state_dental_council_reg_photo' || key === 'profile_photo') {
                         if (params[key] instanceof File) {
                             formData.append(key, params[key]);
                         }
-                    } else {
+                    } else if (key === 'clinic_photos' && Array.isArray(params[key])) {
+                        // Handle multiple clinic photos - send as individual files with same field name
+                        params[key].forEach((photo: File) => {
+                            if (photo instanceof File) {
+                                formData.append('clinic_photos', photo);
+                            }
+                        });
+                    } else if (key !== 'clinic_photos') { // Skip clinic_photos as it's handled above
                         formData.append(key, params[key].toString());
                     }
                 }
@@ -257,6 +297,36 @@ const ProvidersCRUD = () => {
                 json.clinics = typeof item.clinics === 'string' 
                     ? JSON.parse(item.clinics) 
                     : item.clinics;
+            }
+            if (item.time_slots) {
+                json.time_slots = typeof item.time_slots === 'string' 
+                    ? JSON.parse(item.time_slots) 
+                    : item.time_slots;
+            }
+            
+            // Ensure time_slots is always a proper array with all days
+            if (!json.time_slots || !Array.isArray(json.time_slots) || json.time_slots.length !== 7) {
+                json.time_slots = [
+                    { day: 'Monday', is_open: true, open_time: '09:00', close_time: '18:00' },
+                    { day: 'Tuesday', is_open: true, open_time: '09:00', close_time: '18:00' },
+                    { day: 'Wednesday', is_open: true, open_time: '09:00', close_time: '18:00' },
+                    { day: 'Thursday', is_open: true, open_time: '09:00', close_time: '18:00' },
+                    { day: 'Friday', is_open: true, open_time: '09:00', close_time: '18:00' },
+                    { day: 'Saturday', is_open: true, open_time: '09:00', close_time: '14:00' },
+                    { day: 'Sunday', is_open: false, open_time: '09:00', close_time: '18:00' }
+                ];
+            }
+            if (item.coordinates) {
+                json.coordinates = typeof item.coordinates === 'string' 
+                    ? JSON.parse(item.coordinates) 
+                    : item.coordinates;
+            }
+            if (item.clinic_photos) {
+                json.clinic_photos = Array.isArray(item.clinic_photos) 
+                    ? item.clinic_photos 
+                    : (typeof item.clinic_photos === 'string' ? JSON.parse(item.clinic_photos) : []);
+            } else {
+                json.clinic_photos = [];
             }
         }
         
@@ -316,7 +386,14 @@ const ProvidersCRUD = () => {
 
     const changeValue = (e: any) => {
         const { name, value, type, checked } = e.target;
-        setParams({ ...params, [name]: type === 'checkbox' ? checked : value });
+        const newParams = { ...params, [name]: type === 'checkbox' ? checked : value };
+        
+        // Auto-populate contact_number from mobile_number if contact_number is empty
+        if (name === 'mobile_number' && value && !newParams.contact_number) {
+            newParams.contact_number = value;
+        }
+        
+        setParams(newParams);
     };
 
     const handleFileChange = (e: any, fieldName: string) => {
@@ -372,6 +449,83 @@ const ProvidersCRUD = () => {
         const updated = [...params.clinics];
         updated[index][field] = value;
         setParams({ ...params, clinics: updated });
+    };
+
+    const updateTimeSlot = (dayIndex: number, field: string, value: any) => {
+        const updated = [...params.time_slots];
+        updated[dayIndex][field] = value;
+        setParams({ ...params, time_slots: updated });
+    };
+
+    const toggleDayOpen = (dayIndex: number) => {
+        const updated = [...params.time_slots];
+        updated[dayIndex].is_open = !updated[dayIndex].is_open;
+        setParams({ ...params, time_slots: updated });
+    };
+
+    const copyTimeToAllDays = (sourceIndex: number) => {
+        const sourceSlot = params.time_slots[sourceIndex];
+        const updated = params.time_slots.map((slot: any) => ({
+            ...slot,
+            open_time: sourceSlot.open_time,
+            close_time: sourceSlot.close_time,
+            is_open: sourceSlot.is_open
+        }));
+        setParams({ ...params, time_slots: updated });
+    };
+
+    const removeClinicPhoto = (index: number) => {
+        const updated = [...params.clinic_photos];
+        updated.splice(index, 1);
+        setParams({ ...params, clinic_photos: updated });
+    };
+
+    const addClinicPhotos = (newFiles: FileList | null) => {
+        if (newFiles) {
+            const files = Array.from(newFiles);
+            const existingPhotos = Array.isArray(params.clinic_photos) ? params.clinic_photos : [];
+            setParams({ ...params, clinic_photos: [...existingPhotos, ...files] });
+        }
+    };
+
+    const deleteProviderImage = async (imageType: string, imagePath?: string, imageIndex?: number) => {
+        try {
+            const token = localStorage.getItem('auth_token');
+            const response = await fetch(`${API_ENDPOINTS.providers}/${params.id}/images/${imageType}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                    'ngrok-skip-browser-warning': 'true',
+                },
+                body: JSON.stringify({
+                    imagePath,
+                    imageIndex
+                }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                showMessage('Image deleted successfully');
+                // Update local state with the updated provider data
+                if (data.data) {
+                    const updatedParams = { ...params };
+                    if (imageType === 'clinic_photos' && data.data.clinic_photos) {
+                        updatedParams.clinic_photos = data.data.clinic_photos;
+                    } else if (imageType === 'profile_photo') {
+                        updatedParams.profile_photo = null;
+                    } else if (imageType === 'state_dental_council_reg_photo') {
+                        updatedParams.state_dental_council_reg_photo = null;
+                    }
+                    setParams(updatedParams);
+                }
+            } else {
+                showMessage(data.error || 'Failed to delete image', 'error');
+            }
+        } catch (error: any) {
+            showMessage('Error: ' + error.message, 'error');
+        }
     };
 
     return (
@@ -639,11 +793,93 @@ const ProvidersCRUD = () => {
                                                     <label htmlFor="state_dental_council_reg_photo">State Dental Council Registration Photo</label>
                                                     <input id="state_dental_council_reg_photo" type="file" accept="image/*" className="form-input" 
                                                            onChange={(e) => handleFileChange(e, 'state_dental_council_reg_photo')} disabled={modalMode === 'view'} />
+                                                    {params.state_dental_council_reg_photo && (
+                                                        <div className="mt-2">
+                                                            <div className="relative inline-block">
+                                                                <img
+                                                                    src={params.state_dental_council_reg_photo instanceof File 
+                                                                        ? URL.createObjectURL(params.state_dental_council_reg_photo)
+                                                                        : (params.state_dental_council_reg_photo.startsWith('http') 
+                                                                            ? params.state_dental_council_reg_photo 
+                                                                            : `${API_ENDPOINTS.providers.replace('/api/v1/providers', '')}/${params.state_dental_council_reg_photo}`)
+                                                                    }
+                                                                    alt="State Dental Council Registration"
+                                                                    className="w-32 h-32 object-cover rounded border"
+                                                                    onError={(e) => {
+                                                                        e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xMiAxNkM5Ljc5IDEzLjc5IDkuNzkgMTAuMjEgMTIgOEMxNC4yMSAxMC4yMSAxNC4yMSAxMy43OSAxMiAxNloiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+';
+                                                                    }}
+                                                                />
+                                                                {modalMode !== 'view' && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            if (params.state_dental_council_reg_photo instanceof File) {
+                                                                                setParams({ ...params, state_dental_council_reg_photo: null });
+                                                                            } else {
+                                                                                deleteProviderImage('state_dental_council_reg_photo', params.state_dental_council_reg_photo);
+                                                                            }
+                                                                        }}
+                                                                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600 transition-colors"
+                                                                        title="Remove photo"
+                                                                    >
+                                                                        ×
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                            <div className="mt-1 text-xs text-gray-600">
+                                                                {params.state_dental_council_reg_photo instanceof File 
+                                                                    ? `${params.state_dental_council_reg_photo.name} (New)`
+                                                                    : 'Current Registration Photo'
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <div>
                                                     <label htmlFor="profile_photo">Profile Photo</label>
                                                     <input id="profile_photo" type="file" accept="image/*" className="form-input" 
                                                            onChange={(e) => handleFileChange(e, 'profile_photo')} disabled={modalMode === 'view'} />
+                                                    {params.profile_photo && (
+                                                        <div className="mt-2">
+                                                            <div className="relative inline-block">
+                                                                <img
+                                                                    src={params.profile_photo instanceof File 
+                                                                        ? URL.createObjectURL(params.profile_photo)
+                                                                        : (params.profile_photo.startsWith('http') 
+                                                                            ? params.profile_photo 
+                                                                            : `${API_ENDPOINTS.providers.replace('/api/v1/providers', '')}/${params.profile_photo}`)
+                                                                    }
+                                                                    alt="Profile Photo"
+                                                                    className="w-32 h-32 object-cover rounded-full border"
+                                                                    onError={(e) => {
+                                                                        e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xMiAxNkM5Ljc5IDEzLjc5IDkuNzkgMTAuMjEgMTIgOEMxNC4yMSAxMC4yMSAxNC4yMSAxMy43OSAxMiAxNloiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+';
+                                                                    }}
+                                                                />
+                                                                {modalMode !== 'view' && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            if (params.profile_photo instanceof File) {
+                                                                                setParams({ ...params, profile_photo: null });
+                                                                            } else {
+                                                                                deleteProviderImage('profile_photo', params.profile_photo);
+                                                                            }
+                                                                        }}
+                                                                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600 transition-colors"
+                                                                        title="Remove photo"
+                                                                    >
+                                                                        ×
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                            <div className="mt-1 text-xs text-gray-600">
+                                                                {params.profile_photo instanceof File 
+                                                                    ? `${params.profile_photo.name} (New)`
+                                                                    : 'Current Profile Photo'
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -884,6 +1120,221 @@ const ProvidersCRUD = () => {
                                                     <input id="bank_ifsc_code" name="bank_ifsc_code" type="text" className="form-input" 
                                                            value={params.bank_ifsc_code} onChange={changeValue} disabled={modalMode === 'view'} />
                                                 </div>
+                                            </div>
+                                        </div>
+
+                                        {/* 7. Additional Provider Information */}
+                                        <div className="mb-6 p-4 bg-green-50 rounded-lg">
+                                            <h3 className="text-lg font-semibold mb-4 text-green-700">Additional Information</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label htmlFor="specialty">Primary Specialty</label>
+                                                    <input id="specialty" name="specialty" type="text" className="form-input" 
+                                                           value={params.specialty} onChange={changeValue} disabled={modalMode === 'view'} />
+                                                </div>
+                                                <div>
+                                                    <label htmlFor="clinic_name">Main Clinic Name</label>
+                                                    <input id="clinic_name" name="clinic_name" type="text" className="form-input" 
+                                                           value={params.clinic_name} onChange={changeValue} disabled={modalMode === 'view'} />
+                                                </div>
+                                                <div>
+                                                    <label htmlFor="location">Location</label>
+                                                    <input id="location" name="location" type="text" className="form-input" 
+                                                           value={params.location} onChange={changeValue} disabled={modalMode === 'view'} />
+                                                </div>
+                                                <div>
+                                                    <label htmlFor="contact_number">Contact Number (Legacy)</label>
+                                                    <input id="contact_number" name="contact_number" type="text" className="form-input" 
+                                                           value={params.contact_number} onChange={changeValue} disabled={modalMode === 'view'} />
+                                                </div>
+                                                <div>
+                                                    <label htmlFor="availability">Availability</label>
+                                                    <select id="availability" name="availability" className="form-select" 
+                                                            value={params.availability} onChange={changeValue} disabled={modalMode === 'view'}>
+                                                        <option value="">Select Availability</option>
+                                                        {availabilityOptions.map(option => (
+                                                            <option key={option} value={option}>{option}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label htmlFor="clinic_video_url">Clinic Video URL</label>
+                                                    <input id="clinic_video_url" name="clinic_video_url" type="url" className="form-input" 
+                                                           placeholder="https://youtube.com/watch?v=..." 
+                                                           value={params.clinic_video_url} onChange={changeValue} disabled={modalMode === 'view'} />
+                                                </div>
+                                                <div>
+                                                    <label htmlFor="experience_years">Experience Years (Legacy)</label>
+                                                    <input id="experience_years" name="experience_years" type="number" className="form-input" 
+                                                           value={params.experience_years} onChange={changeValue} disabled={modalMode === 'view'} />
+                                                </div>
+                                                <div className="md:col-span-2">
+                                                    <label htmlFor="about">About Provider</label>
+                                                    <textarea id="about" name="about" rows={4} className="form-textarea" 
+                                                              placeholder="Brief description about the provider and services..."
+                                                              value={params.about} onChange={changeValue} disabled={modalMode === 'view'} />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* 8. Clinic Photos Section */}
+                                        <div className="mb-6 p-4 bg-purple-50 rounded-lg">
+                                            <h3 className="text-lg font-semibold mb-4 text-purple-700">Clinic Photos</h3>
+                                            <div className="grid grid-cols-1 gap-4">
+                                                <div>
+                                                    <label htmlFor="clinic_photos">Upload Multiple Clinic Photos</label>
+                                                    <input 
+                                                        id="clinic_photos" 
+                                                        type="file" 
+                                                        accept="image/*" 
+                                                        multiple 
+                                                        className="form-input" 
+                                                        onChange={(e) => addClinicPhotos(e.target.files)} 
+                                                        disabled={modalMode === 'view'} 
+                                                    />
+                                                    <small className="text-gray-500">You can select multiple images at once</small>
+                                                </div>
+                                                {params.clinic_photos && params.clinic_photos.length > 0 && (
+                                                    <div>
+                                                        <label>Clinic Photos:</label>
+                                                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-2">
+                                                            {params.clinic_photos.map((photo: any, index: number) => {
+                                                                // Handle both File objects (new uploads) and URL strings (existing photos)
+                                                                const isFile = photo instanceof File;
+                                                                const isExistingImage = typeof photo === 'string' && photo.includes('/');
+                                                                
+                                                                let imageUrl = '';
+                                                                let imageName = '';
+                                                                
+                                                                if (isFile) {
+                                                                    imageUrl = URL.createObjectURL(photo);
+                                                                    imageName = photo.name;
+                                                                } else if (isExistingImage) {
+                                                                    // Convert relative path to full URL
+                                                                    imageUrl = photo.startsWith('http') ? photo : `${API_ENDPOINTS.providers.replace('/api/v1/providers', '')}/${photo}`;
+                                                                    imageName = photo.split('/').pop() || `Photo ${index + 1}`;
+                                                                } else {
+                                                                    imageName = `Photo ${index + 1}`;
+                                                                    imageUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xMiAxNkM5Ljc5IDEzLjc5IDkuNzkgMTAuMjEgMTIgOEMxNC4yMSAxMC4yMSAxNC4yMSAxMy43OSAxMiAxNloiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+';
+                                                                }
+                                                                
+                                                                return (
+                                                                    <div key={index} className="relative group">
+                                                                        <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden border">
+                                                                            <img
+                                                                                src={imageUrl}
+                                                                                alt={imageName}
+                                                                                className="w-full h-full object-cover"
+                                                                                onError={(e) => {
+                                                                                    // Fallback for broken images
+                                                                                    e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xMiAxNkM5Ljc5IDEzLjc5IDkuNzkgMTAuMjEgMTIgOEMxNC4yMSAxMC4yMSAxNC4yMSAxMy43OSAxMiAxNloiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+';
+                                                                                }}
+                                                                            />
+                                                                        </div>
+                                                                        {modalMode !== 'view' && (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    if (isFile) {
+                                                                                        // Remove from local state for new uploads
+                                                                                        removeClinicPhoto(index);
+                                                                                    } else if (isExistingImage) {
+                                                                                        // Delete from server for existing images
+                                                                                        deleteProviderImage('clinic_photos', photo, index);
+                                                                                    }
+                                                                                }}
+                                                                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600 transition-colors"
+                                                                                title="Remove photo"
+                                                                            >
+                                                                                ×
+                                                                            </button>
+                                                                        )}
+                                                                        <div className="mt-1 text-xs text-gray-600 truncate" title={imageName}>
+                                                                            {imageName}
+                                                                            {isExistingImage && <span className="text-green-600 ml-1">✓</span>}
+                                                                            {isFile && <span className="text-blue-600 ml-1">●</span>}
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                        <div className="mt-2 text-xs text-gray-500">
+                                                            <span className="text-green-600">✓ Saved</span> | <span className="text-blue-600">● New</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* 9. Weekly Time Slots Section */}
+                                        <div className="mb-6 p-4 bg-orange-50 rounded-lg">
+                                            <h3 className="text-lg font-semibold mb-4 text-orange-700">Weekly Time Slots</h3>
+                                            {(!params.time_slots || !Array.isArray(params.time_slots)) && (
+                                                <div className="mb-4 p-3 bg-yellow-100 rounded text-yellow-800">
+                                                    <p>Time slots not properly loaded. Using default schedule.</p>
+                                                </div>
+                                            )}
+                                            <div className="space-y-4">
+                                                {(params.time_slots && Array.isArray(params.time_slots) ? params.time_slots : []).map((slot: any, index: number) => (
+                                                    <div key={index} className="flex items-center gap-4 p-3 bg-white rounded border">
+                                                        <div className="w-24">
+                                                            <label className="font-medium">{slot.day}</label>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={slot.is_open}
+                                                                onChange={() => toggleDayOpen(index)}
+                                                                disabled={modalMode === 'view'}
+                                                                className="form-checkbox"
+                                                            />
+                                                            {/* <label className="text-sm">Open</label> */}
+                                                        </div>
+                                                        {slot.is_open && (
+                                                            <>
+                                                                <div className="flex items-center gap-2">
+                                                                    <label className="text-sm font-medium">Open:</label>
+                                                                    <input
+                                                                        type="time"
+                                                                        value={slot.open_time}
+                                                                        onChange={(e) => updateTimeSlot(index, 'open_time', e.target.value)}
+                                                                        disabled={modalMode === 'view'}
+                                                                        className="form-input w-32"
+                                                                    />
+                                                                </div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <label className="text-sm font-medium">Close:</label>
+                                                                    <input
+                                                                        type="time"
+                                                                        value={slot.close_time}
+                                                                        onChange={(e) => updateTimeSlot(index, 'close_time', e.target.value)}
+                                                                        disabled={modalMode === 'view'}
+                                                                        className="form-input w-32"
+                                                                    />
+                                                                </div>
+                                                                {modalMode !== 'view' && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => copyTimeToAllDays(index)}
+                                                                        className="btn btn-sm btn-outline-primary"
+                                                                        title="Copy this time to all days"
+                                                                    >
+                                                                        Copy to All
+                                                                    </button>
+                                                                )}
+                                                            </>
+                                                        )}
+                                                        {!slot.is_open && (
+                                                            <div className="text-gray-500 italic">Closed</div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="mt-4 p-3 bg-blue-50 rounded">
+                                                <p className="text-sm text-blue-700">
+                                                    <strong>Note:</strong> Set your weekly availability by checking "Open" for each day and setting the opening and closing times. 
+                                                    Use "Copy to All" button to apply the same hours to all days. Unchecked days will be marked as closed.
+                                                </p>
                                             </div>
                                         </div>
 

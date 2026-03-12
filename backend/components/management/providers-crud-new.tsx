@@ -272,7 +272,7 @@ const ProvidersCRUD = () => {
             showCancelButton: true,
             confirmButtonText: 'Delete',
             padding: '2em',
-            customClass: 'sweet-alerts',
+            customClass: { container: 'sweet-alerts' },
         }).then(async (result) => {
             if (result.value) {
                 try {
@@ -534,12 +534,6 @@ const ProvidersCRUD = () => {
                 </>
             )}
 
-            {/* Modal - Due to length, I'll create the modal in the next part */}
-        </div>
-    );
-};
-
-export default ProvidersCRUD;
             {/* Complete Modal with all form sections */}
             <Transition appear show={addModal} as={Fragment}>
                 <Dialog as="div" open={addModal} onClose={() => setAddModal(false)}>
@@ -739,7 +733,7 @@ export default ProvidersCRUD;
                                                         <div>
                                                             <label>Clinic Board</label>
                                                             <input type="file" accept="image/*" className="form-input" 
-                                                                   onChange={(e) => updateClinic(index, 'clinic_board', e.target.files[0])} disabled={modalMode === 'view'} />
+                                                                   onChange={(e) => updateClinic(index, 'clinic_board', e.target.files?.[0] || null)} disabled={modalMode === 'view'} />
                                                         </div>
                                                     </div>
                                                 </div>

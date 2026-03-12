@@ -341,7 +341,7 @@ const ProviderFeesCRUD = () => {
             showCancelButton: true,
             confirmButtonText: 'Delete',
             padding: '2em',
-            customClass: 'sweet-alerts',
+            customClass: { container: 'sweet-alerts' },
         }).then(async (result) => {
             if (result.value) {
                 try {

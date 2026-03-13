@@ -5,6 +5,25 @@
 export const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://occupiable-milissa-ennuyante.ngrok-free.dev';
 export const API_BASE_URL = `${BASE_URL}/api/v1`;
 
+// Media URL Configuration
+export const MEDIA_BASE_URL = BASE_URL;
+export const MEDIA_ENDPOINTS = {
+  // Provider media
+  providers: `${MEDIA_BASE_URL}/uploads/provider`,
+  
+  // User media
+  users: `${MEDIA_BASE_URL}/uploads/users`,
+  
+  // Document media
+  documents: `${MEDIA_BASE_URL}/uploads/documents`,
+  
+  // Patient education media
+  patientEducation: `${MEDIA_BASE_URL}/uploads/patient-education`,
+  
+  // General uploads
+  uploads: `${MEDIA_BASE_URL}/uploads`,
+};
+
 // API Endpoints
 export const API_ENDPOINTS = {
   // Authentication
@@ -84,6 +103,42 @@ export const buildQueryString = (params: Record<string, any>) => {
     }
   });
   return queryParams.toString();
+};
+
+// Helper function to build media URL from relative path
+export const buildMediaUrl = (relativePath: string | null | undefined): string => {
+  if (!relativePath) return '';
+  
+  // If it's already a full URL, return as is
+  if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
+    return relativePath;
+  }
+  
+  // Remove leading slash if present to avoid double slashes
+  const cleanPath = relativePath.startsWith('/') ? relativePath.slice(1) : relativePath;
+  
+  return `${MEDIA_BASE_URL}/${cleanPath}`;
+};
+
+// Helper function to get media URL for specific type
+export const getMediaUrl = (type: 'providers' | 'users' | 'documents' | 'patientEducation', relativePath: string | null | undefined): string => {
+  if (!relativePath) return '';
+  
+  // If it's already a full URL, return as is
+  if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
+    return relativePath;
+  }
+  
+  // For provider images, the path already includes 'uploads/provider', so use buildMediaUrl
+  if (type === 'providers' && relativePath.startsWith('uploads/provider')) {
+    return buildMediaUrl(relativePath);
+  }
+  
+  // For other types, build the full path
+  const baseUrl = MEDIA_ENDPOINTS[type];
+  const cleanPath = relativePath.startsWith('/') ? relativePath.slice(1) : relativePath;
+  
+  return `${baseUrl}/${cleanPath}`;
 };
 
 // Export for backward compatibility

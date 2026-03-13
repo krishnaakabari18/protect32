@@ -18,7 +18,7 @@ const corsOptions = {
       'http://localhost:3000',
       'http://localhost:3001', 
       'http://localhost:3002',
-      'https://abbey-stateliest-treva.ngrok-free.dev',
+      'https://occupiable-milissa-ennuyante.ngrok-free.dev',
       'https://occupiable-milissa-ennuyante.ngrok-free.dev', // Legacy support
       // Add your production domain here
       process.env.FRONTEND_URL

@@ -9,7 +9,7 @@ CORS (Cross-Origin Resource Sharing) is a security feature implemented by web br
 - `http://localhost:3000` (Next.js dev server)
 - `http://localhost:3001` 
 - `http://localhost:3002`
-- `https://abbey-stateliest-treva.ngrok-free.dev` (Current ngrok URL)
+- `https://occupiable-milissa-ennuyante.ngrok-free.dev` (Current ngrok URL)
 - `https://occupiable-milissa-ennuyante.ngrok-free.dev` (Legacy support)
 - Environment variable: `FRONTEND_URL`
 

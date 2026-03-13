@@ -5,7 +5,7 @@
  * Usage: node test-procedures-api.js
  */
 
-const BASE_URL = 'https://abbey-stateliest-treva.ngrok-free.dev/api/v1';
+const BASE_URL = 'https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1';
 // const BASE_URL = 'http://localhost:8080/api/v1';
 
 // Replace with your actual auth token

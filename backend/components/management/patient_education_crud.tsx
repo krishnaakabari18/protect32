@@ -9,7 +9,7 @@ import IconEye from '@/components/icon/icon-eye';
 import { Transition, Dialog, TransitionChild, DialogPanel } from '@headlessui/react';
 import React, { Fragment, useEffect, useState, useMemo, useRef } from 'react';
 import Swal from 'sweetalert2';
-import { API_ENDPOINTS, BASE_URL } from '@/config/api.config';
+import { API_ENDPOINTS, buildMediaUrl } from '@/config/api.config';
 import dynamic from 'next/dynamic';
 import 'react-quill/dist/quill.snow.css';
 
@@ -254,7 +254,7 @@ const PatientEducationCRUD = () => {
             
             // Set image preview if exists
             if (item.feature_image) {
-                setImagePreview(`${BASE_URL}/uploads/${item.feature_image}`);
+                setImagePreview(buildMediaUrl(`uploads/${item.feature_image}`));
             } else {
                 setImagePreview(null);
             }
@@ -637,7 +637,7 @@ const PatientEducationCRUD = () => {
                                     {item.feature_image && (
                                         <div className="h-48 overflow-hidden">
                                             <img 
-                                                src={`${BASE_URL}/uploads/${item.feature_image}`} 
+                                                src={buildMediaUrl(`uploads/${item.feature_image}`)} 
                                                 alt={item.title}
                                                 className="w-full h-full object-cover"
                                                 onError={(e) => {

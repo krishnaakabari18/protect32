@@ -30,8 +30,8 @@ npm run dev
 ## 🔗 Access Points
 
 ### Production
-- **API Base**: https://abbey-stateliest-treva.ngrok-free.dev/api/v1
-- **Swagger Docs**: https://abbey-stateliest-treva.ngrok-free.dev/api-docs
+- **API Base**: https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1
+- **Swagger Docs**: https://occupiable-milissa-ennuyante.ngrok-free.dev/api-docs
 
 ### Local Development
 - **API Base**: http://localhost:8080/api/v1

@@ -82,7 +82,9 @@ function convertProviderUrls(provider) {
   
   return convertFieldsToAbsoluteUrls(provider, [
     'clinic_photos',
-    'profile_picture',
+    'profile_photo',
+    'state_dental_council_reg_photo',
+    'profile_picture', // Keep for backward compatibility
     'clinic_video_url'
   ]);
 }

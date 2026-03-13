@@ -10,7 +10,7 @@ import IconEye from '@/components/icon/icon-eye';
 import { Transition, Dialog, TransitionChild, DialogPanel } from '@headlessui/react';
 import React, { Fragment, useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
-import { API_ENDPOINTS } from '@/config/api.config';
+import { API_ENDPOINTS, buildMediaUrl } from '@/config/api.config';
 
 const ProvidersCRUD = () => {
     const [addModal, setAddModal] = useState(false);

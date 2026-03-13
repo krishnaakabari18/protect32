@@ -17,8 +17,8 @@ All APIs are functioning correctly on the local server. If you're experiencing i
 - **Health Check**: http://localhost:8080/health
 
 ### Production (Ngrok)
-- **API Base**: https://abbey-stateliest-treva.ngrok-free.dev/api/v1
-- **Swagger UI**: https://abbey-stateliest-treva.ngrok-free.dev/api-docs
+- **API Base**: https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1
+- **Swagger UI**: https://occupiable-milissa-ennuyante.ngrok-free.dev/api-docs
 
 ## 🧪 Tested & Working Endpoints
 
@@ -252,7 +252,7 @@ All passwords: `password123`
 
 ### Available at:
 - Local: http://localhost:8080/api-docs
-- Ngrok: https://abbey-stateliest-treva.ngrok-free.dev/api-docs
+- Ngrok: https://occupiable-milissa-ennuyante.ngrok-free.dev/api-docs
 
 ### Features:
 - ✅ 37 API endpoints documented
@@ -313,7 +313,7 @@ All passwords: `password123`
 2. **Test API directly (bypass Swagger)**
    ```bash
    # Use wget or curl
-   wget -qO- https://abbey-stateliest-treva.ngrok-free.dev/api/v1/users
+   wget -qO- https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1/users
    ```
 
 3. **Check CORS headers**

@@ -53,9 +53,9 @@ All database tables now have corresponding APIs:
 ## 🔗 Access URLs
 
 ### Production (Ngrok)
-- **API Base**: https://abbey-stateliest-treva.ngrok-free.dev/api/v1
-- **Swagger Docs**: https://abbey-stateliest-treva.ngrok-free.dev/api-docs
-- **Health Check**: https://abbey-stateliest-treva.ngrok-free.dev/health
+- **API Base**: https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1
+- **Swagger Docs**: https://occupiable-milissa-ennuyante.ngrok-free.dev/api-docs
+- **Health Check**: https://occupiable-milissa-ennuyante.ngrok-free.dev/health
 
 ### Local Development
 - **API Base**: http://localhost:8080/api/v1
@@ -104,7 +104,7 @@ All passwords are: `password123`
 
 ### 1. Login Test
 ```bash
-curl -X POST https://abbey-stateliest-treva.ngrok-free.dev/api/v1/auth/login \
+curl -X POST https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "patient1@example.com",
@@ -114,22 +114,22 @@ curl -X POST https://abbey-stateliest-treva.ngrok-free.dev/api/v1/auth/login \
 
 ### 2. Get All Providers
 ```bash
-curl https://abbey-stateliest-treva.ngrok-free.dev/api/v1/providers
+curl https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1/providers
 ```
 
 ### 3. Get All Plans
 ```bash
-curl https://abbey-stateliest-treva.ngrok-free.dev/api/v1/plans
+curl https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1/plans
 ```
 
 ### 4. Get All Appointments
 ```bash
-curl https://abbey-stateliest-treva.ngrok-free.dev/api/v1/appointments
+curl https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1/appointments
 ```
 
 ### 5. Send OTP
 ```bash
-curl -X POST https://abbey-stateliest-treva.ngrok-free.dev/api/v1/auth/send-otp \
+curl -X POST https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1/auth/send-otp \
   -H "Content-Type: application/json" \
   -d '{
     "mobile_number": "+1234567893",
@@ -175,7 +175,7 @@ curl -X POST https://abbey-stateliest-treva.ngrok-free.dev/api/v1/auth/send-otp 
 ## 🎯 Swagger Documentation
 
 Visit the Swagger UI to explore and test all APIs:
-- **Production**: https://abbey-stateliest-treva.ngrok-free.dev/api-docs
+- **Production**: https://occupiable-milissa-ennuyante.ngrok-free.dev/api-docs
 - **Local**: http://localhost:8080/api-docs
 
 ### Swagger Features
@@ -322,6 +322,6 @@ Your Dentist Management System API is now fully operational with:
 - Full Swagger documentation
 - Production-ready architecture
 
-**Access your API at**: https://abbey-stateliest-treva.ngrok-free.dev/api-docs
+**Access your API at**: https://occupiable-milissa-ennuyante.ngrok-free.dev/api-docs
 
 Happy coding! 🚀

@@ -10,7 +10,7 @@
 ### 2. Updated Swagger Configuration
 - Removed backward compatibility server option
 - Now shows only:
-  - Production: `https://abbey-stateliest-treva.ngrok-free.dev/api/v1`
+  - Production: `https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1`
   - Development: `http://localhost:8080/api/v1`
 
 ### 3. Removed Unused Files
@@ -103,7 +103,7 @@ GET /providers      (404 - must use /api/v1/providers)
 ## 🚀 Next Steps
 
 Your API is now clean and production-ready. Access it at:
-- **Swagger**: https://abbey-stateliest-treva.ngrok-free.dev/api-docs
-- **API Base**: https://abbey-stateliest-treva.ngrok-free.dev/api/v1
+- **Swagger**: https://occupiable-milissa-ennuyante.ngrok-free.dev/api-docs
+- **API Base**: https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1
 
 All endpoints now require the `/api/v1/` prefix for proper versioning.

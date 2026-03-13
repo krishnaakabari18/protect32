@@ -11,7 +11,7 @@ import IconFile from '@/components/icon/icon-file';
 import { Transition, Dialog, TransitionChild, DialogPanel } from '@headlessui/react';
 import React, { Fragment, useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
-import { API_ENDPOINTS, BASE_URL } from '@/config/api.config';
+import { API_ENDPOINTS, buildMediaUrl } from '@/config/api.config';
 
 const ComponentsAppsContactsUsers = () => {
     const [addContactModal, setAddContactModal] = useState(false);
@@ -490,7 +490,7 @@ const ComponentsAppsContactsUsers = () => {
                                                 <div className="flex items-center gap-3">
                                                     {user.profile_picture ? (
                                                         <img 
-                                                            src={`${BASE_URL}${user.profile_picture}`} 
+                                                            src={buildMediaUrl(user.profile_picture)} 
                                                             alt={user.first_name}
                                                             className="w-10 h-10 rounded-full object-cover"
                                                             onError={(e: any) => {
@@ -615,7 +615,7 @@ const ComponentsAppsContactsUsers = () => {
                                 <div className="flex items-center justify-between mb-5">
                                     {user.profile_picture ? (
                                         <img 
-                                            src={`${BASE_URL}${user.profile_picture}`} 
+                                            src={buildMediaUrl(user.profile_picture)} 
                                             alt={user.first_name}
                                             className="w-16 h-16 rounded-full object-cover"
                                             onError={(e: any) => {
@@ -847,7 +847,7 @@ const ComponentsAppsContactsUsers = () => {
                                                         <div className="mt-3">
                                                             <p className="text-sm mb-2">Current Photo:</p>
                                                             <img 
-                                                                src={`${BASE_URL}${params.profile_picture}`} 
+                                                                src={buildMediaUrl(params.profile_picture)} 
                                                                 alt="Current" 
                                                                 className="w-24 h-24 rounded-full object-cover border-2 border-gray-300"
                                                             />

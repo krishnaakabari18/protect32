@@ -18,7 +18,7 @@ ngrok-skip-browser-warning: true
 
 ### Example with curl:
 ```bash
-curl -X GET 'https://abbey-stateliest-treva.ngrok-free.dev/api/v1/users' \
+curl -X GET 'https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1/users' \
   -H 'accept: application/json' \
   -H 'ngrok-skip-browser-warning: true' \
   -H 'Authorization: Bearer YOUR_TOKEN'
@@ -29,7 +29,7 @@ The server now automatically adds this header to responses, so Swagger should wo
 
 ### Example with JavaScript/Fetch:
 ```javascript
-fetch('https://abbey-stateliest-treva.ngrok-free.dev/api/v1/users', {
+fetch('https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1/users', {
   headers: {
     'accept': 'application/json',
     'ngrok-skip-browser-warning': 'true',
@@ -46,13 +46,13 @@ fetch('https://abbey-stateliest-treva.ngrok-free.dev/api/v1/users', {
 
 ### Test 1: Get Users (with bypass header)
 ```bash
-curl -X GET 'https://abbey-stateliest-treva.ngrok-free.dev/api/v1/users' \
+curl -X GET 'https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1/users' \
   -H 'ngrok-skip-browser-warning: true'
 ```
 
 ### Test 2: Login (with bypass header)
 ```bash
-curl -X POST 'https://abbey-stateliest-treva.ngrok-free.dev/api/v1/auth/login' \
+curl -X POST 'https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1/auth/login' \
   -H 'Content-Type: application/json' \
   -H 'ngrok-skip-browser-warning: true' \
   -d '{
@@ -63,7 +63,7 @@ curl -X POST 'https://abbey-stateliest-treva.ngrok-free.dev/api/v1/auth/login' \
 
 ### Test 3: Get Providers (with bypass header)
 ```bash
-curl -X GET 'https://abbey-stateliest-treva.ngrok-free.dev/api/v1/providers' \
+curl -X GET 'https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1/providers' \
   -H 'ngrok-skip-browser-warning: true'
 ```
 
@@ -84,7 +84,7 @@ ngrok-skip-browser-warning: true
 
 ## 🎯 Swagger UI Usage
 
-1. Visit: https://abbey-stateliest-treva.ngrok-free.dev/api-docs
+1. Visit: https://occupiable-milissa-ennuyante.ngrok-free.dev/api-docs
 2. If you see the ngrok warning page, click "Visit Site"
 3. The API should now work in Swagger UI
 4. The server automatically adds the bypass header to responses
@@ -136,11 +136,11 @@ After the changes, test with:
 
 ```bash
 # Without header (may show warning)
-curl https://abbey-stateliest-treva.ngrok-free.dev/api/v1/users
+curl https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1/users
 
 # With header (should work)
 curl -H 'ngrok-skip-browser-warning: true' \
-  https://abbey-stateliest-treva.ngrok-free.dev/api/v1/users
+  https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1/users
 ```
 
 ## 📊 Expected Results
@@ -224,7 +224,7 @@ For production, **don't use ngrok**. Instead:
 ## 🔗 Quick Links
 
 - Local Swagger (Always Works): http://localhost:8080/api-docs
-- Ngrok Swagger: https://abbey-stateliest-treva.ngrok-free.dev/api-docs
+- Ngrok Swagger: https://occupiable-milissa-ennuyante.ngrok-free.dev/api-docs
 - Ngrok Dashboard: http://127.0.0.1:4040
 
 ## 💬 Support

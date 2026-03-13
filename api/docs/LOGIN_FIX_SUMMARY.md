@@ -107,7 +107,7 @@ Changed all authentication functions to properly format device info as JSON obje
 ## 🚀 Testing Instructions
 
 ### Test Login via Swagger
-1. Go to: https://abbey-stateliest-treva.ngrok-free.dev/api-docs
+1. Go to: https://occupiable-milissa-ennuyante.ngrok-free.dev/api-docs
 2. Find `POST /auth/login`
 3. Click "Try it out"
 4. Enter credentials:
@@ -130,7 +130,7 @@ wget -qO- --header="Content-Type: application/json" \
 # Or via ngrok URL
 wget -qO- --header="Content-Type: application/json" \
   --post-data='{"email":"dr.smith@dentist.com","password":"password123"}' \
-  https://abbey-stateliest-treva.ngrok-free.dev/api/v1/auth/login
+  https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1/auth/login
 ```
 
 ## ✨ Benefits of Fix

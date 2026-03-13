@@ -31,8 +31,8 @@
 
 ### Production (Ngrok)
 ```
-Base URL: https://abbey-stateliest-treva.ngrok-free.dev/api/v1
-Swagger:  https://abbey-stateliest-treva.ngrok-free.dev/api-docs
+Base URL: https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1
+Swagger:  https://occupiable-milissa-ennuyante.ngrok-free.dev/api-docs
 ```
 
 ### Local Development
@@ -278,7 +278,7 @@ Your Dentist Management System API is:
 - ✅ Production ready
 - ✅ Loaded with test data
 
-**Access Swagger**: https://abbey-stateliest-treva.ngrok-free.dev/api-docs
+**Access Swagger**: https://occupiable-milissa-ennuyante.ngrok-free.dev/api-docs
 
 All APIs require `/api/v1/` prefix. No backward compatibility routes exist.
 

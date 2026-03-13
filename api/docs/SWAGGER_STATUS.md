@@ -35,8 +35,8 @@ All 37 API endpoints are fully functional and tested.
 - **Health**: http://localhost:8080/health
 
 ### Production (Ngrok)
-- **Swagger UI**: https://abbey-stateliest-treva.ngrok-free.dev/api-docs
-- **API Base**: https://abbey-stateliest-treva.ngrok-free.dev/api/v1
+- **Swagger UI**: https://occupiable-milissa-ennuyante.ngrok-free.dev/api-docs
+- **API Base**: https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1
 
 ## 📋 All 37 Documented Endpoints
 
@@ -122,7 +122,7 @@ All 37 API endpoints are fully functional and tested.
 ```json
 [
   {
-    "url": "https://abbey-stateliest-treva.ngrok-free.dev/api/v1",
+    "url": "https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1",
     "description": "Production server - API v1"
   },
   {
@@ -195,7 +195,7 @@ If Swagger UI doesn't work on ngrok:
 ### Solutions:
 1. **Test API directly** (bypass Swagger UI)
    ```bash
-   wget -qO- https://abbey-stateliest-treva.ngrok-free.dev/api/v1/users
+   wget -qO- https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1/users
    ```
 
 2. **Use local Swagger**

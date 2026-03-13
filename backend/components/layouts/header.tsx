@@ -33,7 +33,7 @@ import IconMenuPages from '@/components/icon/menu/icon-menu-pages';
 import IconMenuMore from '@/components/icon/menu/icon-menu-more';
 import { usePathname, useRouter } from 'next/navigation';
 import { getTranslation } from '@/i18n';
-import { BASE_URL } from '@/config/api.config';
+import { buildMediaUrl } from '@/config/api.config';
 
 const Header = () => {
     const pathname = usePathname();
@@ -434,10 +434,10 @@ const Header = () => {
                                             <>
                                                 <img 
                                                     className="h-9 w-9 rounded-full object-cover saturate-50 group-hover:saturate-100" 
-                                                    src={`${BASE_URL}${currentUser.profile_picture || currentUser.avatar_url}`} 
+                                                    src={buildMediaUrl(currentUser.profile_picture || currentUser.avatar_url)} 
                                                     alt="userProfile"
                                                     onError={(e: any) => {
-                                                        console.error('Failed to load profile image:', `${BASE_URL}${currentUser.profile_picture || currentUser.avatar_url}`);
+                                                        console.error('Failed to load profile image:', buildMediaUrl(currentUser.profile_picture || currentUser.avatar_url));
                                                         e.currentTarget.style.display = 'none';
                                                         const fallback = e.currentTarget.nextElementSibling;
                                                         if (fallback) fallback.style.display = 'flex';
@@ -462,7 +462,7 @@ const Header = () => {
                                                 <>
                                                     <img 
                                                         className="h-10 w-10 rounded-md object-cover" 
-                                                        src={`${BASE_URL}${currentUser.profile_picture || currentUser.avatar_url}`} 
+                                                        src={buildMediaUrl(currentUser.profile_picture || currentUser.avatar_url)} 
                                                         alt="profile"
                                                         onError={(e: any) => {
                                                             e.currentTarget.style.display = 'none';

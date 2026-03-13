@@ -10,7 +10,7 @@ import IconEye from '@/components/icon/icon-eye';
 import { Transition, Dialog, TransitionChild, DialogPanel } from '@headlessui/react';
 import React, { Fragment, useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
-import { API_ENDPOINTS } from '@/config/api.config';
+import { API_ENDPOINTS, buildMediaUrl } from '@/config/api.config';
 
 const ProvidersCRUD = () => {
     const [addModal, setAddModal] = useState(false);
@@ -325,6 +325,7 @@ const ProvidersCRUD = () => {
                 json.clinic_photos = Array.isArray(item.clinic_photos) 
                     ? item.clinic_photos 
                     : (typeof item.clinic_photos === 'string' ? JSON.parse(item.clinic_photos) : []);
+                console.log('Parsed clinic_photos:', json.clinic_photos);
             } else {
                 json.clinic_photos = [];
             }
@@ -799,9 +800,9 @@ const ProvidersCRUD = () => {
                                                                 <img
                                                                     src={params.state_dental_council_reg_photo instanceof File 
                                                                         ? URL.createObjectURL(params.state_dental_council_reg_photo)
-                                                                        : (params.state_dental_council_reg_photo.startsWith('http') 
+                                                                        : (params.state_dental_council_reg_photo?.startsWith('http') 
                                                                             ? params.state_dental_council_reg_photo 
-                                                                            : `${API_ENDPOINTS.providers.replace('/api/v1/providers', '')}/${params.state_dental_council_reg_photo}`)
+                                                                            : buildMediaUrl(params.state_dental_council_reg_photo))
                                                                     }
                                                                     alt="State Dental Council Registration"
                                                                     className="w-32 h-32 object-cover rounded border"
@@ -845,9 +846,9 @@ const ProvidersCRUD = () => {
                                                                 <img
                                                                     src={params.profile_photo instanceof File 
                                                                         ? URL.createObjectURL(params.profile_photo)
-                                                                        : (params.profile_photo.startsWith('http') 
+                                                                        : (params.profile_photo?.startsWith('http') 
                                                                             ? params.profile_photo 
-                                                                            : `${API_ENDPOINTS.providers.replace('/api/v1/providers', '')}/${params.profile_photo}`)
+                                                                            : buildMediaUrl(params.profile_photo))
                                                                     }
                                                                     alt="Profile Photo"
                                                                     className="w-32 h-32 object-cover rounded-full border"
@@ -1201,7 +1202,7 @@ const ProvidersCRUD = () => {
                                                             {params.clinic_photos.map((photo: any, index: number) => {
                                                                 // Handle both File objects (new uploads) and URL strings (existing photos)
                                                                 const isFile = photo instanceof File;
-                                                                const isExistingImage = typeof photo === 'string' && photo.includes('/');
+                                                                const isExistingImage = typeof photo === 'string' && photo.length > 0;
                                                                 
                                                                 let imageUrl = '';
                                                                 let imageName = '';
@@ -1210,9 +1211,14 @@ const ProvidersCRUD = () => {
                                                                     imageUrl = URL.createObjectURL(photo);
                                                                     imageName = photo.name;
                                                                 } else if (isExistingImage) {
-                                                                    // Convert relative path to full URL
-                                                                    imageUrl = photo.startsWith('http') ? photo : `${API_ENDPOINTS.providers.replace('/api/v1/providers', '')}/${photo}`;
+                                                                    // Check if it's already a full URL or needs to be converted
+                                                                    if (photo.startsWith('http://') || photo.startsWith('https://')) {
+                                                                        imageUrl = photo; // Already a full URL from API
+                                                                    } else {
+                                                                        imageUrl = buildMediaUrl(photo); // Convert relative path to full URL
+                                                                    }
                                                                     imageName = photo.split('/').pop() || `Photo ${index + 1}`;
+                                                                    console.log('Clinic photo:', photo, '-> Display URL:', imageUrl);
                                                                 } else {
                                                                     imageName = `Photo ${index + 1}`;
                                                                     imageUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xMiAxNkM5Ljc5IDEzLjc5IDkuNzkgMTAuMjEgMTIgOEMxNC4yMSAxMC4yMSAxNC4yMSAxMy43OSAxMiAxNloiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+';

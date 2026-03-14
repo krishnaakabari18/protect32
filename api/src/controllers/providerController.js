@@ -5,6 +5,15 @@ const path = require('path');
 const fs = require('fs');
 const { convertProviderUrls } = require('../utils/urlHelper');
 
+// Helper function to safely parse integers
+const safeParseInt = (value, defaultValue = null) => {
+  if (value === undefined || value === null || value === '') {
+    return defaultValue;
+  }
+  const parsed = parseInt(value);
+  return isNaN(parsed) ? defaultValue : parsed;
+};
+
 // Configure storage for provider clinic photos with date-based folder structure
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -97,7 +106,7 @@ class ProviderController {
       const providerData = {
         id: id,
         specialty: req.body.specialty || '',
-        experience_years: parseInt(req.body.experience_years) || 0,
+        experience_years: safeParseInt(req.body.experience_years, 0),
         clinic_name: req.body.clinic_name || '',
         contact_number: req.body.contact_number || req.body.mobile_number || '',
         location: req.body.location || '',
@@ -107,7 +116,7 @@ class ProviderController {
         coordinates: req.body.coordinates || null,
         
         // New fields - Clinic Equipment
-        dental_chairs: parseInt(req.body.dental_chairs) || 2,
+        dental_chairs: safeParseInt(req.body.dental_chairs, 2),
         iopa_xray_type: req.body.iopa_xray_type || 'Digital',
         has_opg: req.body.has_opg === 'true' || req.body.has_opg === true,
         has_ultrasonic_cleaner: req.body.has_ultrasonic_cleaner === 'true' || req.body.has_ultrasonic_cleaner === true,
@@ -127,7 +136,7 @@ class ProviderController {
         bank_ifsc_code: req.body.bank_ifsc_code || null,
         
         // Clinic Details
-        number_of_clinics: parseInt(req.body.number_of_clinics) || 1,
+        number_of_clinics: safeParseInt(req.body.number_of_clinics, 1),
         
         // Provider Personal Details
         full_name: req.body.full_name || null,
@@ -136,7 +145,7 @@ class ProviderController {
         mobile_number: req.body.mobile_number || null,
         whatsapp_number: req.body.whatsapp_number || null,
         email: req.body.email || null,
-        years_of_experience: parseInt(req.body.years_of_experience) || 0,
+        years_of_experience: safeParseInt(req.body.years_of_experience, 0),
         state_dental_council_reg_number: req.body.state_dental_council_reg_number || null,
         state_dental_council_reg_photo: req.body.state_dental_council_reg_photo || null,
         profile_photo: req.body.profile_photo || null,
@@ -262,8 +271,8 @@ class ProviderController {
       const providersWithUrls = providers.map(provider => convertProviderUrls(provider));
       
       // Pagination
-      const pageNum = parseInt(page);
-      const limitNum = parseInt(limit);
+      const pageNum = safeParseInt(page, 1);
+      const limitNum = safeParseInt(limit, 10);
       const startIndex = (pageNum - 1) * limitNum;
       const endIndex = startIndex + limitNum;
       const paginatedData = providersWithUrls.slice(startIndex, endIndex);
@@ -309,7 +318,7 @@ class ProviderController {
       
       // Basic fields
       if (req.body.specialty !== undefined) providerData.specialty = req.body.specialty;
-      if (req.body.experience_years !== undefined) providerData.experience_years = parseInt(req.body.experience_years);
+      if (req.body.experience_years !== undefined) providerData.experience_years = safeParseInt(req.body.experience_years, 0);
       if (req.body.clinic_name !== undefined) providerData.clinic_name = req.body.clinic_name;
       if (req.body.contact_number !== undefined) providerData.contact_number = req.body.contact_number || req.body.mobile_number;
       if (req.body.location !== undefined) providerData.location = req.body.location;
@@ -318,7 +327,7 @@ class ProviderController {
       if (req.body.availability !== undefined) providerData.availability = req.body.availability;
       
       // Clinic Equipment fields
-      if (req.body.dental_chairs !== undefined) providerData.dental_chairs = parseInt(req.body.dental_chairs);
+      if (req.body.dental_chairs !== undefined) providerData.dental_chairs = safeParseInt(req.body.dental_chairs, 2);
       if (req.body.iopa_xray_type !== undefined) providerData.iopa_xray_type = req.body.iopa_xray_type;
       if (req.body.has_opg !== undefined) providerData.has_opg = req.body.has_opg === 'true' || req.body.has_opg === true;
       if (req.body.has_ultrasonic_cleaner !== undefined) providerData.has_ultrasonic_cleaner = req.body.has_ultrasonic_cleaner === 'true' || req.body.has_ultrasonic_cleaner === true;
@@ -344,9 +353,9 @@ class ProviderController {
       if (req.body.mobile_number !== undefined) providerData.mobile_number = req.body.mobile_number;
       if (req.body.whatsapp_number !== undefined) providerData.whatsapp_number = req.body.whatsapp_number;
       if (req.body.email !== undefined) providerData.email = req.body.email;
-      if (req.body.years_of_experience !== undefined) providerData.years_of_experience = parseInt(req.body.years_of_experience);
+      if (req.body.years_of_experience !== undefined) providerData.years_of_experience = safeParseInt(req.body.years_of_experience, 0);
       if (req.body.state_dental_council_reg_number !== undefined) providerData.state_dental_council_reg_number = req.body.state_dental_council_reg_number;
-      if (req.body.number_of_clinics !== undefined) providerData.number_of_clinics = parseInt(req.body.number_of_clinics);
+      if (req.body.number_of_clinics !== undefined) providerData.number_of_clinics = safeParseInt(req.body.number_of_clinics, 1);
       
       // Handle JSON fields
       if (req.body.specialists_availability !== undefined) {

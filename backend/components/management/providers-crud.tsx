@@ -37,7 +37,7 @@ const ProvidersCRUD = () => {
         whatsapp_number: '',
         same_as_whatsapp: false,
         email: '',
-        years_of_experience: '',
+        years_of_experience: 0,
         state_dental_council_reg_number: '',
         state_dental_council_reg_photo: null,
         profile_photo: null,
@@ -387,7 +387,14 @@ const ProvidersCRUD = () => {
 
     const changeValue = (e: any) => {
         const { name, value, type, checked } = e.target;
-        const newParams = { ...params, [name]: type === 'checkbox' ? checked : value };
+        let newValue = type === 'checkbox' ? checked : value;
+        
+        // Handle number inputs - convert empty strings to 0 for integer fields
+        if (type === 'number' && ['years_of_experience', 'experience_years', 'dental_chairs', 'number_of_clinics'].includes(name)) {
+            newValue = value === '' ? 0 : parseInt(value) || 0;
+        }
+        
+        const newParams = { ...params, [name]: newValue };
         
         // Auto-populate contact_number from mobile_number if contact_number is empty
         if (name === 'mobile_number' && value && !newParams.contact_number) {
@@ -426,8 +433,9 @@ const ProvidersCRUD = () => {
     };
 
     const updateClinicCount = (count: number) => {
+        const safeCount = parseInt(count.toString()) || 1;
         const clinics = [];
-        for (let i = 0; i < count; i++) {
+        for (let i = 0; i < safeCount; i++) {
             clinics.push(params.clinics[i] || {
                 pan_no: '',
                 name: '',
@@ -443,12 +451,19 @@ const ProvidersCRUD = () => {
                 clinic_board: null
             });
         }
-        setParams({ ...params, number_of_clinics: count, clinics });
+        setParams({ ...params, number_of_clinics: safeCount, clinics });
     };
 
     const updateClinic = (index: number, field: string, value: any) => {
         const updated = [...params.clinics];
-        updated[index][field] = value;
+        
+        // Handle number fields properly
+        if (field === 'dental_chairs') {
+            updated[index][field] = value === '' ? 2 : (parseInt(value) || 2);
+        } else {
+            updated[index][field] = value;
+        }
+        
         setParams({ ...params, clinics: updated });
     };
 
@@ -957,11 +972,11 @@ const ProvidersCRUD = () => {
                                                             <input type="url" className="form-input" value={clinic.google_map_url} 
                                                                    onChange={(e) => updateClinic(index, 'google_map_url', e.target.value)} disabled={modalMode === 'view'} />
                                                         </div>
-                                                        <div>
+                                                        {/* <div>
                                                             <label>Clinic Working Hrs</label>
                                                             <input type="text" className="form-input" placeholder="Mon-Fri 10am-8pm Sat - 10am-8pm Sun" 
                                                                    value={clinic.working_hours} onChange={(e) => updateClinic(index, 'working_hours', e.target.value)} disabled={modalMode === 'view'} />
-                                                        </div>
+                                                        </div> */}
                                                         <div>
                                                             <label>No. of Dental Chairs *</label>
                                                             <input type="number" className="form-input" value={clinic.dental_chairs} 
@@ -981,11 +996,11 @@ const ProvidersCRUD = () => {
                                         <div className="mb-6 p-4 bg-gray-50 rounded-lg">
                                             <h3 className="text-lg font-semibold mb-4">Clinic Equipment</h3>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div>
+                                                {/* <div>
                                                     <label htmlFor="dental_chairs">Dental Chairs</label>
                                                     <input id="dental_chairs" name="dental_chairs" type="number" className="form-input" 
                                                            value={params.dental_chairs} onChange={changeValue} disabled={modalMode === 'view'} />
-                                                </div>
+                                                </div> */}
                                                 <div>
                                                     <label htmlFor="iopa_xray_type">IOPA Xray type</label>
                                                     <select id="iopa_xray_type" name="iopa_xray_type" className="form-select" 
@@ -1164,11 +1179,11 @@ const ProvidersCRUD = () => {
                                                            placeholder="https://youtube.com/watch?v=..." 
                                                            value={params.clinic_video_url} onChange={changeValue} disabled={modalMode === 'view'} />
                                                 </div>
-                                                <div>
+                                                {/* <div>
                                                     <label htmlFor="experience_years">Experience Years (Legacy)</label>
                                                     <input id="experience_years" name="experience_years" type="number" className="form-input" 
                                                            value={params.experience_years} onChange={changeValue} disabled={modalMode === 'view'} />
-                                                </div>
+                                                </div> */}
                                                 <div className="md:col-span-2">
                                                     <label htmlFor="about">About Provider</label>
                                                     <textarea id="about" name="about" rows={4} className="form-textarea" 

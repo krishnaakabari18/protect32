@@ -40,6 +40,10 @@ export const getUser = () => {
     }
 };
 
+export const getAuthToken = () => {
+    return localStorage.getItem('auth_token');
+};
+
 export const isAuthenticated = () => {
     const token = localStorage.getItem('auth_token');
     const user = getUser();

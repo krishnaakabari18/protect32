@@ -28,6 +28,19 @@ function toAbsoluteUrl(relativePath) {
   
   const baseUrl = getBaseUrl();
   
+  // If it's already an absolute URL, replace the host with current base URL
+  // This handles old ngrok URLs stored in the database
+  if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
+    try {
+      const url = new URL(relativePath);
+      const base = new URL(baseUrl);
+      // Replace origin with current base URL
+      return `${base.origin}${url.pathname}`;
+    } catch (e) {
+      return relativePath;
+    }
+  }
+  
   // Remove leading slash if present
   const cleanPath = relativePath.replace(/^\/+/, '');
   
@@ -157,6 +170,20 @@ function convertEducationUrls(education) {
   ]);
 }
 
+/**
+ * Convert patient data to include absolute URLs
+ * @param {Object} patient - Patient data
+ * @returns {Object} Patient with absolute URLs
+ */
+function convertPatientUrls(patient) {
+  if (!patient) return patient;
+  
+  return convertFieldsToAbsoluteUrls(patient, [
+    'profile_photo',
+    'profile_picture' // Keep for backward compatibility
+  ]);
+}
+
 module.exports = {
   getBaseUrl,
   toAbsoluteUrl,
@@ -165,5 +192,6 @@ module.exports = {
   convertProviderUrls,
   convertUserUrls,
   convertDocumentUrls,
-  convertEducationUrls
+  convertEducationUrls,
+  convertPatientUrls
 };

@@ -2,7 +2,7 @@
 // All URLs and API endpoints are defined here
 
 // Base URL Configuration
-export const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+export const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://occupiable-milissa-ennuyante.ngrok-free.dev';
 export const API_BASE_URL = `${BASE_URL}/api/v1`;
 
 // Media URL Configuration

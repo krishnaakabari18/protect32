@@ -46,6 +46,8 @@ const ComponentsAppsContactsUsers = () => {
     const [params, setParams] = useState<any>(JSON.parse(JSON.stringify(defaultParams)));
     const [uploadedPhoto, setUploadedPhoto] = useState<File | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+    const [touched, setTouched] = useState<Record<string, boolean>>({});
+    const [errors, setErrors] = useState<Record<string, string>>({});
 
     useEffect(() => {
         fetchUsers();
@@ -110,9 +112,26 @@ const ComponentsAppsContactsUsers = () => {
         return () => clearTimeout(delayDebounceFn);
     }, [search]);
 
+    const handleBlur = (e: any) => {
+        const { id } = e.target;
+        setTouched(prev => ({ ...prev, [id]: true }));
+        const newErrors = { ...errors };
+        const val = params[id];
+        if (id === 'first_name' && !val) newErrors.first_name = 'First name is required';
+        else if (id === 'first_name') delete newErrors.first_name;
+        if (id === 'last_name' && !val) newErrors.last_name = 'Last name is required';
+        else if (id === 'last_name') delete newErrors.last_name;
+        if (id === 'email' && !val) newErrors.email = 'Email is required';
+        else if (id === 'email') delete newErrors.email;
+        if (id === 'password' && !params.id && !val) newErrors.password = 'Password is required for new users';
+        else if (id === 'password') delete newErrors.password;
+        setErrors(newErrors);
+    };
+
     const changeValue = (e: any) => {
         const { value, id, type, checked } = e.target;
         setParams({ ...params, [id]: type === 'checkbox' ? checked : value });
+        if (errors[id]) setErrors(prev => { const n = { ...prev }; delete n[id]; return n; });
     };
 
     const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -171,20 +190,15 @@ const ComponentsAppsContactsUsers = () => {
     };
 
     const saveUser = async () => {
-        if (!params.first_name) {
-            showMessage('First name is required.', 'error');
-            return;
-        }
-        if (!params.last_name) {
-            showMessage('Last name is required.', 'error');
-            return;
-        }
-        if (!params.email) {
-            showMessage('Email is required.', 'error');
-            return;
-        }
-        if (!params.id && !params.password) {
-            showMessage('Password is required for new users.', 'error');
+        const newErrors: Record<string, string> = {};
+        if (!params.first_name) newErrors.first_name = 'First name is required';
+        if (!params.last_name) newErrors.last_name = 'Last name is required';
+        if (!params.email) newErrors.email = 'Email is required';
+        if (!params.id && !params.password) newErrors.password = 'Password is required for new users';
+
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            setTouched({ first_name: true, last_name: true, email: true, password: true });
             return;
         }
 
@@ -252,6 +266,8 @@ const ComponentsAppsContactsUsers = () => {
         setParams(json);
         setUploadedPhoto(null);
         setPhotoPreview(null);
+        setTouched({});
+        setErrors({});
         
         if (user) {
             setParams({
@@ -712,50 +728,58 @@ const ComponentsAppsContactsUsers = () => {
                                         <form>
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="mb-5">
-                                                    <label htmlFor="first_name">First Name *</label>
+                                                    <label htmlFor="first_name">First Name <span className="text-red-500">*</span></label>
                                                     <input 
                                                         id="first_name" 
                                                         type="text" 
                                                         placeholder="Enter First Name" 
-                                                        className="form-input" 
+                                                        className={`form-input ${touched.first_name && errors.first_name ? 'border-red-500' : ''}`}
                                                         value={params.first_name} 
-                                                        onChange={(e) => changeValue(e)} 
+                                                        onChange={(e) => changeValue(e)}
+                                                        onBlur={handleBlur}
                                                     />
+                                                    {touched.first_name && errors.first_name && <p className="mt-1 text-xs text-red-500">{errors.first_name}</p>}
                                                 </div>
                                                 <div className="mb-5">
-                                                    <label htmlFor="last_name">Last Name *</label>
+                                                    <label htmlFor="last_name">Last Name <span className="text-red-500">*</span></label>
                                                     <input 
                                                         id="last_name" 
                                                         type="text" 
                                                         placeholder="Enter Last Name" 
-                                                        className="form-input" 
+                                                        className={`form-input ${touched.last_name && errors.last_name ? 'border-red-500' : ''}`}
                                                         value={params.last_name} 
-                                                        onChange={(e) => changeValue(e)} 
+                                                        onChange={(e) => changeValue(e)}
+                                                        onBlur={handleBlur}
                                                     />
+                                                    {touched.last_name && errors.last_name && <p className="mt-1 text-xs text-red-500">{errors.last_name}</p>}
                                                 </div>
                                                 <div className="mb-5">
-                                                    <label htmlFor="email">Email *</label>
+                                                    <label htmlFor="email">Email <span className="text-red-500">*</span></label>
                                                     <input 
                                                         id="email" 
                                                         type="email" 
                                                         placeholder="Enter Email" 
-                                                        className="form-input" 
+                                                        className={`form-input ${touched.email && errors.email ? 'border-red-500' : ''}`}
                                                         value={params.email} 
                                                         onChange={(e) => changeValue(e)}
+                                                        onBlur={handleBlur}
                                                         disabled={!!params.id}
                                                     />
+                                                    {touched.email && errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
                                                 </div>
                                                 {!params.id && (
                                                     <div className="mb-5">
-                                                        <label htmlFor="password">Password *</label>
+                                                        <label htmlFor="password">Password <span className="text-red-500">*</span></label>
                                                         <input 
                                                             id="password" 
                                                             type="password" 
                                                             placeholder="Enter Password" 
-                                                            className="form-input" 
+                                                            className={`form-input ${touched.password && errors.password ? 'border-red-500' : ''}`}
                                                             value={params.password} 
-                                                            onChange={(e) => changeValue(e)} 
+                                                            onChange={(e) => changeValue(e)}
+                                                            onBlur={handleBlur}
                                                         />
+                                                        {touched.password && errors.password && <p className="mt-1 text-xs text-red-500">{errors.password}</p>}
                                                     </div>
                                                 )}
                                                 <div className="mb-5">

@@ -163,6 +163,8 @@ const ProviderFeesCRUD = () => {
 
     const [params, setParams] = useState<any>(JSON.parse(JSON.stringify(defaultValues)));
     const [modalMode, setModalMode] = useState<'create' | 'edit' | 'view'>('create');
+    const [touched, setTouched] = useState<Record<string, boolean>>({});
+    const [errors, setErrors] = useState<Record<string, string>>({});
     
     const [newProcedure, setNewProcedure] = useState({
         name: '',
@@ -275,11 +277,14 @@ const ProviderFeesCRUD = () => {
     };
 
     const validateForm = () => {
-        if (!params.provider_id || !params.procedure || !params.fee) {
-            showMessage('Please fill all required fields', 'error');
-            return false;
-        }
-        return true;
+        const newErrors: Record<string, string> = {};
+        const newTouched: Record<string, boolean> = {};
+        if (!params.provider_id) { newErrors.provider_id = 'Provider is required.'; newTouched.provider_id = true; }
+        if (!params.procedure) { newErrors.procedure = 'Procedure is required.'; newTouched.procedure = true; }
+        if (!params.fee) { newErrors.fee = 'Fee is required.'; newTouched.fee = true; }
+        setTouched(prev => ({ ...prev, ...newTouched }));
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
 
     const saveItem = async () => {
@@ -319,6 +324,8 @@ const ProviderFeesCRUD = () => {
 
     const openModal = (mode: 'create' | 'edit' | 'view', item: any = null) => {
         setModalMode(mode);
+        setTouched({});
+        setErrors({});
         const json = JSON.parse(JSON.stringify(defaultValues));
         
         if (item) {
@@ -386,6 +393,18 @@ const ProviderFeesCRUD = () => {
     const changeValue = (e: any) => {
         const { name, value, type, checked } = e.target;
         setParams({ ...params, [name]: type === 'checkbox' ? checked : value });
+        if (errors[name]) setErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
+    };
+
+    const handleBlur = (e: any) => {
+        const { name, value } = e.target;
+        setTouched(prev => ({ ...prev, [name]: true }));
+        const requiredFields: Record<string, string> = { provider_id: 'Provider', procedure: 'Procedure', fee: 'Fee' };
+        if (requiredFields[name] && !value) {
+            setErrors(prev => ({ ...prev, [name]: `${requiredFields[name]} is required.` }));
+        } else {
+            setErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
+        }
     };
 
     const calculateFinalPrice = (fee: number, discount: number) => {
@@ -707,13 +726,14 @@ const ProviderFeesCRUD = () => {
                                     <div className="p-5">
                                         <div className="grid grid-cols-1 gap-4">
                                             <div>
-                                                <label htmlFor="provider_id">Provider *</label>
+                                                <label htmlFor="provider_id">Provider <span className="text-red-500">*</span></label>
                                                 <select
                                                     id="provider_id"
                                                     name="provider_id"
-                                                    className="form-select"
+                                                    className={`form-select ${touched.provider_id && errors.provider_id ? 'border-red-500' : ''}`}
                                                     value={params.provider_id}
                                                     onChange={changeValue}
+                                                    onBlur={handleBlur}
                                                     disabled={modalMode === 'view' || modalMode === 'edit'}
                                                 >
                                                     <option value="">Select Provider</option>
@@ -723,6 +743,7 @@ const ProviderFeesCRUD = () => {
                                                         </option>
                                                     ))}
                                                 </select>
+                                                {touched.provider_id && errors.provider_id && <p className="mt-1 text-xs text-red-500">{errors.provider_id}</p>}
                                             </div>
 
                                             <div>
@@ -741,18 +762,25 @@ const ProviderFeesCRUD = () => {
                                                 <select
                                                     id="procedure_id"
                                                     name="procedure_id"
-                                                    className="form-select"
+                                                    className={`form-select ${touched.procedure && errors.procedure ? 'border-red-500' : ''}`}
                                                     value={params.procedure_id || ''}
                                                     onChange={(e) => {
                                                         const selectedId = e.target.value;
                                                         const selectedProc = procedureCategories
                                                             .flatMap((cat: any) => cat.procedures)
                                                             .find((p: any) => p.id === selectedId);
+                                                        const newProc = selectedProc?.name || '';
                                                         setParams({ 
                                                             ...params, 
                                                             procedure_id: selectedId,
-                                                            procedure: selectedProc?.name || ''
+                                                            procedure: newProc
                                                         });
+                                                        if (newProc) setErrors(prev => { const n = { ...prev }; delete n.procedure; return n; });
+                                                    }}
+                                                    onBlur={() => {
+                                                        setTouched(prev => ({ ...prev, procedure: true }));
+                                                        if (!params.procedure) setErrors(prev => ({ ...prev, procedure: 'Procedure is required.' }));
+                                                        else setErrors(prev => { const n = { ...prev }; delete n.procedure; return n; });
                                                     }}
                                                     disabled={modalMode === 'view'}
                                                 >
@@ -770,20 +798,23 @@ const ProviderFeesCRUD = () => {
                                                         </optgroup>
                                                     ))}
                                                 </select>
+                                                {touched.procedure && errors.procedure && <p className="mt-1 text-xs text-red-500">{errors.procedure}</p>}
                                             </div>
                                             <div>
-                                                <label htmlFor="fee">Your Fee (₹) *</label>
+                                                <label htmlFor="fee">Your Fee (₹) <span className="text-red-500">*</span></label>
                                                 <input
                                                     id="fee"
                                                     type="number"
                                                     name="fee"
                                                     placeholder="0.00"
                                                     step="0.01"
-                                                    className="form-input"
+                                                    className={`form-input ${touched.fee && errors.fee ? 'border-red-500' : ''}`}
                                                     value={params.fee}
                                                     onChange={changeValue}
+                                                    onBlur={handleBlur}
                                                     disabled={modalMode === 'view'}
                                                 />
+                                                {touched.fee && errors.fee && <p className="mt-1 text-xs text-red-500">{errors.fee}</p>}
                                             </div>
                                             <div>
                                                 <label htmlFor="discount_percent">Discount Percent (%)</label>

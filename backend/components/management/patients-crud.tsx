@@ -198,6 +198,8 @@ const PatientsCrud = () => {
 
     const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
     const [familyPhoto, setFamilyPhoto] = useState<File | null>(null);
+    const [touched, setTouched] = useState<Record<string, boolean>>({});
+    const [errors, setErrors] = useState<Record<string, string>>({});
     useEffect(() => {
         fetchPatients();
         fetchUsers();
@@ -282,7 +284,8 @@ const PatientsCrud = () => {
         e.preventDefault();
         
         if (!formData.id) {
-            Swal.fire('Error', 'Please select a user from the dropdown', 'error');
+            setErrors({ id: 'Please select a user from the dropdown' });
+            setTouched({ id: true });
             return;
         }
 
@@ -339,6 +342,8 @@ const PatientsCrud = () => {
 
     const handleEdit = (patient: Patient) => {
         setEditingPatient(patient);
+        setTouched({});
+        setErrors({});
         setFormData({
             id: patient.id,
             emergency_contact_name: patient.emergency_contact_name || '',
@@ -421,6 +426,8 @@ const PatientsCrud = () => {
     };
 
     const resetForm = () => {
+        setTouched({});
+        setErrors({});
         setFormData({
             id: '',
             emergency_contact_name: '',
@@ -655,6 +662,18 @@ const PatientsCrud = () => {
         } else {
             setFormData(prev => ({ ...prev, [name]: value }));
         }
+        if (errors[name]) setErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
+    };
+
+    const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+        const { name } = e.target;
+        setTouched(prev => ({ ...prev, [name]: true }));
+        if (name === 'id') {
+            const newErrors = { ...errors };
+            if (!formData.id) newErrors.id = 'Please select a user';
+            else delete newErrors.id;
+            setErrors(newErrors);
+        }
     };
 
     const handleSearch = (e: React.FormEvent) => {
@@ -732,7 +751,8 @@ const PatientsCrud = () => {
                     name="id"
                     value={formData.id}
                     onChange={handleInputChange}
-                    className="form-select"
+                    onBlur={handleBlur}
+                    className={`form-select ${touched.id && errors.id ? 'border-red-500' : ''}`}
                     required
                     disabled={!!editingPatient}
                 >
@@ -743,6 +763,7 @@ const PatientsCrud = () => {
                         </option>
                     ))}
                 </select>
+                {touched.id && errors.id && <p className="mt-1 text-xs text-red-500">{errors.id}</p>}
             </div>
 
             <div>

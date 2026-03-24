@@ -67,6 +67,8 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
     const [search, setSearch] = useState('');
     const [filterValue, setFilterValue] = useState('');
     const [apiSelectOptions, setApiSelectOptions] = useState<Record<string, { value: string; label: string }[]>>({});
+    const [touched, setTouched] = useState<Record<string, boolean>>({});
+    const [errors, setErrors] = useState<Record<string, string>>({});
     
     const [pagination, setPagination] = useState({
         page: 1,
@@ -172,19 +174,39 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
 
     const changeValue = (e: any) => {
         const { value, id, type, checked } = e.target;
-        setParams({ ...params, [id]: type === 'checkbox' ? checked : value });
+        const newVal = type === 'checkbox' ? checked : value;
+        setParams({ ...params, [id]: newVal });
+        // Clear error once user starts typing/selecting
+        if (errors[id]) {
+            setErrors(prev => { const n = { ...prev }; delete n[id]; return n; });
+        }
+    };
+
+    const handleBlur = (e: any) => {
+        const { id } = e.target;
+        setTouched(prev => ({ ...prev, [id]: true }));
+        const field = formFields.find(f => f.key === id);
+        if (field?.required && !params[id]) {
+            setErrors(prev => ({ ...prev, [id]: `${field.label} is required.` }));
+        } else {
+            setErrors(prev => { const n = { ...prev }; delete n[id]; return n; });
+        }
     };
 
     const validateForm = () => {
+        const newErrors: Record<string, string> = {};
+        const newTouched: Record<string, boolean> = {};
         for (const field of formFields) {
+            if (modalMode === 'edit' && field.hideOnEdit) continue;
+            if (modalMode === 'create' && field.hideOnCreate) continue;
+            newTouched[field.key] = true;
             if (field.required && !params[field.key]) {
-                if (modalMode === 'edit' && field.hideOnEdit) continue;
-                if (modalMode === 'create' && field.hideOnCreate) continue;
-                showMessage(`${field.label} is required.`, 'error');
-                return false;
+                newErrors[field.key] = `${field.label} is required.`;
             }
         }
-        return true;
+        setTouched(newTouched);
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
 
     const saveItem = async () => {
@@ -252,6 +274,8 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
 
     const openModal = (mode: 'create' | 'edit' | 'view', item: any = null) => {
         setModalMode(mode);
+        setTouched({});
+        setErrors({});
         const json = JSON.parse(JSON.stringify(defaultValues));
         
         if (item) {
@@ -671,24 +695,26 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
                                                         return (
                                                             <div key={field.key} className={`mb-5 ${field.colSpan === 2 ? 'col-span-2' : ''}`}>
                                                                 <label htmlFor={field.key}>
-                                                                    {field.label} {field.required && '*'}
+                                                                    {field.label} {field.required && <span className="text-red-500">*</span>}
                                                                 </label>
                                                                 {field.type === 'textarea' ? (
                                                                     <textarea
                                                                         id={field.key}
                                                                         rows={3}
                                                                         placeholder={field.placeholder}
-                                                                        className="form-textarea resize-none"
+                                                                        className={`form-textarea resize-none ${touched[field.key] && errors[field.key] ? 'border-red-500 focus:border-red-500' : ''}`}
                                                                         value={params[field.key] || ''}
                                                                         onChange={changeValue}
+                                                                        onBlur={handleBlur}
                                                                         disabled={field.disabled}
                                                                     />
                                                                 ) : field.type === 'select' ? (
                                                                     <select
                                                                         id={field.key}
-                                                                        className="form-select"
+                                                                        className={`form-select ${touched[field.key] && errors[field.key] ? 'border-red-500 focus:border-red-500' : ''}`}
                                                                         value={params[field.key] || ''}
                                                                         onChange={changeValue}
+                                                                        onBlur={handleBlur}
                                                                         disabled={field.disabled}
                                                                     >
                                                                         {field.options?.map(opt => (
@@ -698,9 +724,10 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
                                                                 ) : field.type === 'api-select' ? (
                                                                     <select
                                                                         id={field.key}
-                                                                        className="form-select"
+                                                                        className={`form-select ${touched[field.key] && errors[field.key] ? 'border-red-500 focus:border-red-500' : ''}`}
                                                                         value={params[field.key] || ''}
                                                                         onChange={changeValue}
+                                                                        onBlur={handleBlur}
                                                                         disabled={field.disabled}
                                                                     >
                                                                         <option value="">{field.placeholder || `Select ${field.label}`}</option>
@@ -725,11 +752,15 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
                                                                         id={field.key}
                                                                         type={field.type}
                                                                         placeholder={field.placeholder}
-                                                                        className="form-input"
+                                                                        className={`form-input ${touched[field.key] && errors[field.key] ? 'border-red-500 focus:border-red-500' : ''}`}
                                                                         value={params[field.key] || ''}
                                                                         onChange={changeValue}
+                                                                        onBlur={handleBlur}
                                                                         disabled={field.disabled}
                                                                     />
+                                                                )}
+                                                                {touched[field.key] && errors[field.key] && (
+                                                                    <p className="mt-1 text-xs text-red-500">{errors[field.key]}</p>
                                                                 )}
                                                             </div>
                                                         );

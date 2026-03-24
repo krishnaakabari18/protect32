@@ -48,6 +48,8 @@ const PatientEducationCRUD = () => {
     const [params, setParams] = useState<any>(JSON.parse(JSON.stringify(defaultValues)));
     const [modalMode, setModalMode] = useState<'create' | 'edit' | 'view'>('create');
     const [tagInput, setTagInput] = useState('');
+    const [touched, setTouched] = useState<Record<string, boolean>>({});
+    const [errors, setErrors] = useState<Record<string, string>>({});
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [removeImage, setRemoveImage] = useState(false);
@@ -144,11 +146,14 @@ const PatientEducationCRUD = () => {
     };
 
     const validateForm = () => {
-        if (!params.title || !params.category || !params.content) {
-            showMessage('Please fill all required fields', 'error');
-            return false;
-        }
-        return true;
+        const newErrors: Record<string, string> = {};
+        const newTouched: Record<string, boolean> = {};
+        if (!params.title) { newErrors.title = 'Title is required.'; newTouched.title = true; }
+        if (!params.category) { newErrors.category = 'Category is required.'; newTouched.category = true; }
+        if (!params.content) { newErrors.content = 'Content is required.'; newTouched.content = true; }
+        setTouched(prev => ({ ...prev, ...newTouched }));
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
 
     const saveItem = async () => {
@@ -267,6 +272,8 @@ const PatientEducationCRUD = () => {
         setImageFile(null);
         setRemoveImage(false);
         setIsEditorReady(false);
+        setTouched({});
+        setErrors({});
         setAddModal(true);
     };
 
@@ -323,6 +330,18 @@ const PatientEducationCRUD = () => {
     const changeValue = (e: any) => {
         const { name, value } = e.target;
         setParams({ ...params, [name]: value });
+        if (errors[name]) setErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
+    };
+
+    const handleBlur = (e: any) => {
+        const { name, value } = e.target;
+        setTouched(prev => ({ ...prev, [name]: true }));
+        const requiredFields: Record<string, string> = { title: 'Title', category: 'Category' };
+        if (requiredFields[name] && !value) {
+            setErrors(prev => ({ ...prev, [name]: `${requiredFields[name]} is required.` }));
+        } else {
+            setErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
+        }
     };
 
     const addTag = () => {
@@ -783,28 +802,31 @@ const PatientEducationCRUD = () => {
                                     <div className="p-5">
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div className="col-span-2">
-                                                <label htmlFor="title">Title *</label>
+                                                <label htmlFor="title">Title <span className="text-red-500">*</span></label>
                                                 <input
                                                     id="title"
                                                     type="text"
                                                     name="title"
                                                     placeholder="Enter content title"
-                                                    className="form-input"
+                                                    className={`form-input ${touched.title && errors.title ? 'border-red-500' : ''}`}
                                                     value={params.title}
                                                     onChange={changeValue}
+                                                    onBlur={handleBlur}
                                                     disabled={modalMode === 'view'}
                                                 />
+                                                {touched.title && errors.title && <p className="mt-1 text-xs text-red-500">{errors.title}</p>}
                                             </div>
                                             <div>
-                                                <label htmlFor="category">Category *</label>
+                                                <label htmlFor="category">Category <span className="text-red-500">*</span></label>
                                                 <input
                                                     id="category"
                                                     type="text"
                                                     name="category"
                                                     placeholder="e.g., Dental Care, Chronic Conditions"
-                                                    className="form-input"
+                                                    className={`form-input ${touched.category && errors.category ? 'border-red-500' : ''}`}
                                                     value={params.category}
                                                     onChange={changeValue}
+                                                    onBlur={handleBlur}
                                                     disabled={modalMode === 'view'}
                                                     list="categories-list"
                                                 />
@@ -813,6 +835,7 @@ const PatientEducationCRUD = () => {
                                                         <option key={cat} value={cat} />
                                                     ))}
                                                 </datalist>
+                                                {touched.category && errors.category && <p className="mt-1 text-xs text-red-500">{errors.category}</p>}
                                             </div>
                                             <div>
                                                 <label htmlFor="status">Status *</label>

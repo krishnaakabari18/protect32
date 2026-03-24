@@ -47,6 +47,8 @@ const AppointmentsCRUD = () => {
     const [params, setParams] = useState<any>(JSON.parse(JSON.stringify(defaultValues)));
     const [modalMode, setModalMode] = useState<'create' | 'edit' | 'view'>('create');
     const [timeSlots, setTimeSlots] = useState<string[]>([]);
+    const [touched, setTouched] = useState<Record<string, boolean>>({});
+    const [errors, setErrors] = useState<Record<string, string>>({});
 
     // Helper function to format date safely
     const formatDate = (dateStr: string) => {
@@ -189,11 +191,15 @@ const AppointmentsCRUD = () => {
     };
 
     const validateForm = () => {
-        if (!params.patient_id || !params.provider_id || !params.appointment_date || !params.start_time) {
-            showMessage('Please fill all required fields', 'error');
-            return false;
-        }
-        return true;
+        const newErrors: Record<string, string> = {};
+        const newTouched: Record<string, boolean> = {};
+        if (!params.patient_id) { newErrors.patient_id = 'Patient is required.'; newTouched.patient_id = true; }
+        if (!params.provider_id) { newErrors.provider_id = 'Provider is required.'; newTouched.provider_id = true; }
+        if (!params.appointment_date) { newErrors.appointment_date = 'Appointment date is required.'; newTouched.appointment_date = true; }
+        if (!params.start_time) { newErrors.start_time = 'Start time is required.'; newTouched.start_time = true; }
+        setTouched(prev => ({ ...prev, ...newTouched }));
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
 
     const saveItem = async () => {
@@ -233,6 +239,8 @@ const AppointmentsCRUD = () => {
 
     const openModal = (mode: 'create' | 'edit' | 'view', item: any = null) => {
         setModalMode(mode);
+        setTouched({});
+        setErrors({});
         const json = JSON.parse(JSON.stringify(defaultValues));
         
         if (item) {
@@ -328,6 +336,18 @@ const AppointmentsCRUD = () => {
     const changeValue = (e: any) => {
         const { name, value } = e.target;
         setParams({ ...params, [name]: value });
+        if (errors[name]) setErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
+    };
+
+    const handleBlur = (e: any) => {
+        const { name, value } = e.target;
+        setTouched(prev => ({ ...prev, [name]: true }));
+        const requiredFields: Record<string, string> = { patient_id: 'Patient', provider_id: 'Provider', appointment_date: 'Appointment date', start_time: 'Start time' };
+        if (requiredFields[name] && !value) {
+            setErrors(prev => ({ ...prev, [name]: `${requiredFields[name]} is required.` }));
+        } else {
+            setErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
+        }
     };
 
     return (
@@ -654,13 +674,14 @@ const AppointmentsCRUD = () => {
                                     <div className="p-5">
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
-                                                <label htmlFor="patient_id">Patient *</label>
+                                                <label htmlFor="patient_id">Patient <span className="text-red-500">*</span></label>
                                                 <select
                                                     id="patient_id"
                                                     name="patient_id"
-                                                    className="form-select"
+                                                    className={`form-select ${touched.patient_id && errors.patient_id ? 'border-red-500' : ''}`}
                                                     value={params.patient_id}
                                                     onChange={changeValue}
+                                                    onBlur={handleBlur}
                                                     disabled={modalMode === 'view'}
                                                 >
                                                     <option value="">Select Patient</option>
@@ -670,15 +691,17 @@ const AppointmentsCRUD = () => {
                                                         </option>
                                                     ))}
                                                 </select>
+                                                {touched.patient_id && errors.patient_id && <p className="mt-1 text-xs text-red-500">{errors.patient_id}</p>}
                                             </div>
                                             <div>
-                                                <label htmlFor="provider_id">Provider *</label>
+                                                <label htmlFor="provider_id">Provider <span className="text-red-500">*</span></label>
                                                 <select
                                                     id="provider_id"
                                                     name="provider_id"
-                                                    className="form-select"
+                                                    className={`form-select ${touched.provider_id && errors.provider_id ? 'border-red-500' : ''}`}
                                                     value={params.provider_id}
                                                     onChange={changeValue}
+                                                    onBlur={handleBlur}
                                                     disabled={modalMode === 'view'}
                                                 >
                                                     <option value="">Select Provider</option>
@@ -688,19 +711,22 @@ const AppointmentsCRUD = () => {
                                                         </option>
                                                     ))}
                                                 </select>
+                                                {touched.provider_id && errors.provider_id && <p className="mt-1 text-xs text-red-500">{errors.provider_id}</p>}
                                             </div>
                                             <div>
-                                                <label htmlFor="appointment_date">Appointment Date *</label>
+                                                <label htmlFor="appointment_date">Appointment Date <span className="text-red-500">*</span></label>
                                                 <input
                                                     id="appointment_date"
                                                     type="date"
                                                     name="appointment_date"
-                                                    className="form-input"
+                                                    className={`form-input ${touched.appointment_date && errors.appointment_date ? 'border-red-500' : ''}`}
                                                     value={params.appointment_date}
                                                     onChange={changeValue}
+                                                    onBlur={handleBlur}
                                                     min={getTodayDate()}
                                                     disabled={modalMode === 'view'}
                                                 />
+                                                {touched.appointment_date && errors.appointment_date && <p className="mt-1 text-xs text-red-500">{errors.appointment_date}</p>}
                                             </div>
                                             <div>
                                                 <label htmlFor="duration_minutes">Duration (Minutes) *</label>
@@ -721,13 +747,14 @@ const AppointmentsCRUD = () => {
                                                 </select>
                                             </div>
                                             <div>
-                                                <label htmlFor="start_time">Start Time *</label>
+                                                <label htmlFor="start_time">Start Time <span className="text-red-500">*</span></label>
                                                 <select
                                                     id="start_time"
                                                     name="start_time"
-                                                    className="form-select"
+                                                    className={`form-select ${touched.start_time && errors.start_time ? 'border-red-500' : ''}`}
                                                     value={params.start_time}
                                                     onChange={changeValue}
+                                                    onBlur={handleBlur}
                                                     disabled={modalMode === 'view'}
                                                 >
                                                     <option value="">Select Start Time</option>
@@ -737,6 +764,7 @@ const AppointmentsCRUD = () => {
                                                         </option>
                                                     ))}
                                                 </select>
+                                                {touched.start_time && errors.start_time && <p className="mt-1 text-xs text-red-500">{errors.start_time}</p>}
                                             </div>
                                             <div>
                                                 <label htmlFor="end_time">End Time</label>

@@ -8,7 +8,7 @@ import IconPencil from '@/components/icon/icon-pencil';
 import IconTrash from '@/components/icon/icon-trash';
 import IconEye from '@/components/icon/icon-eye';
 import { Transition, Dialog, TransitionChild, DialogPanel } from '@headlessui/react';
-import React, { Fragment, useEffect, useState } from 'react';
+import React, { Fragment, useEffect, useRef, useState } from 'react';
 import Swal from 'sweetalert2';
 import { API_ENDPOINTS, buildMediaUrl } from '@/config/api.config';
 
@@ -43,15 +43,15 @@ const ProvidersCRUD = () => {
         profile_photo: null,
         
         // Clinic Equipment
-        dental_chairs: 2,
-        iopa_xray_type: 'Digital',
+        dental_chairs: '',
+        iopa_xray_type: '',
         has_opg: false,
         has_ultrasonic_cleaner: true,
-        intraoral_camera_type: 'USB Model',
-        rct_equipment: 'Endomotor',
-        autoclave_type: 'Pressure cooker type',
-        sterilization_protocol: 'Autoclave',
-        disinfection_protocol: 'Chemical based',
+        intraoral_camera_type: '',
+        rct_equipment: '',
+        autoclave_type: '',
+        sterilization_protocol: '',
+        disinfection_protocol: '',
         
         // Specialists Availability
         specialists_availability: [],
@@ -79,7 +79,7 @@ const ProvidersCRUD = () => {
                 pin_code: '',
                 google_map_url: '',
                 working_hours: '',
-                dental_chairs: 2,
+                dental_chairs: 0,
                 clinic_board: null
             }
         ],
@@ -108,6 +108,9 @@ const ProvidersCRUD = () => {
 
     const [params, setParams] = useState<any>(JSON.parse(JSON.stringify(defaultValues)));
     const [modalMode, setModalMode] = useState<'create' | 'edit' | 'view'>('create');
+    const [touched, setTouched] = useState<Record<string, boolean>>({});
+    const [errors, setErrors] = useState<Record<string, string>>({});
+    const firstErrorRef = useRef<HTMLElement | null>(null);
 
     const specialistTypes = [
         'Endodontist', 'Periodontist', 'Prosthodontist', 'Omfs', 
@@ -199,20 +202,45 @@ const ProvidersCRUD = () => {
     };
 
     const validateForm = () => {
-        if (modalMode === 'create' && !params.id) {
-            showMessage('Please select a user', 'error');
-            return false;
+        const newErrors: Record<string, string> = {};
+        // User selection (create only)
+        if (modalMode === 'create' && !params.id) newErrors.id = 'Please select a user';
+        // Provider Details
+        if (!params.full_name) newErrors.full_name = 'Full name is required';
+        if (!params.date_of_birth) newErrors.date_of_birth = 'Date of birth is required';
+        if (!params.pincode) newErrors.pincode = 'Pincode is required';
+        if (!params.mobile_number) newErrors.mobile_number = 'Mobile number is required';
+        if (!params.email) newErrors.email = 'Email is required';
+        if (!params.years_of_experience && params.years_of_experience !== 0) newErrors.years_of_experience = 'Years of experience is required';
+        if (!params.state_dental_council_reg_number) newErrors.state_dental_council_reg_number = 'Registration number is required';
+        // Clinic fields (first clinic)
+        if (params.clinics && params.clinics.length > 0) {
+            const c = params.clinics[0];
+            if (!c.pan_no) newErrors['clinic_0_pan_no'] = 'Pan No is required';
+            if (!c.name) newErrors['clinic_0_name'] = 'Clinic name is required';
+            if (!c.contact_number) newErrors['clinic_0_contact_number'] = 'Contact number is required';
+            if (!c.specialty) newErrors['clinic_0_specialty'] = 'Speciality is required';
+            if (!c.address) newErrors['clinic_0_address'] = 'Address is required';
+            if (!c.city) newErrors['clinic_0_city'] = 'City is required';
+            if (!c.state) newErrors['clinic_0_state'] = 'State is required';
+            if (!c.pin_code) newErrors['clinic_0_pin_code'] = 'PIN code is required';
         }
-        if (!params.full_name) {
-            showMessage('Please enter full name', 'error');
-            return false;
-        }
-        if (!params.specialty) {
-            showMessage('Please enter specialty', 'error');
-            return false;
-        }
-        if (!params.clinic_name) {
-            showMessage('Please enter clinic name', 'error');
+        // Additional Info
+        if (!params.specialty) newErrors.specialty = 'Primary specialty is required';
+        if (!params.clinic_name) newErrors.clinic_name = 'Main clinic name is required';
+
+        const allTouched: Record<string, boolean> = {};
+        Object.keys(newErrors).forEach(k => { allTouched[k] = true; });
+
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            setTouched(allTouched);
+            // Focus first error field after state update
+            setTimeout(() => {
+                const firstKey = Object.keys(newErrors)[0];
+                const el = document.querySelector(`[name="${firstKey}"], [id="${firstKey}"]`) as HTMLElement;
+                if (el) { el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+            }, 50);
             return false;
         }
         return true;
@@ -278,6 +306,8 @@ const ProvidersCRUD = () => {
 
     const openModal = (mode: 'create' | 'edit' | 'view', item: any = null) => {
         setModalMode(mode);
+        setTouched({});
+        setErrors({});
         const json = JSON.parse(JSON.stringify(defaultValues));
         
         if (item) {
@@ -402,6 +432,54 @@ const ProvidersCRUD = () => {
         }
         
         setParams(newParams);
+        if (errors[name]) setErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
+    };
+
+    const handleBlur = (e: any) => {
+        const { name } = e.target;
+        setTouched(prev => ({ ...prev, [name]: true }));
+        const val = params[name];
+        const newErrors = { ...errors };
+        const requiredFields: Record<string, string> = {
+            full_name: 'Full name is required',
+            date_of_birth: 'Date of birth is required',
+            pincode: 'Pincode is required',
+            mobile_number: 'Mobile number is required',
+            email: 'Email is required',
+            years_of_experience: 'Years of experience is required',
+            state_dental_council_reg_number: 'Registration number is required',
+            specialty: 'Primary specialty is required',
+            clinic_name: 'Main clinic name is required',
+        };
+        if (name === 'id') {
+            if (modalMode === 'create' && !val) newErrors.id = 'Please select a user';
+            else delete newErrors.id;
+        } else if (requiredFields[name]) {
+            if (!val && val !== 0) newErrors[name] = requiredFields[name];
+            else delete newErrors[name];
+        }
+        setErrors(newErrors);
+    };
+
+    const handleClinicBlur = (index: number, field: string, value: any) => {
+        const key = `clinic_${index}_${field}`;
+        setTouched(prev => ({ ...prev, [key]: true }));
+        const newErrors = { ...errors };
+        const clinicRequiredFields: Record<string, string> = {
+            pan_no: 'Pan No is required',
+            name: 'Clinic name is required',
+            contact_number: 'Contact number is required',
+            specialty: 'Speciality is required',
+            address: 'Address is required',
+            city: 'City is required',
+            state: 'State is required',
+            pin_code: 'PIN code is required',
+        };
+        if (clinicRequiredFields[field]) {
+            if (!value) newErrors[key] = clinicRequiredFields[field];
+            else delete newErrors[key];
+        }
+        setErrors(newErrors);
     };
 
     const handleFileChange = (e: any, fieldName: string) => {
@@ -743,8 +821,8 @@ const ProvidersCRUD = () => {
                                         {/* 1. User Selection (Create mode only) */}
                                         {modalMode === 'create' && (
                                             <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-                                                <label htmlFor="id">Select User *</label>
-                                                <select id="id" name="id" className="form-select" value={params.id} onChange={changeValue}>
+                                                <label htmlFor="id">Select User <span className="text-red-500">*</span></label>
+                                                <select id="id" name="id" className={`form-select ${touched.id && errors.id ? 'border-red-500' : ''}`} value={params.id} onChange={changeValue} onBlur={handleBlur}>
                                                     <option value="">Select User</option>
                                                     {users.map((user) => (
                                                         <option key={user.id} value={user.id}>
@@ -752,6 +830,7 @@ const ProvidersCRUD = () => {
                                                         </option>
                                                     ))}
                                                 </select>
+                                                {touched.id && errors.id && <p className="mt-1 text-xs text-red-500">{errors.id}</p>}
                                             </div>
                                         )}
 
@@ -760,24 +839,28 @@ const ProvidersCRUD = () => {
                                             <h3 className="text-lg font-semibold mb-4 text-pink-700">Provider Details</h3>
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                 <div>
-                                                    <label htmlFor="full_name">Full Name *</label>
-                                                    <input id="full_name" name="full_name" type="text" className="form-input" 
-                                                           value={params.full_name} onChange={changeValue} disabled={modalMode === 'view'} />
+                                                    <label htmlFor="full_name">Full Name <span className="text-red-500">*</span></label>
+                                                    <input id="full_name" name="full_name" type="text" className={`form-input ${touched.full_name && errors.full_name ? 'border-red-500' : ''}`}
+                                                           value={params.full_name} onChange={changeValue} onBlur={handleBlur} disabled={modalMode === 'view'} />
+                                                    {touched.full_name && errors.full_name && <p className="mt-1 text-xs text-red-500">{errors.full_name}</p>}
                                                 </div>
                                                 <div>
-                                                    <label htmlFor="date_of_birth">Date Of Birth *</label>
-                                                    <input id="date_of_birth" name="date_of_birth" type="date" className="form-input" 
-                                                           value={params.date_of_birth} onChange={changeValue} disabled={modalMode === 'view'} />
+                                                    <label htmlFor="date_of_birth">Date Of Birth <span className="text-red-500">*</span></label>
+                                                    <input id="date_of_birth" name="date_of_birth" type="date" className={`form-input ${touched.date_of_birth && errors.date_of_birth ? 'border-red-500' : ''}`}
+                                                           value={params.date_of_birth} onChange={changeValue} onBlur={handleBlur} disabled={modalMode === 'view'} />
+                                                    {touched.date_of_birth && errors.date_of_birth && <p className="mt-1 text-xs text-red-500">{errors.date_of_birth}</p>}
                                                 </div>
                                                 <div>
-                                                    <label htmlFor="pincode">Pincode *</label>
-                                                    <input id="pincode" name="pincode" type="text" className="form-input" 
-                                                           value={params.pincode} onChange={changeValue} disabled={modalMode === 'view'} />
+                                                    <label htmlFor="pincode">Pincode <span className="text-red-500">*</span></label>
+                                                    <input id="pincode" name="pincode" type="text" className={`form-input ${touched.pincode && errors.pincode ? 'border-red-500' : ''}`}
+                                                           value={params.pincode} onChange={changeValue} onBlur={handleBlur} disabled={modalMode === 'view'} />
+                                                    {touched.pincode && errors.pincode && <p className="mt-1 text-xs text-red-500">{errors.pincode}</p>}
                                                 </div>
                                                 <div>
-                                                    <label htmlFor="mobile_number">Mobile Number *</label>
-                                                    <input id="mobile_number" name="mobile_number" type="text" className="form-input" 
-                                                           value={params.mobile_number} onChange={changeValue} disabled={modalMode === 'view'} />
+                                                    <label htmlFor="mobile_number">Mobile Number <span className="text-red-500">*</span></label>
+                                                    <input id="mobile_number" name="mobile_number" type="text" className={`form-input ${touched.mobile_number && errors.mobile_number ? 'border-red-500' : ''}`}
+                                                           value={params.mobile_number} onChange={changeValue} onBlur={handleBlur} disabled={modalMode === 'view'} />
+                                                    {touched.mobile_number && errors.mobile_number && <p className="mt-1 text-xs text-red-500">{errors.mobile_number}</p>}
                                                 </div>
                                                 <div>
                                                     <div className="flex items-center mb-2">
@@ -791,19 +874,22 @@ const ProvidersCRUD = () => {
                                                     )}
                                                 </div>
                                                 <div>
-                                                    <label htmlFor="email">Email ID *</label>
-                                                    <input id="email" name="email" type="email" className="form-input" 
-                                                           value={params.email} onChange={changeValue} disabled={modalMode === 'view'} />
+                                                    <label htmlFor="email">Email ID <span className="text-red-500">*</span></label>
+                                                    <input id="email" name="email" type="email" className={`form-input ${touched.email && errors.email ? 'border-red-500' : ''}`}
+                                                           value={params.email} onChange={changeValue} onBlur={handleBlur} disabled={modalMode === 'view'} />
+                                                    {touched.email && errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
                                                 </div>
                                                 <div>
-                                                    <label htmlFor="years_of_experience">Years of Experience *</label>
-                                                    <input id="years_of_experience" name="years_of_experience" type="number" className="form-input" 
-                                                           value={params.years_of_experience} onChange={changeValue} disabled={modalMode === 'view'} />
+                                                    <label htmlFor="years_of_experience">Years of Experience <span className="text-red-500">*</span></label>
+                                                    <input id="years_of_experience" name="years_of_experience" type="number" className={`form-input ${touched.years_of_experience && errors.years_of_experience ? 'border-red-500' : ''}`}
+                                                           value={params.years_of_experience} onChange={changeValue} onBlur={handleBlur} disabled={modalMode === 'view'} />
+                                                    {touched.years_of_experience && errors.years_of_experience && <p className="mt-1 text-xs text-red-500">{errors.years_of_experience}</p>}
                                                 </div>
                                                 <div>
-                                                    <label htmlFor="state_dental_council_reg_number">State Dental Council Registration Number *</label>
-                                                    <input id="state_dental_council_reg_number" name="state_dental_council_reg_number" type="text" className="form-input" 
-                                                           value={params.state_dental_council_reg_number} onChange={changeValue} disabled={modalMode === 'view'} />
+                                                    <label htmlFor="state_dental_council_reg_number">State Dental Council Registration Number <span className="text-red-500">*</span></label>
+                                                    <input id="state_dental_council_reg_number" name="state_dental_council_reg_number" type="text" className={`form-input ${touched.state_dental_council_reg_number && errors.state_dental_council_reg_number ? 'border-red-500' : ''}`}
+                                                           value={params.state_dental_council_reg_number} onChange={changeValue} onBlur={handleBlur} disabled={modalMode === 'view'} />
+                                                    {touched.state_dental_council_reg_number && errors.state_dental_council_reg_number && <p className="mt-1 text-xs text-red-500">{errors.state_dental_council_reg_number}</p>}
                                                 </div>
                                                 <div>
                                                     <label htmlFor="state_dental_council_reg_photo">State Dental Council Registration Photo</label>
@@ -918,67 +1004,78 @@ const ProvidersCRUD = () => {
                                                     <h4 className="font-semibold mb-3">Clinic Details ({index + 1})</h4>
                                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                         <div>
-                                                            <label>Pan No *</label>
-                                                            <input type="text" className="form-input" value={clinic.pan_no} 
-                                                                   onChange={(e) => updateClinic(index, 'pan_no', e.target.value)} disabled={modalMode === 'view'} />
+                                                            <label>Pan No <span className="text-red-500">*</span></label>
+                                                            <input type="text" name={`clinic_${index}_pan_no`} className={`form-input ${touched[`clinic_${index}_pan_no`] && errors[`clinic_${index}_pan_no`] ? 'border-red-500' : ''}`} value={clinic.pan_no}
+                                                                   onChange={(e) => updateClinic(index, 'pan_no', e.target.value)}
+                                                                   onBlur={(e) => handleClinicBlur(index, 'pan_no', e.target.value)} disabled={modalMode === 'view'} />
+                                                            {touched[`clinic_${index}_pan_no`] && errors[`clinic_${index}_pan_no`] && <p className="mt-1 text-xs text-red-500">{errors[`clinic_${index}_pan_no`]}</p>}
                                                         </div>
                                                         <div>
-                                                            <label>Name of the Clinic *</label>
-                                                            <input type="text" className="form-input" value={clinic.name} 
-                                                                   onChange={(e) => updateClinic(index, 'name', e.target.value)} disabled={modalMode === 'view'} />
+                                                            <label>Name of the Clinic <span className="text-red-500">*</span></label>
+                                                            <input type="text" name={`clinic_${index}_name`} className={`form-input ${touched[`clinic_${index}_name`] && errors[`clinic_${index}_name`] ? 'border-red-500' : ''}`} value={clinic.name}
+                                                                   onChange={(e) => updateClinic(index, 'name', e.target.value)}
+                                                                   onBlur={(e) => handleClinicBlur(index, 'name', e.target.value)} disabled={modalMode === 'view'} />
+                                                            {touched[`clinic_${index}_name`] && errors[`clinic_${index}_name`] && <p className="mt-1 text-xs text-red-500">{errors[`clinic_${index}_name`]}</p>}
                                                         </div>
                                                         <div>
-                                                            <label>Clinic Contact Number *</label>
-                                                            <input type="text" className="form-input" value={clinic.contact_number} 
-                                                                   onChange={(e) => updateClinic(index, 'contact_number', e.target.value)} disabled={modalMode === 'view'} />
+                                                            <label>Clinic Contact Number <span className="text-red-500">*</span></label>
+                                                            <input type="text" name={`clinic_${index}_contact_number`} className={`form-input ${touched[`clinic_${index}_contact_number`] && errors[`clinic_${index}_contact_number`] ? 'border-red-500' : ''}`} value={clinic.contact_number}
+                                                                   onChange={(e) => updateClinic(index, 'contact_number', e.target.value)}
+                                                                   onBlur={(e) => handleClinicBlur(index, 'contact_number', e.target.value)} disabled={modalMode === 'view'} />
+                                                            {touched[`clinic_${index}_contact_number`] && errors[`clinic_${index}_contact_number`] && <p className="mt-1 text-xs text-red-500">{errors[`clinic_${index}_contact_number`]}</p>}
                                                         </div>
                                                         <div>
-                                                            <label>Speciality *</label>
-                                                            <input type="text" className="form-input" value={clinic.specialty} 
-                                                                   onChange={(e) => updateClinic(index, 'specialty', e.target.value)} disabled={modalMode === 'view'} />
+                                                            <label>Speciality <span className="text-red-500">*</span></label>
+                                                            <input type="text" name={`clinic_${index}_specialty`} className={`form-input ${touched[`clinic_${index}_specialty`] && errors[`clinic_${index}_specialty`] ? 'border-red-500' : ''}`} value={clinic.specialty}
+                                                                   onChange={(e) => updateClinic(index, 'specialty', e.target.value)}
+                                                                   onBlur={(e) => handleClinicBlur(index, 'specialty', e.target.value)} disabled={modalMode === 'view'} />
+                                                            {touched[`clinic_${index}_specialty`] && errors[`clinic_${index}_specialty`] && <p className="mt-1 text-xs text-red-500">{errors[`clinic_${index}_specialty`]}</p>}
                                                         </div>
                                                         <div className="md:col-span-2">
-                                                            <label>Clinic's Address *</label>
-                                                            <input type="text" className="form-input" value={clinic.address} 
-                                                                   onChange={(e) => updateClinic(index, 'address', e.target.value)} disabled={modalMode === 'view'} />
+                                                            <label>Clinic's Address <span className="text-red-500">*</span></label>
+                                                            <input type="text" name={`clinic_${index}_address`} className={`form-input ${touched[`clinic_${index}_address`] && errors[`clinic_${index}_address`] ? 'border-red-500' : ''}`} value={clinic.address}
+                                                                   onChange={(e) => updateClinic(index, 'address', e.target.value)}
+                                                                   onBlur={(e) => handleClinicBlur(index, 'address', e.target.value)} disabled={modalMode === 'view'} />
+                                                            {touched[`clinic_${index}_address`] && errors[`clinic_${index}_address`] && <p className="mt-1 text-xs text-red-500">{errors[`clinic_${index}_address`]}</p>}
                                                         </div>
                                                         <div>
-                                                            <label>City *</label>
-                                                            <select className="form-select" value={clinic.city} 
-                                                                    onChange={(e) => updateClinic(index, 'city', e.target.value)} disabled={modalMode === 'view'}>
+                                                            <label>City <span className="text-red-500">*</span></label>
+                                                            <select name={`clinic_${index}_city`} className={`form-select ${touched[`clinic_${index}_city`] && errors[`clinic_${index}_city`] ? 'border-red-500' : ''}`} value={clinic.city}
+                                                                    onChange={(e) => updateClinic(index, 'city', e.target.value)}
+                                                                    onBlur={(e) => handleClinicBlur(index, 'city', e.target.value)} disabled={modalMode === 'view'}>
                                                                 <option value="">Select City</option>
                                                                 {cities.map(city => (
                                                                     <option key={city} value={city}>{city}</option>
                                                                 ))}
                                                             </select>
+                                                            {touched[`clinic_${index}_city`] && errors[`clinic_${index}_city`] && <p className="mt-1 text-xs text-red-500">{errors[`clinic_${index}_city`]}</p>}
                                                         </div>
                                                         <div>
-                                                            <label>State *</label>
-                                                            <select className="form-select" value={clinic.state} 
-                                                                    onChange={(e) => updateClinic(index, 'state', e.target.value)} disabled={modalMode === 'view'}>
+                                                            <label>State <span className="text-red-500">*</span></label>
+                                                            <select name={`clinic_${index}_state`} className={`form-select ${touched[`clinic_${index}_state`] && errors[`clinic_${index}_state`] ? 'border-red-500' : ''}`} value={clinic.state}
+                                                                    onChange={(e) => updateClinic(index, 'state', e.target.value)}
+                                                                    onBlur={(e) => handleClinicBlur(index, 'state', e.target.value)} disabled={modalMode === 'view'}>
                                                                 <option value="">Select State</option>
                                                                 {states.map(state => (
                                                                     <option key={state} value={state}>{state}</option>
                                                                 ))}
                                                             </select>
+                                                            {touched[`clinic_${index}_state`] && errors[`clinic_${index}_state`] && <p className="mt-1 text-xs text-red-500">{errors[`clinic_${index}_state`]}</p>}
                                                         </div>
                                                         <div>
-                                                            <label>Clinic PIN Code *</label>
-                                                            <input type="text" className="form-input" value={clinic.pin_code} 
-                                                                   onChange={(e) => updateClinic(index, 'pin_code', e.target.value)} disabled={modalMode === 'view'} />
+                                                            <label>Clinic PIN Code <span className="text-red-500">*</span></label>
+                                                            <input type="text" name={`clinic_${index}_pin_code`} className={`form-input ${touched[`clinic_${index}_pin_code`] && errors[`clinic_${index}_pin_code`] ? 'border-red-500' : ''}`} value={clinic.pin_code}
+                                                                   onChange={(e) => updateClinic(index, 'pin_code', e.target.value)}
+                                                                   onBlur={(e) => handleClinicBlur(index, 'pin_code', e.target.value)} disabled={modalMode === 'view'} />
+                                                            {touched[`clinic_${index}_pin_code`] && errors[`clinic_${index}_pin_code`] && <p className="mt-1 text-xs text-red-500">{errors[`clinic_${index}_pin_code`]}</p>}
                                                         </div>
                                                         <div>
                                                             <label>Clinic Google Map Location URL</label>
                                                             <input type="url" className="form-input" value={clinic.google_map_url} 
                                                                    onChange={(e) => updateClinic(index, 'google_map_url', e.target.value)} disabled={modalMode === 'view'} />
                                                         </div>
-                                                        {/* <div>
-                                                            <label>Clinic Working Hrs</label>
-                                                            <input type="text" className="form-input" placeholder="Mon-Fri 10am-8pm Sat - 10am-8pm Sun" 
-                                                                   value={clinic.working_hours} onChange={(e) => updateClinic(index, 'working_hours', e.target.value)} disabled={modalMode === 'view'} />
-                                                        </div> */}
                                                         <div>
-                                                            <label>No. of Dental Chairs *</label>
+                                                            <label>No. of Dental Chairs <span className="text-red-500">*</span></label>
                                                             <input type="number" className="form-input" value={clinic.dental_chairs} 
                                                                    onChange={(e) => updateClinic(index, 'dental_chairs', parseInt(e.target.value))} disabled={modalMode === 'view'} />
                                                         </div>
@@ -1144,14 +1241,16 @@ const ProvidersCRUD = () => {
                                             <h3 className="text-lg font-semibold mb-4 text-green-700">Additional Information</h3>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 <div>
-                                                    <label htmlFor="specialty">Primary Specialty</label>
-                                                    <input id="specialty" name="specialty" type="text" className="form-input" 
-                                                           value={params.specialty} onChange={changeValue} disabled={modalMode === 'view'} />
+                                                    <label htmlFor="specialty">Primary Specialty <span className="text-red-500">*</span></label>
+                                                    <input id="specialty" name="specialty" type="text" className={`form-input ${touched.specialty && errors.specialty ? 'border-red-500' : ''}`}
+                                                           value={params.specialty} onChange={changeValue} onBlur={handleBlur} disabled={modalMode === 'view'} />
+                                                    {touched.specialty && errors.specialty && <p className="mt-1 text-xs text-red-500">{errors.specialty}</p>}
                                                 </div>
                                                 <div>
-                                                    <label htmlFor="clinic_name">Main Clinic Name</label>
-                                                    <input id="clinic_name" name="clinic_name" type="text" className="form-input" 
-                                                           value={params.clinic_name} onChange={changeValue} disabled={modalMode === 'view'} />
+                                                    <label htmlFor="clinic_name">Main Clinic Name <span className="text-red-500">*</span></label>
+                                                    <input id="clinic_name" name="clinic_name" type="text" className={`form-input ${touched.clinic_name && errors.clinic_name ? 'border-red-500' : ''}`}
+                                                           value={params.clinic_name} onChange={changeValue} onBlur={handleBlur} disabled={modalMode === 'view'} />
+                                                    {touched.clinic_name && errors.clinic_name && <p className="mt-1 text-xs text-red-500">{errors.clinic_name}</p>}
                                                 </div>
                                                 <div>
                                                     <label htmlFor="location">Location</label>
@@ -1351,12 +1450,7 @@ const ProvidersCRUD = () => {
                                                     </div>
                                                 ))}
                                             </div>
-                                            <div className="mt-4 p-3 bg-blue-50 rounded">
-                                                <p className="text-sm text-blue-700">
-                                                    <strong>Note:</strong> Set your weekly availability by checking "Open" for each day and setting the opening and closing times. 
-                                                    Use "Copy to All" button to apply the same hours to all days. Unchecked days will be marked as closed.
-                                                </p>
-                                            </div>
+                                           
                                         </div>
 
                                         {/* Form Actions */}

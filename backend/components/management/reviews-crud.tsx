@@ -37,6 +37,8 @@ const ReviewsCRUD = () => {
 
     const [params, setParams] = useState<any>(JSON.parse(JSON.stringify(defaultValues)));
     const [modalMode, setModalMode] = useState<'create' | 'edit' | 'view'>('create');
+    const [touched, setTouched] = useState<Record<string, boolean>>({});
+    const [errors, setErrors] = useState<Record<string, string>>({});
 
     // Helper function to format date
     const formatDate = (dateStr: string) => {
@@ -134,11 +136,14 @@ const ReviewsCRUD = () => {
     };
 
     const validateForm = () => {
-        if (!params.patient_id || !params.provider_id || !params.rating) {
-            showMessage('Please fill all required fields', 'error');
-            return false;
-        }
-        return true;
+        const newErrors: Record<string, string> = {};
+        const newTouched: Record<string, boolean> = {};
+        if (!params.patient_id) { newErrors.patient_id = 'Patient is required.'; newTouched.patient_id = true; }
+        if (!params.provider_id) { newErrors.provider_id = 'Provider is required.'; newTouched.provider_id = true; }
+        if (!params.rating) { newErrors.rating = 'Rating is required.'; newTouched.rating = true; }
+        setTouched(prev => ({ ...prev, ...newTouched }));
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
 
     const saveItem = async () => {
@@ -184,6 +189,8 @@ const ReviewsCRUD = () => {
 
     const openModal = (mode: 'create' | 'edit' | 'view', item: any = null) => {
         setModalMode(mode);
+        setTouched({});
+        setErrors({});
         const json = JSON.parse(JSON.stringify(defaultValues));
         
         if (item) {
@@ -250,6 +257,18 @@ const ReviewsCRUD = () => {
     const changeValue = (e: any) => {
         const { name, value } = e.target;
         setParams({ ...params, [name]: value });
+        if (errors[name]) setErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
+    };
+
+    const handleBlur = (e: any) => {
+        const { name, value } = e.target;
+        setTouched(prev => ({ ...prev, [name]: true }));
+        const requiredFields: Record<string, string> = { patient_id: 'Patient', provider_id: 'Provider', rating: 'Rating' };
+        if (requiredFields[name] && !value) {
+            setErrors(prev => ({ ...prev, [name]: `${requiredFields[name]} is required.` }));
+        } else {
+            setErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
+        }
     };
 
     const renderStars = (rating: number) => {
@@ -532,13 +551,14 @@ const ReviewsCRUD = () => {
                                     <div className="p-5">
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
-                                                <label htmlFor="patient_id">Patient *</label>
+                                                <label htmlFor="patient_id">Patient <span className="text-red-500">*</span></label>
                                                 <select
                                                     id="patient_id"
                                                     name="patient_id"
-                                                    className="form-select"
+                                                    className={`form-select ${touched.patient_id && errors.patient_id ? 'border-red-500' : ''}`}
                                                     value={params.patient_id}
                                                     onChange={changeValue}
+                                                    onBlur={handleBlur}
                                                     disabled={modalMode === 'view'}
                                                 >
                                                     <option value="">Select Patient</option>
@@ -548,15 +568,17 @@ const ReviewsCRUD = () => {
                                                         </option>
                                                     ))}
                                                 </select>
+                                                {touched.patient_id && errors.patient_id && <p className="mt-1 text-xs text-red-500">{errors.patient_id}</p>}
                                             </div>
                                             <div>
-                                                <label htmlFor="provider_id">Provider *</label>
+                                                <label htmlFor="provider_id">Provider <span className="text-red-500">*</span></label>
                                                 <select
                                                     id="provider_id"
                                                     name="provider_id"
-                                                    className="form-select"
+                                                    className={`form-select ${touched.provider_id && errors.provider_id ? 'border-red-500' : ''}`}
                                                     value={params.provider_id}
                                                     onChange={changeValue}
+                                                    onBlur={handleBlur}
                                                     disabled={modalMode === 'view'}
                                                 >
                                                     <option value="">Select Provider</option>
@@ -566,15 +588,17 @@ const ReviewsCRUD = () => {
                                                         </option>
                                                     ))}
                                                 </select>
+                                                {touched.provider_id && errors.provider_id && <p className="mt-1 text-xs text-red-500">{errors.provider_id}</p>}
                                             </div>
                                             <div>
-                                                <label htmlFor="rating">Rating (1-5) *</label>
+                                                <label htmlFor="rating">Rating (1-5) <span className="text-red-500">*</span></label>
                                                 <select
                                                     id="rating"
                                                     name="rating"
-                                                    className="form-select"
+                                                    className={`form-select ${touched.rating && errors.rating ? 'border-red-500' : ''}`}
                                                     value={params.rating}
                                                     onChange={changeValue}
+                                                    onBlur={handleBlur}
                                                     disabled={modalMode === 'view'}
                                                 >
                                                     <option value="">Select Rating</option>
@@ -584,6 +608,7 @@ const ReviewsCRUD = () => {
                                                     <option value="4">4 - Very Good</option>
                                                     <option value="5">5 - Excellent</option>
                                                 </select>
+                                                {touched.rating && errors.rating && <p className="mt-1 text-xs text-red-500">{errors.rating}</p>}
                                             </div>
                                             <div className="col-span-2">
                                                 <label htmlFor="comment">Comment</label>

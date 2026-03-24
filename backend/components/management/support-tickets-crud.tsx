@@ -42,6 +42,8 @@ const SupportTicketsCRUD = () => {
     const [params, setParams] = useState<any>(JSON.parse(JSON.stringify(defaultValues)));
     const [modalMode, setModalMode] = useState<'create' | 'edit' | 'view'>('create');
     const [selectedPatient, setSelectedPatient] = useState<any>(null);
+    const [touched, setTouched] = useState<Record<string, boolean>>({});
+    const [errors, setErrors] = useState<Record<string, string>>({});
     
     // Reply functionality
     const [replies, setReplies] = useState<any[]>([]);
@@ -157,11 +159,14 @@ const SupportTicketsCRUD = () => {
     };
 
     const validateForm = () => {
-        if (!params.patient_id || !params.subject || !params.description) {
-            showMessage('Please fill all required fields', 'error');
-            return false;
-        }
-        return true;
+        const newErrors: Record<string, string> = {};
+        const newTouched: Record<string, boolean> = {};
+        if (!params.patient_id) { newErrors.patient_id = 'Patient is required.'; newTouched.patient_id = true; }
+        if (!params.subject) { newErrors.subject = 'Subject is required.'; newTouched.subject = true; }
+        if (!params.description) { newErrors.description = 'Description is required.'; newTouched.description = true; }
+        setTouched(prev => ({ ...prev, ...newTouched }));
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
 
     const saveItem = async () => {
@@ -263,6 +268,8 @@ const SupportTicketsCRUD = () => {
 
     const openModal = (mode: 'create' | 'edit' | 'view', item: any = null) => {
         setModalMode(mode);
+        setTouched({});
+        setErrors({});
         const json = JSON.parse(JSON.stringify(defaultValues));
         
         if (item) {
@@ -337,6 +344,18 @@ const SupportTicketsCRUD = () => {
     const changeValue = (e: any) => {
         const { name, value } = e.target;
         setParams({ ...params, [name]: value });
+        if (errors[name]) setErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
+    };
+
+    const handleBlur = (e: any) => {
+        const { name, value } = e.target;
+        setTouched(prev => ({ ...prev, [name]: true }));
+        const requiredFields: Record<string, string> = { patient_id: 'Patient', subject: 'Subject', description: 'Description' };
+        if (requiredFields[name] && !value) {
+            setErrors(prev => ({ ...prev, [name]: `${requiredFields[name]} is required.` }));
+        } else {
+            setErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
+        }
     };
 
     return (
@@ -663,13 +682,14 @@ const SupportTicketsCRUD = () => {
                                     <div className="p-5">
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
-                                                <label htmlFor="patient_id">Patient *</label>
+                                                <label htmlFor="patient_id">Patient <span className="text-red-500">*</span></label>
                                                 <select
                                                     id="patient_id"
                                                     name="patient_id"
-                                                    className="form-select"
+                                                    className={`form-select ${touched.patient_id && errors.patient_id ? 'border-red-500' : ''}`}
                                                     value={params.patient_id}
                                                     onChange={changeValue}
+                                                    onBlur={handleBlur}
                                                     disabled={modalMode === 'view'}
                                                 >
                                                     <option value="">Select Patient</option>
@@ -679,6 +699,7 @@ const SupportTicketsCRUD = () => {
                                                         </option>
                                                     ))}
                                                 </select>
+                                                {touched.patient_id && errors.patient_id && <p className="mt-1 text-xs text-red-500">{errors.patient_id}</p>}
                                             </div>
                                             <div>
                                                 <label htmlFor="patient_phone">Patient Phone</label>
@@ -710,30 +731,34 @@ const SupportTicketsCRUD = () => {
                                                 </select>
                                             </div>
                                             <div className="col-span-2">
-                                                <label htmlFor="subject">Subject *</label>
+                                                <label htmlFor="subject">Subject <span className="text-red-500">*</span></label>
                                                 <input
                                                     id="subject"
                                                     type="text"
                                                     name="subject"
                                                     placeholder="Enter ticket subject"
-                                                    className="form-input"
+                                                    className={`form-input ${touched.subject && errors.subject ? 'border-red-500' : ''}`}
                                                     value={params.subject}
                                                     onChange={changeValue}
+                                                    onBlur={handleBlur}
                                                     disabled={modalMode === 'view'}
                                                 />
+                                                {touched.subject && errors.subject && <p className="mt-1 text-xs text-red-500">{errors.subject}</p>}
                                             </div>
                                             <div className="col-span-2">
-                                                <label htmlFor="description">Description *</label>
+                                                <label htmlFor="description">Description <span className="text-red-500">*</span></label>
                                                 <textarea
                                                     id="description"
                                                     name="description"
                                                     rows={4}
                                                     placeholder="Enter ticket description"
-                                                    className="form-textarea"
+                                                    className={`form-textarea ${touched.description && errors.description ? 'border-red-500' : ''}`}
                                                     value={params.description}
                                                     onChange={changeValue}
+                                                    onBlur={handleBlur}
                                                     disabled={modalMode === 'view'}
                                                 />
+                                                {touched.description && errors.description && <p className="mt-1 text-xs text-red-500">{errors.description}</p>}
                                             </div>
                                             <div>
                                                 <label htmlFor="status">Status</label>

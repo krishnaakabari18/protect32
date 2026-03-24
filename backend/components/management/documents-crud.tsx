@@ -44,6 +44,8 @@ const DocumentsCRUD = () => {
 
     const [params, setParams] = useState<any>(JSON.parse(JSON.stringify(defaultValues)));
     const [modalMode, setModalMode] = useState<'create' | 'edit' | 'view'>('create');
+    const [touched, setTouched] = useState<Record<string, boolean>>({});
+    const [errors, setErrors] = useState<Record<string, string>>({});
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [keepExistingFiles, setKeepExistingFiles] = useState(true);
 
@@ -204,10 +206,14 @@ const DocumentsCRUD = () => {
     };
 
     const validateForm = () => {
-        if (!params.patient_id || !params.name || !params.document_type) {
-            showMessage('Please fill all required fields', 'error');
-            return false;
-        }
+        const newErrors: Record<string, string> = {};
+        const newTouched: Record<string, boolean> = {};
+        if (!params.patient_id) { newErrors.patient_id = 'Patient is required.'; newTouched.patient_id = true; }
+        if (!params.name) { newErrors.name = 'Document name is required.'; newTouched.name = true; }
+        if (!params.document_type) { newErrors.document_type = 'Document type is required.'; newTouched.document_type = true; }
+        setTouched(prev => ({ ...prev, ...newTouched }));
+        setErrors(newErrors);
+        if (Object.keys(newErrors).length > 0) return false;
         if (modalMode === 'create' && selectedFiles.length === 0) {
             showMessage('Please select at least one file', 'error');
             return false;
@@ -267,6 +273,8 @@ const DocumentsCRUD = () => {
 
     const openModal = (mode: 'create' | 'edit' | 'view', item: any = null) => {
         setModalMode(mode);
+        setTouched({});
+        setErrors({});
         const json = JSON.parse(JSON.stringify(defaultValues));
         
         if (item) {
@@ -339,6 +347,18 @@ const DocumentsCRUD = () => {
     const changeValue = (e: any) => {
         const { name, value } = e.target;
         setParams({ ...params, [name]: value });
+        if (errors[name]) setErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
+    };
+
+    const handleBlur = (e: any) => {
+        const { name, value } = e.target;
+        setTouched(prev => ({ ...prev, [name]: true }));
+        const requiredFields: Record<string, string> = { patient_id: 'Patient', name: 'Document name', document_type: 'Document type' };
+        if (requiredFields[name] && !value) {
+            setErrors(prev => ({ ...prev, [name]: `${requiredFields[name]} is required.` }));
+        } else {
+            setErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
+        }
     };
 
     const getFilesCount = (item: any) => {
@@ -668,13 +688,14 @@ const DocumentsCRUD = () => {
                                     <div className="p-5">
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
-                                                <label htmlFor="patient_id">Patient *</label>
+                                                <label htmlFor="patient_id">Patient <span className="text-red-500">*</span></label>
                                                 <select
                                                     id="patient_id"
                                                     name="patient_id"
-                                                    className="form-select"
+                                                    className={`form-select ${touched.patient_id && errors.patient_id ? 'border-red-500' : ''}`}
                                                     value={params.patient_id}
                                                     onChange={changeValue}
+                                                    onBlur={handleBlur}
                                                     disabled={modalMode === 'view'}
                                                 >
                                                     <option value="">Select Patient</option>
@@ -684,6 +705,7 @@ const DocumentsCRUD = () => {
                                                         </option>
                                                     ))}
                                                 </select>
+                                                {touched.patient_id && errors.patient_id && <p className="mt-1 text-xs text-red-500">{errors.patient_id}</p>}
                                             </div>
                                             <div>
                                                 <label htmlFor="provider_id">Provider</label>
@@ -704,13 +726,14 @@ const DocumentsCRUD = () => {
                                                 </select>
                                             </div>
                                             <div>
-                                                <label htmlFor="document_type">Document Type *</label>
+                                                <label htmlFor="document_type">Document Type <span className="text-red-500">*</span></label>
                                                 <select
                                                     id="document_type"
                                                     name="document_type"
-                                                    className="form-select"
+                                                    className={`form-select ${touched.document_type && errors.document_type ? 'border-red-500' : ''}`}
                                                     value={params.document_type}
                                                     onChange={changeValue}
+                                                    onBlur={handleBlur}
                                                     disabled={modalMode === 'view'}
                                                 >
                                                     <option value="">Select Type</option>
@@ -720,19 +743,22 @@ const DocumentsCRUD = () => {
                                                         </option>
                                                     ))}
                                                 </select>
+                                                {touched.document_type && errors.document_type && <p className="mt-1 text-xs text-red-500">{errors.document_type}</p>}
                                             </div>
                                             <div>
-                                                <label htmlFor="name">Document Name *</label>
+                                                <label htmlFor="name">Document Name <span className="text-red-500">*</span></label>
                                                 <input
                                                     id="name"
                                                     type="text"
                                                     name="name"
                                                     placeholder="Enter document name"
-                                                    className="form-input"
+                                                    className={`form-input ${touched.name && errors.name ? 'border-red-500' : ''}`}
                                                     value={params.name}
                                                     onChange={changeValue}
+                                                    onBlur={handleBlur}
                                                     disabled={modalMode === 'view'}
                                                 />
+                                                {touched.name && errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
                                             </div>
                                             
                                             {/* File Upload */}

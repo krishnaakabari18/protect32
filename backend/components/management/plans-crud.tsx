@@ -45,6 +45,8 @@ const PlansCRUD = () => {
 
     const [params, setParams] = useState<any>(JSON.parse(JSON.stringify(defaultValues)));
     const [modalMode, setModalMode] = useState<'create' | 'edit' | 'view'>('create');
+    const [touched, setTouched] = useState<Record<string, boolean>>({});
+    const [errors, setErrors] = useState<Record<string, string>>({});
 
     useEffect(() => {
         fetchProviders();
@@ -111,11 +113,13 @@ const PlansCRUD = () => {
     };
 
     const validateForm = () => {
-        if (!params.title || !params.price) {
-            showMessage('Please fill all required fields', 'error');
-            return false;
-        }
-        return true;
+        const newErrors: Record<string, string> = {};
+        const newTouched: Record<string, boolean> = {};
+        if (!params.title) { newErrors.title = 'Plan title is required.'; newTouched.title = true; }
+        if (!params.price) { newErrors.price = 'Price is required.'; newTouched.price = true; }
+        setTouched(prev => ({ ...prev, ...newTouched }));
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
 
     const saveItem = async () => {
@@ -167,6 +171,8 @@ const PlansCRUD = () => {
 
     const openModal = (mode: 'create' | 'edit' | 'view', item: any = null) => {
         setModalMode(mode);
+        setTouched({});
+        setErrors({});
         const json = JSON.parse(JSON.stringify(defaultValues));
         
         if (item) {
@@ -239,6 +245,18 @@ const PlansCRUD = () => {
     const changeValue = (e: any) => {
         const { name, value, type, checked } = e.target;
         setParams({ ...params, [name]: type === 'checkbox' ? checked : value });
+        if (errors[name]) setErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
+    };
+
+    const handleBlur = (e: any) => {
+        const { name, value } = e.target;
+        setTouched(prev => ({ ...prev, [name]: true }));
+        const requiredFields: Record<string, string> = { title: 'Plan title', price: 'Price' };
+        if (requiredFields[name] && !value) {
+            setErrors(prev => ({ ...prev, [name]: `${requiredFields[name]} is required.` }));
+        } else {
+            setErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
+        }
     };
 
     return (
@@ -498,17 +516,19 @@ const PlansCRUD = () => {
                                     <div className="p-5">
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div className="col-span-2">
-                                                <label htmlFor="title">Plan Title *</label>
+                                                <label htmlFor="title">Plan Title <span className="text-red-500">*</span></label>
                                                 <input
                                                     id="title"
                                                     type="text"
                                                     name="title"
                                                     placeholder="Enter plan title"
-                                                    className="form-input"
+                                                    className={`form-input ${touched.title && errors.title ? 'border-red-500' : ''}`}
                                                     value={params.title}
                                                     onChange={changeValue}
+                                                    onBlur={handleBlur}
                                                     disabled={modalMode === 'view'}
                                                 />
+                                                {touched.title && errors.title && <p className="mt-1 text-xs text-red-500">{errors.title}</p>}
                                             </div>
                                             <div>
                                                 <label htmlFor="provider_id">Provider</label>
@@ -529,18 +549,20 @@ const PlansCRUD = () => {
                                                 </select>
                                             </div>
                                             <div>
-                                                <label htmlFor="price">Price *</label>
+                                                <label htmlFor="price">Price <span className="text-red-500">*</span></label>
                                                 <input
                                                     id="price"
                                                     type="number"
                                                     name="price"
                                                     placeholder="0.00"
                                                     step="0.01"
-                                                    className="form-input"
+                                                    className={`form-input ${touched.price && errors.price ? 'border-red-500' : ''}`}
                                                     value={params.price}
                                                     onChange={changeValue}
+                                                    onBlur={handleBlur}
                                                     disabled={modalMode === 'view'}
                                                 />
+                                                {touched.price && errors.price && <p className="mt-1 text-xs text-red-500">{errors.price}</p>}
                                             </div>
                                             <div>
                                                 <label htmlFor="max_members">Max Members</label>

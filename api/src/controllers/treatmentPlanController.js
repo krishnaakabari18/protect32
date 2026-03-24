@@ -3,8 +3,16 @@ const TreatmentPlanModel = require('../models/treatmentPlanModel');
 class TreatmentPlanController {
   static async create(req, res) {
     try {
-      const data = await TreatmentPlanModel.create(req.body);
-      res.status(201).json({ message: 'treatmentPlan created successfully', data });
+      const data = { ...req.body };
+      // Convert empty strings to null for date fields
+      if (data.consent_date === '') data.consent_date = null;
+      if (data.start_date === '') data.start_date = null;
+      if (data.end_date === '') data.end_date = null;
+      if (data.payment_requested !== undefined) data.payment_requested = data.payment_requested === 'true' || data.payment_requested === true;
+      // Remove id if empty (let DB generate it)
+      if (!data.id) delete data.id;
+      const result = await TreatmentPlanModel.create(data);
+      res.status(201).json({ message: 'treatmentPlan created successfully', data: result });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
@@ -50,11 +58,17 @@ class TreatmentPlanController {
 
   static async update(req, res) {
     try {
-      const data = await TreatmentPlanModel.update(req.params.id, req.body);
-      if (!data) {
+      const data = { ...req.body };
+      // Convert empty strings to null for date fields
+      if (data.consent_date === '') data.consent_date = null;
+      if (data.start_date === '') data.start_date = null;
+      if (data.end_date === '') data.end_date = null;
+      if (data.payment_requested !== undefined) data.payment_requested = data.payment_requested === 'true' || data.payment_requested === true;
+      const result = await TreatmentPlanModel.update(req.params.id, data);
+      if (!result) {
         return res.status(404).json({ error: 'treatmentPlan not found' });
       }
-      res.json({ message: 'treatmentPlan updated successfully', data });
+      res.json({ message: 'treatmentPlan updated successfully', data: result });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }

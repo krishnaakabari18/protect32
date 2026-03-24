@@ -22,7 +22,7 @@ interface Column {
 interface FormField {
     key: string;
     label: string;
-    type: 'text' | 'email' | 'password' | 'number' | 'date' | 'datetime-local' | 'textarea' | 'select' | 'checkbox';
+    type: 'text' | 'email' | 'password' | 'number' | 'date' | 'datetime-local' | 'textarea' | 'select' | 'checkbox' | 'api-select';
     required?: boolean;
     options?: { value: string; label: string }[];
     placeholder?: string;
@@ -30,6 +30,11 @@ interface FormField {
     hideOnEdit?: boolean;
     hideOnCreate?: boolean;
     colSpan?: 1 | 2;
+    // For api-select type
+    apiEndpoint?: string;
+    apiLabelKey?: string;
+    apiValueKey?: string;
+    apiLabelFormat?: (item: any) => string;
 }
 
 interface GenericCRUDProps {
@@ -61,6 +66,7 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [filterValue, setFilterValue] = useState('');
+    const [apiSelectOptions, setApiSelectOptions] = useState<Record<string, { value: string; label: string }[]>>({});
     
     const [pagination, setPagination] = useState({
         page: 1,
@@ -75,6 +81,36 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
     useEffect(() => {
         fetchItems();
     }, [pagination.page, pagination.limit, filterValue]);
+
+    // Fetch options for api-select fields
+    useEffect(() => {
+        const apiSelectFields = formFields.filter(f => f.type === 'api-select' && f.apiEndpoint);
+        apiSelectFields.forEach(async (field) => {
+            try {
+                const token = localStorage.getItem('auth_token');
+                const response = await fetch(`${API_BASE_URL}/${field.apiEndpoint}?limit=200`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'ngrok-skip-browser-warning': 'true',
+                    },
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    const items = data.data || [];
+                    const valueKey = field.apiValueKey || 'id';
+                    const options = items.map((item: any) => ({
+                        value: String(item[valueKey]),
+                        label: field.apiLabelFormat
+                            ? field.apiLabelFormat(item)
+                            : item[field.apiLabelKey || 'name'] || String(item[valueKey]),
+                    }));
+                    setApiSelectOptions(prev => ({ ...prev, [field.key]: options }));
+                }
+            } catch (e) {
+                console.error(`Failed to fetch options for ${field.key}`, e);
+            }
+        });
+    }, []);
 
     const fetchItems = async () => {
         setLoading(true);
@@ -656,6 +692,19 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
                                                                         disabled={field.disabled}
                                                                     >
                                                                         {field.options?.map(opt => (
+                                                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                                        ))}
+                                                                    </select>
+                                                                ) : field.type === 'api-select' ? (
+                                                                    <select
+                                                                        id={field.key}
+                                                                        className="form-select"
+                                                                        value={params[field.key] || ''}
+                                                                        onChange={changeValue}
+                                                                        disabled={field.disabled}
+                                                                    >
+                                                                        <option value="">{field.placeholder || `Select ${field.label}`}</option>
+                                                                        {(apiSelectOptions[field.key] || []).map(opt => (
                                                                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                                                                         ))}
                                                                     </select>

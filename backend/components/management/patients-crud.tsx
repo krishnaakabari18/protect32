@@ -286,6 +286,10 @@ const PatientsCrud = () => {
         if (!formData.id) {
             setErrors({ id: 'Please select a user from the dropdown' });
             setTouched({ id: true });
+            setTimeout(() => {
+                const el = document.querySelector('[name="id"]') as HTMLElement;
+                if (el) { el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+            }, 50);
             return;
         }
 

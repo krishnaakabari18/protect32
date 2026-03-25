@@ -9,6 +9,7 @@ import IconTrash from '@/components/icon/icon-trash';
 import IconEye from '@/components/icon/icon-eye';
 import { Transition, Dialog, TransitionChild, DialogPanel } from '@headlessui/react';
 import React, { Fragment, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import Swal from 'sweetalert2';
 import { API_ENDPOINTS, buildMediaUrl } from '@/config/api.config';
 
@@ -211,7 +212,7 @@ const ProvidersCRUD = () => {
         if (!params.pincode) newErrors.pincode = 'Pincode is required';
         if (!params.mobile_number) newErrors.mobile_number = 'Mobile number is required';
         if (!params.email) newErrors.email = 'Email is required';
-        if (!params.years_of_experience && params.years_of_experience !== 0) newErrors.years_of_experience = 'Years of experience is required';
+        if (params.years_of_experience === '' || params.years_of_experience === null || params.years_of_experience === undefined) newErrors.years_of_experience = 'Years of experience is required';
         if (!params.state_dental_council_reg_number) newErrors.state_dental_council_reg_number = 'Registration number is required';
         // Clinic fields (first clinic)
         if (params.clinics && params.clinics.length > 0) {
@@ -232,15 +233,15 @@ const ProvidersCRUD = () => {
         const allTouched: Record<string, boolean> = {};
         Object.keys(newErrors).forEach(k => { allTouched[k] = true; });
 
-        if (Object.keys(newErrors).length > 0) {
+        flushSync(() => {
             setErrors(newErrors);
             setTouched(allTouched);
-            // Focus first error field after state update
-            setTimeout(() => {
-                const firstKey = Object.keys(newErrors)[0];
-                const el = document.querySelector(`[name="${firstKey}"], [id="${firstKey}"]`) as HTMLElement;
-                if (el) { el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-            }, 50);
+        });
+
+        if (Object.keys(newErrors).length > 0) {
+            const firstKey = Object.keys(newErrors)[0];
+            const el = document.querySelector(`[name="${firstKey}"], [id="${firstKey}"]`) as HTMLElement;
+            if (el) { el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
             return false;
         }
         return true;

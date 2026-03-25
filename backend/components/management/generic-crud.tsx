@@ -10,6 +10,7 @@ import IconEye from '@/components/icon/icon-eye';
 import IconFile from '@/components/icon/icon-file';
 import { Transition, Dialog, TransitionChild, DialogPanel } from '@headlessui/react';
 import React, { Fragment, useEffect, useState } from 'react';
+import { flushSync } from 'react-dom';
 import Swal from 'sweetalert2';
 import { API_BASE_URL } from '@/config/api.config';
 
@@ -204,8 +205,19 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
                 newErrors[field.key] = `${field.label} is required.`;
             }
         }
-        setTouched(newTouched);
-        setErrors(newErrors);
+        flushSync(() => {
+            setTouched(newTouched);
+            setErrors(newErrors);
+        });
+        if (Object.keys(newErrors).length > 0) {
+            const firstKey = Object.keys(newErrors)[0];
+            const modal = document.getElementById('generic-crud-modal-body');
+            const el = (modal || document).querySelector(`[id="${firstKey}"]`) as HTMLElement;
+            if (el) {
+                el.focus();
+                el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
         return Object.keys(newErrors).length === 0;
     };
 
@@ -671,7 +683,7 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
                                     <div className="bg-[#fbfbfb] py-3 text-lg font-medium ltr:pl-5 ltr:pr-[50px] rtl:pl-[50px] rtl:pr-5 dark:bg-[#121c2c]">
                                         {modalMode === 'create' ? `Add ${title}` : modalMode === 'edit' ? `Edit ${title}` : `View ${title}`}
                                     </div>
-                                    <div className="p-5">
+                                    <div className="p-5" id="generic-crud-modal-body">
                                         {modalMode === 'view' ? (
                                             <div className="grid grid-cols-2 gap-4">
                                                 {formFields.map(field => (

@@ -199,6 +199,11 @@ const ComponentsAppsContactsUsers = () => {
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors);
             setTouched({ first_name: true, last_name: true, email: true, password: true });
+            setTimeout(() => {
+                const firstKey = Object.keys(newErrors)[0];
+                const el = document.querySelector(`[id="${firstKey}"]`) as HTMLElement;
+                if (el) { el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+            }, 50);
             return;
         }
 

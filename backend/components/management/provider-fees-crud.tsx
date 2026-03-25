@@ -284,6 +284,13 @@ const ProviderFeesCRUD = () => {
         if (!params.fee) { newErrors.fee = 'Fee is required.'; newTouched.fee = true; }
         setTouched(prev => ({ ...prev, ...newTouched }));
         setErrors(newErrors);
+        if (Object.keys(newErrors).length > 0) {
+            setTimeout(() => {
+                const firstKey = Object.keys(newErrors)[0];
+                const el = document.querySelector(`[name="${firstKey}"], [id="${firstKey}"]`) as HTMLElement;
+                if (el) { el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+            }, 50);
+        }
         return Object.keys(newErrors).length === 0;
     };
 

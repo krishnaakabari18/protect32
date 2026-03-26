@@ -6,7 +6,7 @@ export const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://occupiable-m
 export const API_BASE_URL = `${BASE_URL}/api/v1`;
 
 // Media URL Configuration
-export const MEDIA_BASE_URL = 'https://occupiable-milissa-ennuyante.ngrok-free.dev';
+export const MEDIA_BASE_URL = BASE_URL;
 export const MEDIA_ENDPOINTS = {
   // Provider media
   providers: `${MEDIA_BASE_URL}/uploads/provider`,

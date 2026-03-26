@@ -117,14 +117,25 @@ const ComponentsAppsContactsUsers = () => {
         setTouched(prev => ({ ...prev, [id]: true }));
         const newErrors = { ...errors };
         const val = params[id];
+        
         if (id === 'first_name' && !val) newErrors.first_name = 'First name is required';
         else if (id === 'first_name') delete newErrors.first_name;
+        
         if (id === 'last_name' && !val) newErrors.last_name = 'Last name is required';
         else if (id === 'last_name') delete newErrors.last_name;
+        
         if (id === 'email' && !val) newErrors.email = 'Email is required';
         else if (id === 'email') delete newErrors.email;
+        
         if (id === 'password' && !params.id && !val) newErrors.password = 'Password is required for new users';
         else if (id === 'password') delete newErrors.password;
+        
+        if (id === 'mobile_number' && val && !/^\d{10,15}$/.test(val)) {
+            newErrors.mobile_number = 'Mobile number must be 10-15 digits';
+        } else if (id === 'mobile_number') {
+            delete newErrors.mobile_number;
+        }
+        
         setErrors(newErrors);
     };
 
@@ -257,7 +268,32 @@ const ComponentsAppsContactsUsers = () => {
                 setUploadedPhoto(null);
                 setPhotoPreview(null);
             } else {
-                showMessage(data.error || 'Operation failed', 'error');
+                // Handle specific error cases with inline messages
+                const errorMessage = data.error || 'Operation failed';
+                
+                // Check for duplicate mobile number error
+                if (errorMessage.includes('users_mobile_number_key') || errorMessage.includes('duplicate') && errorMessage.includes('mobile')) {
+                    setErrors({ mobile_number: 'This mobile number is already registered' });
+                    setTouched({ ...touched, mobile_number: true });
+                    // Scroll to mobile number field
+                    setTimeout(() => {
+                        const el = document.querySelector('[id="mobile_number"]') as HTMLElement;
+                        if (el) { el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+                    }, 50);
+                }
+                // Check for duplicate email error
+                else if (errorMessage.includes('users_email_key') || errorMessage.includes('duplicate') && errorMessage.includes('email')) {
+                    setErrors({ email: 'This email is already registered' });
+                    setTouched({ ...touched, email: true });
+                    setTimeout(() => {
+                        const el = document.querySelector('[id="email"]') as HTMLElement;
+                        if (el) { el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+                    }, 50);
+                }
+                // For other errors, show as toast
+                else {
+                    showMessage(errorMessage, 'error');
+                }
             }
         } catch (error: any) {
             showMessage('Error: ' + error.message, 'error');
@@ -806,10 +842,12 @@ const ComponentsAppsContactsUsers = () => {
                                                         id="mobile_number" 
                                                         type="text" 
                                                         placeholder="Enter Mobile Number" 
-                                                        className="form-input" 
+                                                        className={`form-input ${touched.mobile_number && errors.mobile_number ? 'border-red-500' : ''}`}
                                                         value={params.mobile_number} 
-                                                        onChange={(e) => changeValue(e)} 
+                                                        onChange={(e) => changeValue(e)}
+                                                        onBlur={handleBlur}
                                                     />
+                                                    {touched.mobile_number && errors.mobile_number && <p className="mt-1 text-xs text-red-500">{errors.mobile_number}</p>}
                                                 </div>
                                                 <div className="mb-5">
                                                     <label htmlFor="date_of_birth">Date of Birth</label>

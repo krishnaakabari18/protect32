@@ -115,17 +115,38 @@ const PlansCRUD = () => {
     const validateForm = () => {
         const newErrors: Record<string, string> = {};
         const newTouched: Record<string, boolean> = {};
-        if (!params.title) { newErrors.title = 'Plan title is required.'; newTouched.title = true; }
-        if (!params.price) { newErrors.price = 'Price is required.'; newTouched.price = true; }
+        
+        if (!params.title) { 
+            newErrors.title = 'Plan title is required.'; 
+            newTouched.title = true; 
+        }
+        
+        if (!params.price) { 
+            newErrors.price = 'Price is required.'; 
+            newTouched.price = true; 
+        } else {
+            // Validate that price is a valid number
+            const numValue = parseFloat(params.price);
+            if (isNaN(numValue) || numValue < 0) {
+                newErrors.price = 'Price must be a valid positive number.';
+                newTouched.price = true;
+            }
+        }
+        
         setTouched(prev => ({ ...prev, ...newTouched }));
         setErrors(newErrors);
+        
         if (Object.keys(newErrors).length > 0) {
             setTimeout(() => {
                 const firstKey = Object.keys(newErrors)[0];
                 const el = document.querySelector(`[name="${firstKey}"], [id="${firstKey}"]`) as HTMLElement;
-                if (el) { el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+                if (el) { 
+                    el.focus(); 
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' }); 
+                }
             }, 50);
         }
+        
         return Object.keys(newErrors).length === 0;
     };
 
@@ -259,8 +280,33 @@ const PlansCRUD = () => {
         const { name, value } = e.target;
         setTouched(prev => ({ ...prev, [name]: true }));
         const requiredFields: Record<string, string> = { title: 'Plan title', price: 'Price' };
+        
         if (requiredFields[name] && !value) {
             setErrors(prev => ({ ...prev, [name]: `${requiredFields[name]} is required.` }));
+        } else if (name === 'price' && value) {
+            // Validate that price is a valid number
+            const numValue = parseFloat(value);
+            if (isNaN(numValue) || numValue < 0) {
+                setErrors(prev => ({ ...prev, [name]: 'Price must be a valid positive number.' }));
+            } else {
+                setErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
+            }
+        } else if (name === 'discount_percent' && value) {
+            // Validate that discount is a valid number between 0-100
+            const numValue = parseFloat(value);
+            if (isNaN(numValue) || numValue < 0 || numValue > 100) {
+                setErrors(prev => ({ ...prev, [name]: 'Discount must be a number between 0 and 100.' }));
+            } else {
+                setErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
+            }
+        } else if (['max_members', 'free_checkups_annually', 'free_cleanings_annually', 'free_xrays_annually'].includes(name) && value) {
+            // Validate that these fields contain valid positive integers
+            const numValue = parseInt(value);
+            if (isNaN(numValue) || numValue < 0 || !Number.isInteger(parseFloat(value))) {
+                setErrors(prev => ({ ...prev, [name]: 'Must be a valid positive whole number.' }));
+            } else {
+                setErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
+            }
         } else {
             setErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
         }
@@ -559,10 +605,9 @@ const PlansCRUD = () => {
                                                 <label htmlFor="price">Price <span className="text-red-500">*</span></label>
                                                 <input
                                                     id="price"
-                                                    type="number"
+                                                    type="text"
                                                     name="price"
                                                     placeholder="0.00"
-                                                    step="0.01"
                                                     className={`form-input ${touched.price && errors.price ? 'border-red-500' : ''}`}
                                                     value={params.price}
                                                     onChange={changeValue}
@@ -575,68 +620,76 @@ const PlansCRUD = () => {
                                                 <label htmlFor="max_members">Max Members</label>
                                                 <input
                                                     id="max_members"
-                                                    type="number"
+                                                    type="text"
                                                     name="max_members"
                                                     placeholder="1"
-                                                    className="form-input"
+                                                    className={`form-input ${touched.max_members && errors.max_members ? 'border-red-500' : ''}`}
                                                     value={params.max_members}
                                                     onChange={changeValue}
+                                                    onBlur={handleBlur}
                                                     disabled={modalMode === 'view'}
                                                 />
+                                                {touched.max_members && errors.max_members && <p className="mt-1 text-xs text-red-500">{errors.max_members}</p>}
                                             </div>
                                             <div>
                                                 <label htmlFor="discount_percent">Discount Percent</label>
                                                 <input
                                                     id="discount_percent"
-                                                    type="number"
+                                                    type="text"
                                                     name="discount_percent"
                                                     placeholder="0"
-                                                    min="0"
-                                                    max="100"
-                                                    className="form-input"
+                                                    className={`form-input ${touched.discount_percent && errors.discount_percent ? 'border-red-500' : ''}`}
                                                     value={params.discount_percent}
                                                     onChange={changeValue}
+                                                    onBlur={handleBlur}
                                                     disabled={modalMode === 'view'}
                                                 />
+                                                {touched.discount_percent && errors.discount_percent && <p className="mt-1 text-xs text-red-500">{errors.discount_percent}</p>}
                                             </div>
                                             <div>
                                                 <label htmlFor="free_checkups_annually">Free Checkups/Year</label>
                                                 <input
                                                     id="free_checkups_annually"
-                                                    type="number"
+                                                    type="text"
                                                     name="free_checkups_annually"
                                                     placeholder="0"
-                                                    className="form-input"
+                                                    className={`form-input ${touched.free_checkups_annually && errors.free_checkups_annually ? 'border-red-500' : ''}`}
                                                     value={params.free_checkups_annually}
                                                     onChange={changeValue}
+                                                    onBlur={handleBlur}
                                                     disabled={modalMode === 'view'}
                                                 />
+                                                {touched.free_checkups_annually && errors.free_checkups_annually && <p className="mt-1 text-xs text-red-500">{errors.free_checkups_annually}</p>}
                                             </div>
                                             <div>
                                                 <label htmlFor="free_cleanings_annually">Free Cleanings/Year</label>
                                                 <input
                                                     id="free_cleanings_annually"
-                                                    type="number"
+                                                    type="text"
                                                     name="free_cleanings_annually"
                                                     placeholder="0"
-                                                    className="form-input"
+                                                    className={`form-input ${touched.free_cleanings_annually && errors.free_cleanings_annually ? 'border-red-500' : ''}`}
                                                     value={params.free_cleanings_annually}
                                                     onChange={changeValue}
+                                                    onBlur={handleBlur}
                                                     disabled={modalMode === 'view'}
                                                 />
+                                                {touched.free_cleanings_annually && errors.free_cleanings_annually && <p className="mt-1 text-xs text-red-500">{errors.free_cleanings_annually}</p>}
                                             </div>
                                             <div>
                                                 <label htmlFor="free_xrays_annually">Free X-rays/Year</label>
                                                 <input
                                                     id="free_xrays_annually"
-                                                    type="number"
+                                                    type="text"
                                                     name="free_xrays_annually"
                                                     placeholder="0"
-                                                    className="form-input"
+                                                    className={`form-input ${touched.free_xrays_annually && errors.free_xrays_annually ? 'border-red-500' : ''}`}
                                                     value={params.free_xrays_annually}
                                                     onChange={changeValue}
+                                                    onBlur={handleBlur}
                                                     disabled={modalMode === 'view'}
                                                 />
+                                                {touched.free_xrays_annually && errors.free_xrays_annually && <p className="mt-1 text-xs text-red-500">{errors.free_xrays_annually}</p>}
                                             </div>
                                             <div className="col-span-2">
                                                 <label htmlFor="features">Features (comma separated)</label>

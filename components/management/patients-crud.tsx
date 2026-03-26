@@ -336,7 +336,42 @@ const PatientsCrud = () => {
                 fetchPatients();
             } else {
                 const errorData = await response.json();
-                Swal.fire('Error', errorData.error || 'Failed to save patient', 'error');
+                const errorMessage = errorData.error || 'Failed to save patient';
+                
+                // Parse database constraint errors and show inline
+                const newErrors: Record<string, string> = {};
+                const newTouched: Record<string, boolean> = {};
+                
+                if (errorMessage.includes('patients_gender_check')) {
+                    newErrors.gender = 'Please select a valid gender';
+                    newTouched.gender = true;
+                    setActiveTab('basic');
+                } else if (errorMessage.includes('blood_group')) {
+                    newErrors.blood_group = 'Please select a valid blood group';
+                    newTouched.blood_group = true;
+                    setActiveTab('basic');
+                } else if (errorMessage.includes('marital_status')) {
+                    newErrors.marital_status = 'Please select a valid marital status';
+                    newTouched.marital_status = true;
+                    setActiveTab('basic');
+                } else {
+                    // Show generic error as popup if we can't parse it
+                    Swal.fire('Error', errorMessage, 'error');
+                    return;
+                }
+                
+                setErrors(newErrors);
+                setTouched(prev => ({ ...prev, ...newTouched }));
+                
+                // Focus on the first error field
+                setTimeout(() => {
+                    const firstKey = Object.keys(newErrors)[0];
+                    const el = document.querySelector(`[name="${firstKey}"]`) as HTMLElement;
+                    if (el) { 
+                        el.focus(); 
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' }); 
+                    }
+                }, 100);
             }
         } catch (error) {
             console.error('Error saving patient:', error);
@@ -808,7 +843,8 @@ const PatientsCrud = () => {
                     name="gender"
                     value={formData.gender}
                     onChange={handleInputChange}
-                    className="form-select"
+                    onBlur={handleBlur}
+                    className={`form-select ${touched.gender && errors.gender ? 'border-red-500' : ''}`}
                 >
                     <option value="">Select Gender</option>
                     <option value="Male">Male</option>
@@ -816,6 +852,7 @@ const PatientsCrud = () => {
                     <option value="Other">Other</option>
                     <option value="Prefer not to say">Prefer not to say</option>
                 </select>
+                {touched.gender && errors.gender && <p className="mt-1 text-xs text-red-500">{errors.gender}</p>}
             </div>
 
             <div>
@@ -824,7 +861,8 @@ const PatientsCrud = () => {
                     name="blood_group"
                     value={formData.blood_group}
                     onChange={handleInputChange}
-                    className="form-select"
+                    onBlur={handleBlur}
+                    className={`form-select ${touched.blood_group && errors.blood_group ? 'border-red-500' : ''}`}
                 >
                     <option value="">Select Blood Group</option>
                     <option value="A+">A+</option>
@@ -836,6 +874,7 @@ const PatientsCrud = () => {
                     <option value="O+">O+</option>
                     <option value="O-">O-</option>
                 </select>
+                {touched.blood_group && errors.blood_group && <p className="mt-1 text-xs text-red-500">{errors.blood_group}</p>}
             </div>
 
             <div>
@@ -878,7 +917,8 @@ const PatientsCrud = () => {
                     name="marital_status"
                     value={formData.marital_status}
                     onChange={handleInputChange}
-                    className="form-select"
+                    onBlur={handleBlur}
+                    className={`form-select ${touched.marital_status && errors.marital_status ? 'border-red-500' : ''}`}
                 >
                     <option value="">Select Status</option>
                     <option value="Single">Single</option>
@@ -887,6 +927,7 @@ const PatientsCrud = () => {
                     <option value="Widowed">Widowed</option>
                     <option value="Other">Other</option>
                 </select>
+                {touched.marital_status && errors.marital_status && <p className="mt-1 text-xs text-red-500">{errors.marital_status}</p>}
             </div>
 
             <div>

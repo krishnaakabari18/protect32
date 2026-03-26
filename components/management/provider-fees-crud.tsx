@@ -279,18 +279,52 @@ const ProviderFeesCRUD = () => {
     const validateForm = () => {
         const newErrors: Record<string, string> = {};
         const newTouched: Record<string, boolean> = {};
-        if (!params.provider_id) { newErrors.provider_id = 'Provider is required.'; newTouched.provider_id = true; }
-        if (!params.procedure) { newErrors.procedure = 'Procedure is required.'; newTouched.procedure = true; }
-        if (!params.fee) { newErrors.fee = 'Fee is required.'; newTouched.fee = true; }
+        
+        if (!params.provider_id) { 
+            newErrors.provider_id = 'Provider is required.'; 
+            newTouched.provider_id = true; 
+        }
+        
+        if (!params.procedure) { 
+            newErrors.procedure = 'Procedure is required.'; 
+            newTouched.procedure = true; 
+        }
+        
+        if (!params.fee) { 
+            newErrors.fee = 'Fee is required.'; 
+            newTouched.fee = true; 
+        } else {
+            // Validate that fee is a valid positive number
+            const numValue = parseFloat(params.fee);
+            if (isNaN(numValue) || numValue < 0) {
+                newErrors.fee = 'Fee must be a valid positive number.';
+                newTouched.fee = true;
+            }
+        }
+        
+        // Validate discount_percent if provided
+        if (params.discount_percent && params.discount_percent !== '0') {
+            const numValue = parseFloat(params.discount_percent);
+            if (isNaN(numValue) || numValue < 0 || numValue > 100) {
+                newErrors.discount_percent = 'Discount must be a number between 0 and 100.';
+                newTouched.discount_percent = true;
+            }
+        }
+        
         setTouched(prev => ({ ...prev, ...newTouched }));
         setErrors(newErrors);
+        
         if (Object.keys(newErrors).length > 0) {
             setTimeout(() => {
                 const firstKey = Object.keys(newErrors)[0];
                 const el = document.querySelector(`[name="${firstKey}"], [id="${firstKey}"]`) as HTMLElement;
-                if (el) { el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+                if (el) { 
+                    el.focus(); 
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' }); 
+                }
             }, 50);
         }
+        
         return Object.keys(newErrors).length === 0;
     };
 
@@ -407,8 +441,25 @@ const ProviderFeesCRUD = () => {
         const { name, value } = e.target;
         setTouched(prev => ({ ...prev, [name]: true }));
         const requiredFields: Record<string, string> = { provider_id: 'Provider', procedure: 'Procedure', fee: 'Fee' };
+        
         if (requiredFields[name] && !value) {
             setErrors(prev => ({ ...prev, [name]: `${requiredFields[name]} is required.` }));
+        } else if (name === 'fee' && value) {
+            // Validate that fee is a valid positive number
+            const numValue = parseFloat(value);
+            if (isNaN(numValue) || numValue < 0) {
+                setErrors(prev => ({ ...prev, [name]: 'Fee must be a valid positive number.' }));
+            } else {
+                setErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
+            }
+        } else if (name === 'discount_percent' && value) {
+            // Validate that discount is a valid number between 0-100
+            const numValue = parseFloat(value);
+            if (isNaN(numValue) || numValue < 0 || numValue > 100) {
+                setErrors(prev => ({ ...prev, [name]: 'Discount must be a number between 0 and 100.' }));
+            } else {
+                setErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
+            }
         } else {
             setErrors(prev => { const n = { ...prev }; delete n[name]; return n; });
         }
@@ -811,10 +862,9 @@ const ProviderFeesCRUD = () => {
                                                 <label htmlFor="fee">Your Fee (₹) <span className="text-red-500">*</span></label>
                                                 <input
                                                     id="fee"
-                                                    type="number"
+                                                    type="text"
                                                     name="fee"
                                                     placeholder="0.00"
-                                                    step="0.01"
                                                     className={`form-input ${touched.fee && errors.fee ? 'border-red-500' : ''}`}
                                                     value={params.fee}
                                                     onChange={changeValue}
@@ -827,16 +877,16 @@ const ProviderFeesCRUD = () => {
                                                 <label htmlFor="discount_percent">Discount Percent (%)</label>
                                                 <input
                                                     id="discount_percent"
-                                                    type="number"
+                                                    type="text"
                                                     name="discount_percent"
                                                     placeholder="0"
-                                                    min="0"
-                                                    max="100"
-                                                    className="form-input"
+                                                    className={`form-input ${touched.discount_percent && errors.discount_percent ? 'border-red-500' : ''}`}
                                                     value={params.discount_percent}
                                                     onChange={changeValue}
+                                                    onBlur={handleBlur}
                                                     disabled={modalMode === 'view'}
                                                 />
+                                                {touched.discount_percent && errors.discount_percent && <p className="mt-1 text-xs text-red-500">{errors.discount_percent}</p>}
                                             </div>
                                             {params.fee && params.discount_percent > 0 && (
                                                 <div className="bg-success-light p-4 rounded-lg">

@@ -5,6 +5,7 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
 const routes = require('./routes');
 
+
 const app = express();
 
 // CORS Configuration
@@ -18,8 +19,12 @@ const corsOptions = {
       'http://localhost:3000',
       'http://localhost:3001', 
       'http://localhost:3002',
+      'http://localhost:8090',
+      'http://localhost:3050',
       'https://occupiable-milissa-ennuyante.ngrok-free.dev',
       'https://occupiable-milissa-ennuyante.ngrok-free.dev', // Legacy support
+      'https://app.protect32.in',
+      'http://app.protect32.in',
       // Add your production domain here
       process.env.FRONTEND_URL
     ].filter(Boolean); // Remove undefined values
@@ -116,7 +121,7 @@ app.get('/cors-test', (req, res) => {
 });
 
 // API Routes
-app.use('/api', routes);
+app.use('/', routes);
 
 // 404 handler
 app.use((req, res) => {

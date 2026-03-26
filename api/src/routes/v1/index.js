@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 
+
+
 // Import all v1 routes
 const authRoutes = require('./authRoutes');
 const userRoutes = require('./userRoutes');

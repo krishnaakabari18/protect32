@@ -14,7 +14,11 @@ const options = {
     },
     servers: [
       {
-        url: `https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1`,
+        url: `https://app.protect32.in/api/v1`,
+        description: 'Production server - API v1'
+      },
+      {
+        url: `http://app.protect32.in/api/v1`,
         description: 'Production server - API v1'
       },
       {

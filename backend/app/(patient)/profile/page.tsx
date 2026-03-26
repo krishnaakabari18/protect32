@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { getUserData } from '@/utils/auth';
+import { getUser as getUserData } from '@/utils/auth';
 
 export default function PatientProfile() {
     const [user, setUser] = useState<any>(null);

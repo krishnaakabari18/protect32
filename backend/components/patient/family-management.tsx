@@ -3,7 +3,7 @@ import { Dialog, Transition } from '@headlessui/react';
 import { useState, Fragment, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import { API_ENDPOINTS, buildMediaUrl } from '@/config/api.config';
-import { getAuthToken, getUserData } from '@/utils/auth';
+import { getAuthToken, getUser as getUserData } from '@/utils/auth';
 
 interface FamilyMember {
     id: string;

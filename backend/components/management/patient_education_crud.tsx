@@ -9,7 +9,7 @@ import IconEye from '@/components/icon/icon-eye';
 import { Transition, Dialog, TransitionChild, DialogPanel } from '@headlessui/react';
 import React, { Fragment, useEffect, useState, useMemo, useRef } from 'react';
 import Swal from 'sweetalert2';
-import { API_ENDPOINTS, buildMediaUrl } from '@/config/api.config';
+import { API_ENDPOINTS, API_BASE_URL, buildMediaUrl } from '@/config/api.config';
 import dynamic from 'next/dynamic';
 import 'react-quill/dist/quill.snow.css';
 
@@ -446,7 +446,7 @@ const PatientEducationCRUD = () => {
                     // Insert image into editor
                     if (quillRef.current) {
                         const range = quillRef.current.getSelection(true);
-                        const imageUrl = `${BASE_URL}${data.url}`;
+                        const imageUrl = `${API_BASE_URL}${data.url}`;
                         quillRef.current.insertEmbed(range.index, 'image', imageUrl);
                         quillRef.current.setSelection(range.index + 1);
                     }

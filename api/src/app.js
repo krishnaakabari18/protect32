@@ -121,7 +121,7 @@ app.get('/cors-test', (req, res) => {
 });
 
 // API Routes
-app.use('/', routes);
+app.use('/api', routes);
 
 // 404 handler
 app.use((req, res) => {

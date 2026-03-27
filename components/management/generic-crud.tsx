@@ -370,18 +370,25 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
     };
 
     const showMessage = (msg = '', type = 'success') => {
-        const toast: any = Swal.mixin({
-            toast: true,
-            position: 'top',
-            showConfirmButton: false,
-            timer: 3000,
-            customClass: { container: 'toast' },
-        });
-        toast.fire({
-            icon: type,
-            title: msg,
-            padding: '10px 20px',
-        });
+        if (type === 'success') {
+            Swal.fire({
+                icon: 'success',
+                title: msg,
+                showConfirmButton: true,
+                confirmButtonText: 'OK',
+                timer: 3000,
+                timerProgressBar: true,
+            });
+        } else {
+            const toast: any = Swal.mixin({
+                toast: true,
+                position: 'top',
+                showConfirmButton: false,
+                timer: 3000,
+                customClass: { container: 'toast' },
+            });
+            toast.fire({ icon: type, title: msg, padding: '10px 20px' });
+        }
     };
 
     const exportToCSV = () => {

@@ -1,6 +1,7 @@
 'use client';
 import { Dialog, Transition } from '@headlessui/react';
 import { useState, Fragment, useEffect } from 'react';
+import { flushSync } from 'react-dom';
 import Swal from 'sweetalert2';
 import { API_ENDPOINTS, buildMediaUrl } from '@/config/api.config';
 import { getAuthToken } from '@/utils/auth';
@@ -280,14 +281,57 @@ const PatientsCrud = () => {
         }
     };
 
+    // Map field name → which tab it lives on
+    const fieldTabMap: Record<string, string> = {
+        id: 'basic',
+        emergency_contact_name: 'basic',
+        emergency_contact_number: 'basic',
+        gender: 'basic',
+        address_line_1: 'contact',
+        city: 'contact',
+        state: 'contact',
+        insurance_provider: 'insurance',
+        insurance_policy_number: 'insurance',
+    };
+
+    // Required field labels for error messages
+    const requiredFields: Record<string, string> = {
+        emergency_contact_name: 'Emergency contact name is required',
+        emergency_contact_number: 'Emergency contact number is required',
+        gender: 'Gender is required',
+        address_line_1: 'Address is required',
+        city: 'City is required',
+        state: 'State is required',
+        insurance_provider: 'Insurance provider is required',
+        insurance_policy_number: 'Insurance policy number is required',
+    };
+
+    const validateForm = (): Record<string, string> => {
+        const newErrors: Record<string, string> = {};
+        if (!formData.id) newErrors.id = 'Please select a user';
+        Object.keys(requiredFields).forEach(key => {
+            if (!formData[key as keyof typeof formData]) newErrors[key] = requiredFields[key];
+        });
+        return newErrors;
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        
-        if (!formData.id) {
-            setErrors({ id: 'Please select a user from the dropdown' });
-            setTouched({ id: true });
+
+        const newErrors = validateForm();
+        const newTouched: Record<string, boolean> = {};
+        Object.keys(newErrors).forEach(k => { newTouched[k] = true; });
+
+        if (Object.keys(newErrors).length > 0) {
+            flushSync(() => {
+                setErrors(newErrors);
+                setTouched(prev => ({ ...prev, ...newTouched }));
+            });
+            const firstKey = Object.keys(newErrors)[0];
+            const targetTab = fieldTabMap[firstKey] || 'basic';
+            setActiveTab(targetTab);
             setTimeout(() => {
-                const el = document.querySelector('[name="id"]') as HTMLElement;
+                const el = document.querySelector(`[name="${firstKey}"]`) as HTMLElement;
                 if (el) { el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
             }, 50);
             return;
@@ -330,7 +374,14 @@ const PatientsCrud = () => {
 
             if (response.ok) {
                 const result = await response.json();
-                Swal.fire('Success', result.message || 'Patient saved successfully', 'success');
+                Swal.fire({
+                    icon: 'success',
+                    title: result.message || 'Patient saved successfully',
+                    showConfirmButton: true,
+                    confirmButtonText: 'OK',
+                    timer: 3000,
+                    timerProgressBar: true,
+                });
                 setIsOpen(false);
                 resetForm();
                 fetchPatients();
@@ -452,7 +503,14 @@ const PatientsCrud = () => {
                 });
 
                 if (response.ok) {
-                    Swal.fire('Deleted!', 'Patient has been deleted.', 'success');
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Patient has been deleted.',
+                        showConfirmButton: true,
+                        confirmButtonText: 'OK',
+                        timer: 3000,
+                        timerProgressBar: true,
+                    });
                     fetchPatients();
                 } else {
                     Swal.fire('Error', 'Failed to delete patient', 'error');
@@ -551,7 +609,14 @@ const PatientsCrud = () => {
 
             if (response.ok) {
                 const result = await response.json();
-                Swal.fire('Success', result.message || 'Family member saved successfully', 'success');
+                Swal.fire({
+                    icon: 'success',
+                    title: result.message || 'Family member saved successfully',
+                    showConfirmButton: true,
+                    confirmButtonText: 'OK',
+                    timer: 3000,
+                    timerProgressBar: true,
+                });
                 resetFamilyForm();
                 fetchFamilyMembers(currentPatientId);
             } else {
@@ -622,7 +687,14 @@ const PatientsCrud = () => {
                 });
 
                 if (response.ok) {
-                    Swal.fire('Deleted!', 'Family member has been deleted.', 'success');
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Family member has been deleted.',
+                        showConfirmButton: true,
+                        confirmButtonText: 'OK',
+                        timer: 3000,
+                        timerProgressBar: true,
+                    });
                     fetchFamilyMembers(currentPatientId);
                 } else {
                     Swal.fire('Error', 'Failed to delete family member', 'error');
@@ -705,14 +777,17 @@ const PatientsCrud = () => {
     };
 
     const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        const { name } = e.target;
+        const { name, value } = e.target;
         setTouched(prev => ({ ...prev, [name]: true }));
+        const newErrors = { ...errors };
         if (name === 'id') {
-            const newErrors = { ...errors };
             if (!formData.id) newErrors.id = 'Please select a user';
             else delete newErrors.id;
-            setErrors(newErrors);
+        } else if (requiredFields[name]) {
+            if (!value) newErrors[name] = requiredFields[name];
+            else delete newErrors[name];
         }
+        setErrors(newErrors);
     };
 
     const handleSearch = (e: React.FormEvent) => {
@@ -792,7 +867,6 @@ const PatientsCrud = () => {
                     onChange={handleInputChange}
                     onBlur={handleBlur}
                     className={`form-select ${touched.id && errors.id ? 'border-red-500' : ''}`}
-                    required
                     disabled={!!editingPatient}
                 >
                     <option value="">Select a user...</option>
@@ -816,29 +890,43 @@ const PatientsCrud = () => {
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact Name</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Emergency Contact Name <span className="text-red-500">*</span>
+                </label>
                 <input
                     type="text"
                     name="emergency_contact_name"
                     value={formData.emergency_contact_name}
                     onChange={handleInputChange}
-                    className="form-input"
+                    onBlur={handleBlur}
+                    className={`form-input ${touched.emergency_contact_name && errors.emergency_contact_name ? 'border-red-500' : ''}`}
                 />
+                {touched.emergency_contact_name && errors.emergency_contact_name && (
+                    <p className="mt-1 text-xs text-red-500">{errors.emergency_contact_name}</p>
+                )}
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact Number</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Emergency Contact Number <span className="text-red-500">*</span>
+                </label>
                 <input
                     type="tel"
                     name="emergency_contact_number"
                     value={formData.emergency_contact_number}
                     onChange={handleInputChange}
-                    className="form-input"
+                    onBlur={handleBlur}
+                    className={`form-input ${touched.emergency_contact_number && errors.emergency_contact_number ? 'border-red-500' : ''}`}
                 />
+                {touched.emergency_contact_number && errors.emergency_contact_number && (
+                    <p className="mt-1 text-xs text-red-500">{errors.emergency_contact_number}</p>
+                )}
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Gender <span className="text-red-500">*</span>
+                </label>
                 <select
                     name="gender"
                     value={formData.gender}
@@ -861,8 +949,7 @@ const PatientsCrud = () => {
                     name="blood_group"
                     value={formData.blood_group}
                     onChange={handleInputChange}
-                    onBlur={handleBlur}
-                    className={`form-select ${touched.blood_group && errors.blood_group ? 'border-red-500' : ''}`}
+                    className="form-select"
                 >
                     <option value="">Select Blood Group</option>
                     <option value="A+">A+</option>
@@ -874,7 +961,6 @@ const PatientsCrud = () => {
                     <option value="O+">O+</option>
                     <option value="O-">O-</option>
                 </select>
-                {touched.blood_group && errors.blood_group && <p className="mt-1 text-xs text-red-500">{errors.blood_group}</p>}
             </div>
 
             <div>
@@ -1082,34 +1168,17 @@ const PatientsCrud = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Secondary Phone</label>
-                <input
-                    type="tel"
-                    name="secondary_phone"
-                    value={formData.secondary_phone}
-                    onChange={handleInputChange}
-                    className="form-input"
-                />
+                <input type="tel" name="secondary_phone" value={formData.secondary_phone} onChange={handleInputChange} className="form-input" />
             </div>
 
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Work Phone</label>
-                <input
-                    type="tel"
-                    name="work_phone"
-                    value={formData.work_phone}
-                    onChange={handleInputChange}
-                    className="form-input"
-                />
+                <input type="tel" name="work_phone" value={formData.work_phone} onChange={handleInputChange} className="form-input" />
             </div>
 
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Contact Method</label>
-                <select
-                    name="preferred_contact_method"
-                    value={formData.preferred_contact_method}
-                    onChange={handleInputChange}
-                    className="form-select"
-                >
+                <select name="preferred_contact_method" value={formData.preferred_contact_method} onChange={handleInputChange} className="form-select">
                     <option value="">Select Method</option>
                     <option value="Phone">Phone</option>
                     <option value="SMS">SMS</option>
@@ -1119,36 +1188,54 @@ const PatientsCrud = () => {
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Address Line 1</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Address Line 1 <span className="text-red-500">*</span>
+                </label>
                 <input
-                    type="text"
-                    name="address_line_1"
-                    value={formData.address_line_1}
-                    onChange={handleInputChange}
-                    className="form-input"
+                    type="text" name="address_line_1" value={formData.address_line_1}
+                    onChange={handleInputChange} onBlur={handleBlur}
+                    className={`form-input ${touched.address_line_1 && errors.address_line_1 ? 'border-red-500' : ''}`}
                 />
+                {touched.address_line_1 && errors.address_line_1 && <p className="mt-1 text-xs text-red-500">{errors.address_line_1}</p>}
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
-                <input
-                    type="text"
-                    name="city"
-                    value={formData.city}
-                    onChange={handleInputChange}
-                    className="form-input"
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Address Line 2</label>
+                <input type="text" name="address_line_2" value={formData.address_line_2} onChange={handleInputChange} className="form-input" />
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                    City <span className="text-red-500">*</span>
+                </label>
                 <input
-                    type="text"
-                    name="state"
-                    value={formData.state}
-                    onChange={handleInputChange}
-                    className="form-input"
+                    type="text" name="city" value={formData.city}
+                    onChange={handleInputChange} onBlur={handleBlur}
+                    className={`form-input ${touched.city && errors.city ? 'border-red-500' : ''}`}
                 />
+                {touched.city && errors.city && <p className="mt-1 text-xs text-red-500">{errors.city}</p>}
+            </div>
+
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                    State <span className="text-red-500">*</span>
+                </label>
+                <input
+                    type="text" name="state" value={formData.state}
+                    onChange={handleInputChange} onBlur={handleBlur}
+                    className={`form-input ${touched.state && errors.state ? 'border-red-500' : ''}`}
+                />
+                {touched.state && errors.state && <p className="mt-1 text-xs text-red-500">{errors.state}</p>}
+            </div>
+
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Postal Code</label>
+                <input type="text" name="postal_code" value={formData.postal_code} onChange={handleInputChange} className="form-input" />
+            </div>
+
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+                <input type="text" name="country" value={formData.country} onChange={handleInputChange} className="form-input" />
             </div>
         </div>
     );
@@ -1156,58 +1243,42 @@ const PatientsCrud = () => {
     const renderInsuranceTab = () => (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Insurance Provider</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Insurance Provider <span className="text-red-500">*</span>
+                </label>
                 <input
-                    type="text"
-                    name="insurance_provider"
-                    value={formData.insurance_provider}
-                    onChange={handleInputChange}
-                    className="form-input"
+                    type="text" name="insurance_provider" value={formData.insurance_provider}
+                    onChange={handleInputChange} onBlur={handleBlur}
+                    className={`form-input ${touched.insurance_provider && errors.insurance_provider ? 'border-red-500' : ''}`}
                 />
+                {touched.insurance_provider && errors.insurance_provider && <p className="mt-1 text-xs text-red-500">{errors.insurance_provider}</p>}
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Insurance Policy Number</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Insurance Policy Number <span className="text-red-500">*</span>
+                </label>
                 <input
-                    type="text"
-                    name="insurance_policy_number"
-                    value={formData.insurance_policy_number}
-                    onChange={handleInputChange}
-                    className="form-input"
+                    type="text" name="insurance_policy_number" value={formData.insurance_policy_number}
+                    onChange={handleInputChange} onBlur={handleBlur}
+                    className={`form-input ${touched.insurance_policy_number && errors.insurance_policy_number ? 'border-red-500' : ''}`}
                 />
+                {touched.insurance_policy_number && errors.insurance_policy_number && <p className="mt-1 text-xs text-red-500">{errors.insurance_policy_number}</p>}
             </div>
 
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Insurance Type</label>
-                <input
-                    type="text"
-                    name="insurance_type"
-                    value={formData.insurance_type}
-                    onChange={handleInputChange}
-                    className="form-input"
-                />
+                <input type="text" name="insurance_type" value={formData.insurance_type} onChange={handleInputChange} className="form-input" />
             </div>
 
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Insurance Expiry Date</label>
-                <input
-                    type="date"
-                    name="insurance_expiry_date"
-                    value={formData.insurance_expiry_date || ''}
-                    onChange={handleInputChange}
-                    className="form-input"
-                />
+                <input type="date" name="insurance_expiry_date" value={formData.insurance_expiry_date || ''} onChange={handleInputChange} className="form-input" />
             </div>
 
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Insurance Coverage Amount (₹)</label>
-                <input
-                    type="number"
-                    name="insurance_coverage_amount"
-                    value={formData.insurance_coverage_amount || ''}
-                    onChange={handleInputChange}
-                    className="form-input"
-                />
+                <input type="number" name="insurance_coverage_amount" value={formData.insurance_coverage_amount || ''} onChange={handleInputChange} className="form-input" />
             </div>
         </div>
     );
@@ -1450,20 +1521,26 @@ const PatientsCrud = () => {
                                                         { id: 'dental', label: 'Dental Info' },
                                                         { id: 'contact', label: 'Contact & Address' },
                                                         { id: 'insurance', label: 'Insurance' }
-                                                    ].map((tab) => (
-                                                        <button
-                                                            key={tab.id}
-                                                            type="button"
-                                                            className={`${
-                                                                activeTab === tab.id
-                                                                    ? '!border-primary !text-primary'
-                                                                    : 'border-transparent text-dark dark:text-white-dark hover:text-primary'
-                                                            } -mb-[1px] block border-b border-transparent p-3.5 py-2 hover:text-primary`}
-                                                            onClick={() => setActiveTab(tab.id)}
-                                                        >
-                                                            {tab.label}
-                                                        </button>
-                                                    ))}
+                                                    ].map((tab) => {
+                                                        const hasError = Object.keys(errors).some(k => (fieldTabMap[k] || 'basic') === tab.id);
+                                                        return (
+                                                            <button
+                                                                key={tab.id}
+                                                                type="button"
+                                                                className={`${
+                                                                    activeTab === tab.id
+                                                                        ? '!border-primary !text-primary'
+                                                                        : 'border-transparent text-dark dark:text-white-dark hover:text-primary'
+                                                                } -mb-[1px] block border-b border-transparent p-3.5 py-2 hover:text-primary relative`}
+                                                                onClick={() => setActiveTab(tab.id)}
+                                                            >
+                                                                {tab.label}
+                                                                {hasError && (
+                                                                    <span className="ml-1 inline-block w-2 h-2 rounded-full bg-red-500 align-middle"></span>
+                                                                )}
+                                                            </button>
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
 

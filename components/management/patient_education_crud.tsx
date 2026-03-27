@@ -263,6 +263,15 @@ const PatientEducationCRUD = () => {
                     json[key] = item[key];
                 }
             });
+
+            // Ensure tags is always an array
+            if (!Array.isArray(json.tags)) {
+                try {
+                    json.tags = json.tags ? JSON.parse(json.tags) : [];
+                } catch {
+                    json.tags = [];
+                }
+            }
             
             // Set image preview if exists
             if (item.feature_image) {
@@ -359,14 +368,16 @@ const PatientEducationCRUD = () => {
     };
 
     const addTag = () => {
-        if (tagInput.trim() && !params.tags.includes(tagInput.trim())) {
-            setParams({ ...params, tags: [...params.tags, tagInput.trim()] });
+        const currentTags = Array.isArray(params.tags) ? params.tags : [];
+        if (tagInput.trim() && !currentTags.includes(tagInput.trim())) {
+            setParams({ ...params, tags: [...currentTags, tagInput.trim()] });
             setTagInput('');
         }
     };
 
     const removeTag = (index: number) => {
-        setParams({ ...params, tags: params.tags.filter((_: any, i: number) => i !== index) });
+        const currentTags = Array.isArray(params.tags) ? params.tags : [];
+        setParams({ ...params, tags: currentTags.filter((_: any, i: number) => i !== index) });
     };
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {

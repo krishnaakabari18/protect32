@@ -12,6 +12,12 @@ class PatientEducationController {
         return res.status(400).json({ error: 'Title, category, and content are required' });
       }
 
+      // Parse tags if sent as JSON string from FormData
+      let parsedTags = null;
+      if (tags) {
+        parsedTags = Array.isArray(tags) ? tags : JSON.parse(tags);
+      }
+
       // Handle feature image upload
       let feature_image = null;
       if (req.file) {
@@ -27,7 +33,7 @@ class PatientEducationController {
         category,
         content,
         summary,
-        tags,
+        tags: parsedTags,
         author_id,
         status: status || 'Active',
         feature_image
@@ -107,6 +113,12 @@ class PatientEducationController {
         return res.status(400).json({ error: 'Title, category, and content are required' });
       }
 
+      // Parse tags if sent as JSON string from FormData
+      let parsedTags = null;
+      if (tags) {
+        parsedTags = Array.isArray(tags) ? tags : JSON.parse(tags);
+      }
+
       // Get existing content to check for old image
       const existingContent = await PatientEducationModel.findById(req.params.id);
       if (!existingContent) {
@@ -140,7 +152,7 @@ class PatientEducationController {
         category,
         content,
         summary,
-        tags,
+        tags: parsedTags,
         status,
         feature_image
       });

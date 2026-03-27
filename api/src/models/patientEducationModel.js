@@ -4,6 +4,12 @@ class PatientEducationModel {
   static async create(data) {
       const { title, category, content, summary, tags, author_id, status, feature_image } = data;
 
+      // Normalize tags to a JS array for pg driver (handles text[] column)
+      let tagsArray = null;
+      if (tags) {
+        tagsArray = Array.isArray(tags) ? tags : JSON.parse(tags);
+      }
+
       const query = `
         INSERT INTO patient_education_content (title, category, content, summary, tags, author_id, status, feature_image)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -15,7 +21,7 @@ class PatientEducationModel {
         category,
         content,
         summary || null,
-        tags || null,
+        tagsArray,
         author_id || null,
         status || 'Active',
         feature_image || null
@@ -76,6 +82,12 @@ class PatientEducationModel {
   static async update(id, data) {
       const { title, category, content, summary, tags, status, feature_image } = data;
 
+      // Normalize tags to a JS array for pg driver (handles text[] column)
+      let tagsArray = null;
+      if (tags) {
+        tagsArray = Array.isArray(tags) ? tags : JSON.parse(tags);
+      }
+
       const query = `
         UPDATE patient_education_content 
         SET title = $1, category = $2, content = $3, summary = $4, tags = $5, status = $6, feature_image = $7
@@ -88,7 +100,7 @@ class PatientEducationModel {
         category,
         content,
         summary || null,
-        tags || null,
+        tagsArray,
         status || 'Active',
         feature_image || null,
         id

@@ -9,7 +9,7 @@ const options = {
       description: 'Complete API documentation for Dentist Management System with versioning support',
       contact: {
         name: 'API Support',
-        email: 'support@dentist.com'
+        email: 'support@protect32.com'
       }
     },
     servers: [

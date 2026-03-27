@@ -568,7 +568,7 @@ const ProvidersCRUD = () => {
                                 Add Provider
                             </button>
                         </div>
-                        <div>
+                        {/* <div>
                             <button type="button" className={`btn btn-outline-primary p-2 ${viewMode === 'list' && 'bg-primary text-white'}`} onClick={() => setViewMode('list')}>
                                 <IconListCheck />
                             </button>
@@ -577,7 +577,7 @@ const ProvidersCRUD = () => {
                             <button type="button" className={`btn btn-outline-primary p-2 ${viewMode === 'grid' && 'bg-primary text-white'}`} onClick={() => setViewMode('grid')}>
                                 <IconLayoutGrid />
                             </button>
-                        </div>
+                        </div> */}
                     </div>
                     <div className="relative">
                         <input 

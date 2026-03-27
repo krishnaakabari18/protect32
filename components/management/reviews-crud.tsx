@@ -301,7 +301,7 @@ const ReviewsCRUD = () => {
                                 Add Review
                             </button>
                         </div>
-                        <div>
+                        {/* <div>
                             <button
                                 type="button"
                                 className={`btn btn-outline-primary p-2 ${viewMode === 'list' && 'bg-primary text-white'}`}
@@ -318,7 +318,7 @@ const ReviewsCRUD = () => {
                             >
                                 <IconLayoutGrid />
                             </button>
-                        </div>
+                        </div> */}
                     </div>
                 </div>
             </div>

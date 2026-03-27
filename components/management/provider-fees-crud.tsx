@@ -538,7 +538,7 @@ const ProviderFeesCRUD = () => {
                                 Add Fee
                             </button>
                         </div>
-                        <div>
+                        {/* <div>
                             <button
                                 type="button"
                                 className={`btn btn-outline-primary p-2 ${viewMode === 'list' && 'bg-primary text-white'}`}
@@ -555,7 +555,7 @@ const ProviderFeesCRUD = () => {
                             >
                                 <IconLayoutGrid />
                             </button>
-                        </div>
+                        </div> */}
                     </div>
                     <div>
                         <select

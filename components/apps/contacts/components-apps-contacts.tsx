@@ -287,7 +287,7 @@ const ComponentsAppsContacts = () => {
                                 Add Contact
                             </button>
                         </div>
-                        <div>
+                        {/* <div>
                             <button type="button" className={`btn btn-outline-primary p-2 ${value === 'list' && 'bg-primary text-white'}`} onClick={() => setValue('list')}>
                                 <IconListCheck />
                             </button>
@@ -296,7 +296,7 @@ const ComponentsAppsContacts = () => {
                             <button type="button" className={`btn btn-outline-primary p-2 ${value === 'grid' && 'bg-primary text-white'}`} onClick={() => setValue('grid')}>
                                 <IconLayoutGrid />
                             </button>
-                        </div>
+                        </div> */}
                     </div>
                     <div className="relative">
                         <input type="text" placeholder="Search Contacts" className="peer form-input py-2 ltr:pr-11 rtl:pl-11" value={search} onChange={(e) => setSearch(e.target.value)} />

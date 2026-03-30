@@ -45,6 +45,7 @@ interface GenericCRUDProps {
     formFields: FormField[];
     defaultValues: any;
     searchFields?: string[];
+    hideDelete?: boolean;
     filterField?: {
         key: string;
         label: string;
@@ -59,6 +60,7 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
     formFields,
     defaultValues,
     searchFields = [],
+    hideDelete = false,
     filterField,
 }) => {
     const [addModal, setAddModal] = useState(false);
@@ -595,13 +597,15 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
                                                     >
                                                         <IconPencil className="w-4 h-4" />
                                                     </button>
-                                                    <button 
-                                                        type="button" 
-                                                        className="btn btn-sm btn-outline-danger"
-                                                        onClick={() => deleteItem(item)}
-                                                    >
-                                                        <IconTrash className="w-4 h-4" />
-                                                    </button>
+                                                    {!hideDelete && (
+                                                        <button 
+                                                            type="button" 
+                                                            className="btn btn-sm btn-outline-danger"
+                                                            onClick={() => deleteItem(item)}
+                                                        >
+                                                            <IconTrash className="w-4 h-4" />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>

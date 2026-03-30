@@ -142,7 +142,7 @@ const SidebarDentist = () => {
                                 <IconDollarSign className="shrink-0 group-hover:!text-primary" />, 'Treatment Fees')}
 
                             {can('payments') && menuItem('/management/payments',
-                                <IconDollarSign className="shrink-0 group-hover:!text-primary" />, 'Payments')}
+                                <IconDollarSign className="shrink-0 group-hover:!text-primary" />, 'Orders')}
 
                             {can('documents') && menuItem('/management/documents',
                                 <IconFile className="shrink-0 group-hover:!text-primary" />, 'Documents')}

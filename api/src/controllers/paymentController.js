@@ -12,11 +12,11 @@ class PaymentController {
 
   static async getAll(req, res) {
     try {
-      const { patient_id, provider_id, status, page = 1, limit = 10 } = req.query;
+      const { patient_id, provider_id, payment_status, page = 1, limit = 10 } = req.query;
       const filters = {};
       if (patient_id) filters.patient_id = patient_id;
       if (provider_id) filters.provider_id = provider_id;
-      if (status) filters.status = status;
+      if (payment_status) filters.payment_status = payment_status;
 
       const payments = await PaymentModel.findAll(filters);
       

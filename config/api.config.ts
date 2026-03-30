@@ -84,6 +84,9 @@ export const API_ENDPOINTS = {
   
   // Education Images (inline uploads)
   educationImages: `${API_BASE_URL}/education-images`,
+
+  // Plan Features
+  planFeatures: `${API_BASE_URL}/plan-features`,
   
   // Notifications
   notifications: `${API_BASE_URL}/notifications`,

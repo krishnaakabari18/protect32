@@ -408,17 +408,39 @@ class ProviderController {
       
       // Add uploaded photo paths if new photos are uploaded
       if (req.files) {
-        // Handle clinic photos
+        // Handle clinic photos — merge existing order with new uploads
         if (req.files.clinic_photos && req.files.clinic_photos.length > 0) {
           const newPhotos = req.files.clinic_photos.map(file => file.path.replace(/\\/g, '/'));
-          console.log('New Clinic Photos:', newPhotos);
-          
-          // Get existing provider to merge photos
-          const existingProvider = await ProviderModel.findById(req.params.id);
-          if (existingProvider && existingProvider.clinic_photos) {
-            providerData.clinic_photos = [...existingProvider.clinic_photos, ...newPhotos];
-          } else {
-            providerData.clinic_photos = newPhotos;
+
+          // Use existing_photo_order if provided (reordered existing URLs from frontend)
+          let existingOrder = [];
+          if (req.body.existing_photo_order) {
+            try {
+              existingOrder = JSON.parse(req.body.existing_photo_order);
+              // Strip absolute URLs back to relative paths for storage
+              existingOrder = existingOrder.map(url => {
+                // If it's an absolute URL, extract the relative path
+                const match = url.match(/\/uploads\/.+/);
+                return match ? match[0].replace(/^\//, '') : url;
+              });
+            } catch (e) {
+              console.error('Error parsing existing_photo_order:', e);
+            }
+          }
+
+          // Final order: existing (reordered) + new uploads appended at end
+          providerData.clinic_photos = [...existingOrder, ...newPhotos];
+        } else if (req.body.existing_photo_order) {
+          // No new files but order may have changed
+          try {
+            let existingOrder = JSON.parse(req.body.existing_photo_order);
+            existingOrder = existingOrder.map(url => {
+              const match = url.match(/\/uploads\/.+/);
+              return match ? match[0].replace(/^\//, '') : url;
+            });
+            providerData.clinic_photos = existingOrder;
+          } catch (e) {
+            console.error('Error parsing existing_photo_order:', e);
           }
         }
         
@@ -431,11 +453,20 @@ class ProviderController {
         // Handle profile photo
         if (req.files.profile_photo && req.files.profile_photo.length > 0) {
           providerData.profile_photo = req.files.profile_photo[0].path.replace(/\\/g, '/');
-          console.log('Updated Profile Photo:', providerData.profile_photo);
+        }
+      } else if (req.body.existing_photo_order) {
+        // No files uploaded at all, but order may have changed
+        try {
+          let existingOrder = JSON.parse(req.body.existing_photo_order);
+          existingOrder = existingOrder.map(url => {
+            const match = url.match(/\/uploads\/.+/);
+            return match ? match[0].replace(/^\//, '') : url;
+          });
+          providerData.clinic_photos = existingOrder;
+        } catch (e) {
+          console.error('Error parsing existing_photo_order (no files):', e);
         }
       }
-      
-      console.log('Updating provider with data:', providerData);
       const provider = await ProviderModel.update(req.params.id, providerData);
       if (!provider) {
         return res.status(404).json({ error: 'Provider not found' });

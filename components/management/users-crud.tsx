@@ -12,14 +12,21 @@ import { Transition, Dialog, TransitionChild, DialogPanel } from '@headlessui/re
 import React, { Fragment, useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
 import { API_ENDPOINTS, buildMediaUrl } from '@/config/api.config';
+import { isSuperAdmin } from '@/utils/auth';
+import { ADMIN_USER_TYPE_OPTIONS } from '@/config/constants';
 
-const ComponentsAppsContactsUsers = () => {
+const UsersCrud = () => {
     const [addContactModal, setAddContactModal] = useState(false);
     const [viewMode, setViewMode] = useState('list');
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [filterType, setFilterType] = useState('');
+    const [superAdmin, setSuperAdmin] = useState(false);
+
+    useEffect(() => {
+        setSuperAdmin(isSuperAdmin());
+    }, []);
     
     // Pagination state
     const [pagination, setPagination] = useState({
@@ -36,12 +43,13 @@ const ComponentsAppsContactsUsers = () => {
         password: '',
         first_name: '',
         last_name: '',
-        user_type: 'patient',
+        user_type: 'admin',
         mobile_number: '',
         date_of_birth: '',
         address: '',
         is_active: true,
         profile_picture: null,
+        menu_permissions: [] as string[],
     });
     const [params, setParams] = useState<any>(JSON.parse(JSON.stringify(defaultParams)));
     const [uploadedPhoto, setUploadedPhoto] = useState<File | null>(null);
@@ -57,10 +65,13 @@ const ComponentsAppsContactsUsers = () => {
         setLoading(true);
         try {
             const token = localStorage.getItem('auth_token');
+            // Always filter to admin-panel user types only
+            const adminTypes = filterType || 'super_admin,admin,support,account';
             const queryParams = new URLSearchParams({
                 page: pagination.page.toString(),
                 limit: pagination.limit.toString(),
                 ...(filterType && { user_type: filterType }),
+                ...(!filterType && { user_types: 'super_admin,admin,support,account' }),
             });
 
             const response = await fetch(`${API_ENDPOINTS.users}?${queryParams}`, {
@@ -233,6 +244,8 @@ const ComponentsAppsContactsUsers = () => {
             if (params.mobile_number) formData.append('mobile_number', params.mobile_number);
             if (params.date_of_birth) formData.append('date_of_birth', params.date_of_birth);
             if (params.address) formData.append('address', params.address);
+            // Send menu_permissions as JSON string
+            formData.append('menu_permissions', JSON.stringify(params.menu_permissions || []));
             
             // Add password for new users
             if (!params.id && params.password) {
@@ -317,12 +330,13 @@ const ComponentsAppsContactsUsers = () => {
                 password: '',
                 first_name: user.first_name || '',
                 last_name: user.last_name || '',
-                user_type: user.user_type || 'patient',
+                user_type: user.user_type || 'admin',
                 mobile_number: user.mobile_number || '',
                 date_of_birth: user.date_of_birth ? user.date_of_birth.split('T')[0] : '',
                 address: user.address || '',
                 is_active: user.is_active !== false,
                 profile_picture: user.profile_picture || null,
+                menu_permissions: Array.isArray(user.menu_permissions) ? user.menu_permissions : [],
             });
         }
         setAddContactModal(true);
@@ -427,9 +441,10 @@ const ComponentsAppsContactsUsers = () => {
 
     const getUserTypeBadge = (type: string) => {
         const badges: any = {
+            super_admin: 'badge bg-dark',
             admin: 'badge bg-danger',
-            provider: 'badge bg-primary',
-            patient: 'badge bg-success',
+            support: 'badge bg-warning',
+            account: 'badge bg-info',
         };
         return badges[type] || 'badge bg-secondary';
     };
@@ -440,12 +455,14 @@ const ComponentsAppsContactsUsers = () => {
                 <h2 className="text-xl">Users Management</h2>
                 <div className="flex w-full flex-col gap-4 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
                     <div className="flex gap-3">
-                        <div>
-                            <button type="button" className="btn btn-primary" onClick={() => editUser()}>
-                                <IconUserPlus className="ltr:mr-2 rtl:ml-2" />
-                                Add User
-                            </button>
-                        </div>
+                        {superAdmin && (
+                            <div>
+                                <button type="button" className="btn btn-primary" onClick={() => editUser()}>
+                                    <IconUserPlus className="ltr:mr-2 rtl:ml-2" />
+                                    Add User
+                                </button>
+                            </div>
+                        )}
                         {/* <div>
                             <button type="button" className={`btn btn-outline-primary p-2 ${viewMode === 'list' && 'bg-primary text-white'}`} onClick={() => setViewMode('list')}>
                                 <IconListCheck />
@@ -486,9 +503,10 @@ const ComponentsAppsContactsUsers = () => {
                             className="form-select"
                         >
                             <option value="">All Types</option>
+                            <option value="super_admin">Super Admin</option>
                             <option value="admin">Admin</option>
-                            <option value="provider">Provider</option>
-                            <option value="patient">Patient</option>
+                            <option value="support">Support</option>
+                            <option value="account">Account</option>
                         </select>
                     </div>
                     <div>
@@ -585,28 +603,34 @@ const ComponentsAppsContactsUsers = () => {
                                             </td>
                                             <td>
                                                 <div className="flex items-center justify-center gap-2">
-                                                    <button 
-                                                        type="button" 
-                                                        className={`btn btn-sm ${user.is_active ? 'btn-outline-warning' : 'btn-outline-success'}`}
-                                                        onClick={() => toggleUserStatus(user)}
-                                                        title={user.is_active ? 'Deactivate' : 'Activate'}
-                                                    >
-                                                        {user.is_active ? '🔒' : '✓'}
-                                                    </button>
-                                                    <button 
-                                                        type="button" 
-                                                        className="btn btn-sm btn-outline-primary"
-                                                        onClick={() => editUser(user)}
-                                                    >
-                                                        <IconPencil className="w-4 h-4" />
-                                                    </button>
-                                                    <button 
-                                                        type="button" 
-                                                        className="btn btn-sm btn-outline-danger"
-                                                        onClick={() => deleteUser(user)}
-                                                    >
-                                                        <IconTrash className="w-4 h-4" />
-                                                    </button>
+                                                    {superAdmin && (
+                                                        <button 
+                                                            type="button" 
+                                                            className={`btn btn-sm ${user.is_active ? 'btn-outline-warning' : 'btn-outline-success'}`}
+                                                            onClick={() => toggleUserStatus(user)}
+                                                            title={user.is_active ? 'Deactivate' : 'Activate'}
+                                                        >
+                                                            {user.is_active ? '🔒' : '✓'}
+                                                        </button>
+                                                    )}
+                                                    {superAdmin && (
+                                                        <button 
+                                                            type="button" 
+                                                            className="btn btn-sm btn-outline-primary"
+                                                            onClick={() => editUser(user)}
+                                                        >
+                                                            <IconPencil className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                    {superAdmin && (
+                                                        <button 
+                                                            type="button" 
+                                                            className="btn btn-sm btn-outline-danger"
+                                                            onClick={() => deleteUser(user)}
+                                                        >
+                                                            <IconTrash className="w-4 h-4" />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
@@ -716,27 +740,33 @@ const ComponentsAppsContactsUsers = () => {
                                     )}
                                 </div>
                                 <div className="mt-5 flex gap-2">
-                                    <button 
-                                        type="button" 
-                                        className={`btn ${user.is_active ? 'btn-outline-warning' : 'btn-outline-success'} flex-1`}
-                                        onClick={() => toggleUserStatus(user)}
-                                    >
-                                        {user.is_active ? 'Deactivate' : 'Activate'}
-                                    </button>
-                                    <button 
-                                        type="button" 
-                                        className="btn btn-outline-primary flex-1"
-                                        onClick={() => editUser(user)}
-                                    >
-                                        Edit
-                                    </button>
-                                    <button 
-                                        type="button" 
-                                        className="btn btn-outline-danger flex-1"
-                                        onClick={() => deleteUser(user)}
-                                    >
-                                        Delete
-                                    </button>
+                                    {superAdmin && (
+                                        <button 
+                                            type="button" 
+                                            className={`btn ${user.is_active ? 'btn-outline-warning' : 'btn-outline-success'} flex-1`}
+                                            onClick={() => toggleUserStatus(user)}
+                                        >
+                                            {user.is_active ? 'Deactivate' : 'Activate'}
+                                        </button>
+                                    )}
+                                    {superAdmin && (
+                                        <button 
+                                            type="button" 
+                                            className="btn btn-outline-primary flex-1"
+                                            onClick={() => editUser(user)}
+                                        >
+                                            Edit
+                                        </button>
+                                    )}
+                                    {superAdmin && (
+                                        <button 
+                                            type="button" 
+                                            className="btn btn-outline-danger flex-1"
+                                            onClick={() => deleteUser(user)}
+                                        >
+                                            Delete
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         ))
@@ -838,9 +868,9 @@ const ComponentsAppsContactsUsers = () => {
                                                         value={params.user_type} 
                                                         onChange={(e) => changeValue(e)}
                                                     >
-                                                        <option value="patient">Patient</option>
-                                                        <option value="provider">Provider</option>
-                                                        <option value="admin">Admin</option>
+                                                        {ADMIN_USER_TYPE_OPTIONS.map(opt => (
+                                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                        ))}
                                                     </select>
                                                 </div>
                                                 <div className="mb-5">
@@ -929,6 +959,50 @@ const ComponentsAppsContactsUsers = () => {
                                                     )}
                                                 </div>
                                             </div>
+
+                                            {/* Menu Permissions — only super_admin can assign */}
+                                            {superAdmin && params.user_type !== 'super_admin' && (
+                                                <div className="mt-5 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                                                    <label className="block text-sm font-semibold mb-3">
+                                                        Menu Permissions
+                                                        <span className="ml-2 text-xs font-normal text-gray-500">Select which menus this user can access</span>
+                                                    </label>
+                                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                                        {[
+                                                            { key: 'patients', label: 'Patients' },
+                                                            { key: 'providers', label: 'Providers' },
+                                                            { key: 'appointments', label: 'Appointments' },
+                                                            { key: 'treatment-plans', label: 'Treatment Plans' },
+                                                            { key: 'prescriptions', label: 'Prescriptions' },
+                                                            { key: 'plans', label: 'Plans' },
+                                                            { key: 'provider-fees', label: 'Treatment Fees' },
+                                                            { key: 'payments', label: 'Payments' },
+                                                            { key: 'documents', label: 'Documents' },
+                                                            { key: 'reviews', label: 'Reviews' },
+                                                            { key: 'notifications', label: 'Notifications' },
+                                                            { key: 'support-tickets', label: 'Support Tickets' },
+                                                            { key: 'patienteducation', label: 'Patient Education' },
+                                                        ].map(menu => (
+                                                            <label key={menu.key} className="flex items-center gap-2 cursor-pointer">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    className="form-checkbox"
+                                                                    checked={(params.menu_permissions || []).includes(menu.key)}
+                                                                    onChange={(e) => {
+                                                                        const current: string[] = params.menu_permissions || [];
+                                                                        const updated = e.target.checked
+                                                                            ? [...current, menu.key]
+                                                                            : current.filter((k: string) => k !== menu.key);
+                                                                        setParams({ ...params, menu_permissions: updated });
+                                                                    }}
+                                                                />
+                                                                <span className="text-sm">{menu.label}</span>
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             <div className="mt-8 flex items-center justify-end gap-3">
                                                 <button type="button" className="btn btn-outline-danger" onClick={() => setAddContactModal(false)}>
                                                     Cancel
@@ -949,4 +1023,4 @@ const ComponentsAppsContactsUsers = () => {
     );
 };
 
-export default ComponentsAppsContactsUsers;
+export default UsersCrud;

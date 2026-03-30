@@ -28,8 +28,9 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
             try {
                 const userData = JSON.parse(user);
                 
-                // Check if user is admin
-                if (userData.user_type !== 'admin') {
+                // Check if user is an allowed admin type
+                const allowedTypes = ['super_admin', 'admin', 'support', 'account'];
+                if (!allowedTypes.includes(userData.user_type)) {
                     // Not an admin, clear storage and redirect
                     localStorage.clear();
                     document.cookie = 'auth_token=; path=/; max-age=0';

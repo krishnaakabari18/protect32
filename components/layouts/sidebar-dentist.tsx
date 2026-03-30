@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import Link from 'next/link';
 import { toggleSidebar } from '@/store/themeConfigSlice';
 import { IRootState } from '@/store';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import IconCaretsDown from '@/components/icon/icon-carets-down';
 import IconMenuDashboard from '@/components/icon/menu/icon-menu-dashboard';
 import IconMinus from '@/components/icon/icon-minus';
@@ -18,12 +18,26 @@ import IconBell from '@/components/icon/icon-bell';
 import IconNotes from '@/components/icon/icon-notes';
 import IconHelp from '@/components/icon/icon-help-circle';
 import { usePathname } from 'next/navigation';
+import { getUser } from '@/utils/auth';
+import { MENU_PERMISSIONS } from '@/config/constants';
 
 const SidebarDentist = () => {
     const dispatch = useDispatch();
     const pathname = usePathname();
     const themeConfig = useSelector((state: IRootState) => state.themeConfig);
     const semidark = useSelector((state: IRootState) => state.themeConfig.semidark);
+    const [allowedMenus, setAllowedMenus] = useState<string[]>([]);
+
+    useEffect(() => {
+        const user = getUser();
+        const userType = user?.user_type || '';
+        // Use per-user menu_permissions if set, otherwise fall back to role defaults
+        if (Array.isArray(user?.menu_permissions) && user.menu_permissions.length > 0) {
+            setAllowedMenus(user.menu_permissions);
+        } else {
+            setAllowedMenus(MENU_PERMISSIONS[userType] || []);
+        }
+    }, []);
 
     useEffect(() => {
         const selector = document.querySelector('.sidebar ul a[href="' + window.location.pathname + '"]');
@@ -34,9 +48,7 @@ const SidebarDentist = () => {
                 let ele: any = ul.closest('li.menu').querySelectorAll('.nav-link') || [];
                 if (ele.length) {
                     ele = ele[0];
-                    setTimeout(() => {
-                        ele.click();
-                    });
+                    setTimeout(() => { ele.click(); });
                 }
             }
         }
@@ -52,25 +64,34 @@ const SidebarDentist = () => {
     const setActiveRoute = () => {
         let allLinks = document.querySelectorAll('.sidebar ul a.active');
         for (let i = 0; i < allLinks.length; i++) {
-            const element = allLinks[i];
-            element?.classList.remove('active');
+            allLinks[i]?.classList.remove('active');
         }
         const selector = document.querySelector('.sidebar ul a[href="' + window.location.pathname + '"]');
         selector?.classList.add('active');
     };
 
+    const can = (menu: string) => allowedMenus.includes(menu);
+
+    const menuItem = (href: string, icon: React.ReactNode, label: string) => (
+        <li className="nav-item">
+            <Link href={href} className="group">
+                <div className="flex items-center">
+                    {icon}
+                    <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">{label}</span>
+                </div>
+            </Link>
+        </li>
+    );
+
     return (
         <div className={semidark ? 'dark' : ''}>
-            <nav
-                className={`sidebar fixed bottom-0 top-0 z-50 h-full min-h-screen w-[260px] shadow-[5px_0_25px_0_rgba(94,92,154,0.1)] transition-all duration-300 ${semidark ? 'text-white-dark' : ''}`}
-            >
+            <nav className={`sidebar fixed bottom-0 top-0 z-50 h-full min-h-screen w-[260px] shadow-[5px_0_25px_0_rgba(94,92,154,0.1)] transition-all duration-300 ${semidark ? 'text-white-dark' : ''}`}>
                 <div className="h-full bg-white dark:bg-black">
                     <div className="flex items-center justify-between px-4 py-3">
                         <Link href="/" className="main-logo flex shrink-0 items-center">
                             <img className="ml-[5px] w-8 flex-none" src="/assets/images/logo.svg" alt="logo" />
                             <span className="align-middle text-2xl font-semibold ltr:ml-1.5 rtl:mr-1.5 dark:text-white-light lg:inline">Protect32</span>
                         </Link>
-
                         <button
                             type="button"
                             className="collapse-icon flex h-8 w-8 items-center rounded-full transition duration-300 hover:bg-gray-500/10 rtl:rotate-180 dark:text-white-light dark:hover:bg-dark-light/10"
@@ -81,7 +102,7 @@ const SidebarDentist = () => {
                     </div>
                     <PerfectScrollbar className="relative h-[calc(100vh-80px)]">
                         <ul className="relative space-y-0.5 p-4 py-0 font-semibold">
-                            {/* Dashboard */}
+                            {/* Dashboard — always visible */}
                             <li className="nav-item">
                                 <Link href="/" className="group">
                                     <div className="flex items-center">
@@ -96,145 +117,47 @@ const SidebarDentist = () => {
                                 <span>Management</span>
                             </h2>
 
-                            {/* Users */}
-                            <li className="nav-item">
-                                <Link href="/management/users" className="group">
-                                    <div className="flex items-center">
-                                        <IconMenuUsers className="shrink-0 group-hover:!text-primary" />
-                                        <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Users</span>
-                                    </div>
-                                </Link>
-                            </li>
+                            {can('users') && menuItem('/management/users',
+                                <IconMenuUsers className="shrink-0 group-hover:!text-primary" />, 'Users')}
 
-                            {/* Patients */}
-                            <li className="nav-item">
-                                <Link href="/management/patients" className="group">
-                                    <div className="flex items-center">
-                                        <IconUser className="shrink-0 group-hover:!text-primary" />
-                                        <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Patients</span>
-                                    </div>
-                                </Link>
-                            </li>
+                            {can('patients') && menuItem('/management/patients',
+                                <IconUser className="shrink-0 group-hover:!text-primary" />, 'Patients')}
 
-                            {/* Providers */}
-                            <li className="nav-item">
-                                <Link href="/management/providers" className="group">
-                                    <div className="flex items-center">
-                                        <IconUser className="shrink-0 group-hover:!text-primary" />
-                                        <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Providers</span>
-                                    </div>
-                                </Link>
-                            </li>
+                            {can('providers') && menuItem('/management/providers',
+                                <IconUser className="shrink-0 group-hover:!text-primary" />, 'Providers')}
 
-                            {/* Appointments */}
-                            <li className="nav-item">
-                                <Link href="/management/appointments" className="group">
-                                    <div className="flex items-center">
-                                        <IconCalendar className="shrink-0 group-hover:!text-primary" />
-                                        <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Appointments</span>
-                                    </div>
-                                </Link>
-                            </li>
+                            {can('appointments') && menuItem('/management/appointments',
+                                <IconCalendar className="shrink-0 group-hover:!text-primary" />, 'Appointments')}
 
-                            {/* Treatment Plans */}
-                            <li className="nav-item">
-                                <Link href="/management/treatment-plans" className="group">
-                                    <div className="flex items-center">
-                                        <IconNotes className="shrink-0 group-hover:!text-primary" />
-                                        <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Treatment Plans</span>
-                                    </div>
-                                </Link>
-                            </li>
+                            {can('treatment-plans') && menuItem('/management/treatment-plans',
+                                <IconNotes className="shrink-0 group-hover:!text-primary" />, 'Treatment Plans')}
 
-                            {/* Prescriptions */}
-                            <li className="nav-item">
-                                <Link href="/management/prescriptions" className="group">
-                                    <div className="flex items-center">
-                                        <IconFile className="shrink-0 group-hover:!text-primary" />
-                                        <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Prescriptions</span>
-                                    </div>
-                                </Link>
-                            </li>
+                            {can('prescriptions') && menuItem('/management/prescriptions',
+                                <IconFile className="shrink-0 group-hover:!text-primary" />, 'Prescriptions')}
 
-                            {/* Plans */}
-                            <li className="nav-item">
-                                <Link href="/management/plans" className="group">
-                                    <div className="flex items-center">
-                                        <IconDollarSign className="shrink-0 group-hover:!text-primary" />
-                                        <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Plans</span>
-                                    </div>
-                                </Link>
-                            </li>
+                            {can('plans') && menuItem('/management/plans',
+                                <IconDollarSign className="shrink-0 group-hover:!text-primary" />, 'Plans')}
 
-                            {/* Provider Fees */}
-                            <li className="nav-item">
-                                <Link href="/management/provider-fees" className="group">
-                                    <div className="flex items-center">
-                                        <IconDollarSign className="shrink-0 group-hover:!text-primary" />
-                                        <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Treatment Fees</span>
-                                    </div>
-                                </Link>
-                            </li>
+                            {can('provider-fees') && menuItem('/management/provider-fees',
+                                <IconDollarSign className="shrink-0 group-hover:!text-primary" />, 'Treatment Fees')}
 
-                            {/* Payments */}
-                            <li className="nav-item">
-                                <Link href="/management/payments" className="group">
-                                    <div className="flex items-center">
-                                        <IconDollarSign className="shrink-0 group-hover:!text-primary" />
-                                        <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Payments</span>
-                                    </div>
-                                </Link>
-                            </li>
+                            {can('payments') && menuItem('/management/payments',
+                                <IconDollarSign className="shrink-0 group-hover:!text-primary" />, 'Payments')}
 
-                            {/* Documents */}
-                            <li className="nav-item">
-                                <Link href="/management/documents" className="group">
-                                    <div className="flex items-center">
-                                        <IconFile className="shrink-0 group-hover:!text-primary" />
-                                        <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Documents</span>
-                                    </div>
-                                </Link>
-                            </li>
+                            {can('documents') && menuItem('/management/documents',
+                                <IconFile className="shrink-0 group-hover:!text-primary" />, 'Documents')}
 
-                            {/* Reviews */}
-                            <li className="nav-item">
-                                <Link href="/management/reviews" className="group">
-                                    <div className="flex items-center">
-                                        <IconStar className="shrink-0 group-hover:!text-primary" />
-                                        <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Reviews</span>
-                                    </div>
-                                </Link>
-                            </li>
+                            {can('reviews') && menuItem('/management/reviews',
+                                <IconStar className="shrink-0 group-hover:!text-primary" />, 'Reviews')}
 
-                            {/* Notifications */}
-                            <li className="nav-item">
-                                <Link href="/management/notifications" className="group">
-                                    <div className="flex items-center">
-                                        <IconBell className="shrink-0 group-hover:!text-primary" />
-                                        <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Notifications</span>
-                                    </div>
-                                </Link>
-                            </li>
+                            {can('notifications') && menuItem('/management/notifications',
+                                <IconBell className="shrink-0 group-hover:!text-primary" />, 'Notifications')}
 
-                            {/* Support Tickets */}
-                            <li className="nav-item">
-                                <Link href="/management/support-tickets" className="group">
-                                    <div className="flex items-center">
-                                        <IconHelp className="shrink-0 group-hover:!text-primary" />
-                                        <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Support Tickets</span>
-                                    </div>
-                                </Link>
-                            </li>
+                            {can('support-tickets') && menuItem('/management/support-tickets',
+                                <IconHelp className="shrink-0 group-hover:!text-primary" />, 'Support Tickets')}
 
-                            {/* Patient Education */}
-                            <li className="nav-item">
-                                <Link href="/management/patienteducation" className="group">
-                                    <div className="flex items-center">
-                                        <IconNotes className="shrink-0 group-hover:!text-primary" />
-                                        <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">Patient Education</span>
-                                    </div>
-                                </Link>
-                            </li>
+                            {can('patienteducation') && menuItem('/management/patienteducation',
+                                <IconNotes className="shrink-0 group-hover:!text-primary" />, 'Patient Education')}
                         </ul>
                     </PerfectScrollbar>
                 </div>

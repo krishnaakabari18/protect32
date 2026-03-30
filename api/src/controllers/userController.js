@@ -69,7 +69,7 @@ class UserController {
       console.log('Request Body:', req.body);
       console.log('Request File:', req.file);
       
-      const { email, password, mobile_number, first_name, last_name, user_type, date_of_birth, address } = req.body;
+      const { email, password, mobile_number, first_name, last_name, user_type, date_of_birth, address, menu_permissions } = req.body;
 
       if (!email || !password) {
         if (req.file) deleteFile(req.file.path);
@@ -94,7 +94,8 @@ class UserController {
         user_type: user_type || 'patient',
         profile_picture: null,
         date_of_birth,
-        address
+        address,
+        menu_permissions: menu_permissions ? (Array.isArray(menu_permissions) ? menu_permissions : JSON.parse(menu_permissions)) : null,
       });
 
       // Handle profile picture if uploaded
@@ -143,9 +144,10 @@ class UserController {
 
   static async getAllUsers(req, res) {
     try {
-      const { user_type, is_active, page = 1, limit = 10 } = req.query;
+      const { user_type, user_types, is_active, page = 1, limit = 10 } = req.query;
       const filters = {};
       if (user_type) filters.user_type = user_type;
+      else if (user_types) filters.user_types = user_types;
       if (is_active !== undefined) filters.is_active = is_active === 'true';
 
       const allUsers = await UserModel.findAll(filters);
@@ -215,6 +217,11 @@ class UserController {
       if (req.body.date_of_birth) updateData.date_of_birth = req.body.date_of_birth;
       if (req.body.address) updateData.address = req.body.address;
       if (req.body.is_active !== undefined) updateData.is_active = req.body.is_active === 'true' || req.body.is_active === true;
+      if (req.body.menu_permissions !== undefined) {
+        updateData.menu_permissions = req.body.menu_permissions
+          ? (Array.isArray(req.body.menu_permissions) ? req.body.menu_permissions : JSON.parse(req.body.menu_permissions))
+          : null;
+      }
       
       // Handle password update
       if (req.body.password) {

@@ -1,12 +1,14 @@
 import { API_ENDPOINTS } from '@/config/api.config';
 
+export const ADMIN_USER_TYPES = ['super_admin', 'admin', 'support', 'account'] as const;
+export type AdminUserType = typeof ADMIN_USER_TYPES[number];
+
 export const logout = async () => {
     try {
         const refreshToken = localStorage.getItem('refresh_token');
         const authToken = localStorage.getItem('auth_token');
 
         if (refreshToken && authToken) {
-            // Call logout API
             await fetch(API_ENDPOINTS.auth.logout, {
                 method: 'POST',
                 headers: {
@@ -20,13 +22,10 @@ export const logout = async () => {
     } catch (error) {
         console.error('Logout API error:', error);
     } finally {
-        // Clear local storage and cookies regardless of API call result
         localStorage.removeItem('auth_token');
         localStorage.removeItem('refresh_token');
         localStorage.removeItem('user');
         document.cookie = 'auth_token=; path=/; max-age=0';
-        
-        // Redirect to login
         window.location.href = '/auth/boxed-signin';
     }
 };
@@ -44,8 +43,13 @@ export const getAuthToken = () => {
     return localStorage.getItem('auth_token');
 };
 
+export const isSuperAdmin = (): boolean => {
+    const user = getUser();
+    return user?.user_type === 'super_admin';
+};
+
 export const isAuthenticated = () => {
     const token = localStorage.getItem('auth_token');
     const user = getUser();
-    return !!(token && user && user.user_type === 'admin');
+    return !!(token && user && (ADMIN_USER_TYPES as readonly string[]).includes(user.user_type));
 };

@@ -1,4 +1,4 @@
-import ComponentsAppsContactsUsers from '@/components/apps/contacts/components-apps-contacts-users';
+import UsersCrud from '@/components/management/users-crud';
 import { Metadata } from 'next';
 import React from 'react';
 
@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 };
 
 const Contacts = () => {
-    return <ComponentsAppsContactsUsers />;
+    return <UsersCrud />;
 };
 
 export default Contacts;

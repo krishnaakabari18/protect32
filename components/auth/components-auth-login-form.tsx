@@ -33,9 +33,10 @@ const ComponentsAuthLoginForm = () => {
                 throw new Error(data.error || 'Login failed');
             }
 
-            // Check if user is admin
-            if (data.data.user.user_type !== 'admin') {
-                throw new Error('Only admin users can access this dashboard');
+            // Check if user is an allowed admin type
+            const allowedTypes = ['super_admin', 'admin', 'support', 'account'];
+            if (!allowedTypes.includes(data.data.user.user_type)) {
+                throw new Error('Access denied. Only admin users can access this dashboard');
             }
 
             // Store tokens and user data

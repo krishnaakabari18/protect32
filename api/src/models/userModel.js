@@ -2,13 +2,13 @@ const pool = require('../config/database');
 
 class UserModel {
   static async create(userData) {
-    const { email, password_hash, mobile_number, first_name, last_name, user_type, profile_picture, date_of_birth, address } = userData;
+    const { email, password_hash, mobile_number, first_name, last_name, user_type, profile_picture, date_of_birth, address, menu_permissions } = userData;
     const query = `
-      INSERT INTO users (email, password_hash, mobile_number, first_name, last_name, user_type, profile_picture, date_of_birth, address)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      INSERT INTO users (email, password_hash, mobile_number, first_name, last_name, user_type, profile_picture, date_of_birth, address, menu_permissions)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *
     `;
-    const values = [email, password_hash, mobile_number, first_name, last_name, user_type, profile_picture, date_of_birth, address];
+    const values = [email, password_hash, mobile_number, first_name, last_name, user_type, profile_picture, date_of_birth, address, menu_permissions || null];
     const result = await pool.query(query, values);
     return result.rows[0];
   }
@@ -34,6 +34,15 @@ class UserModel {
       query += ` AND user_type = $${paramCount}`;
       values.push(filters.user_type);
       paramCount++;
+    } else if (filters.user_types) {
+      // Support comma-separated list of user types
+      const types = filters.user_types.split(',').map(t => t.trim()).filter(Boolean);
+      if (types.length > 0) {
+        const placeholders = types.map((_, i) => `$${paramCount + i}`).join(', ');
+        query += ` AND user_type IN (${placeholders})`;
+        values.push(...types);
+        paramCount += types.length;
+      }
     }
 
     if (filters.is_active !== undefined) {

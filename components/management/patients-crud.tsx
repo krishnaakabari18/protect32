@@ -290,8 +290,7 @@ const PatientsCrud = () => {
         address_line_1: 'contact',
         city: 'contact',
         state: 'contact',
-        insurance_provider: 'insurance',
-        insurance_policy_number: 'insurance',
+
     };
 
     // Required field labels for error messages
@@ -302,8 +301,7 @@ const PatientsCrud = () => {
         address_line_1: 'Address is required',
         city: 'City is required',
         state: 'State is required',
-        insurance_provider: 'Insurance provider is required',
-        insurance_policy_number: 'Insurance policy number is required',
+
     };
 
     const validateForm = (): Record<string, string> => {
@@ -1243,27 +1241,19 @@ const PatientsCrud = () => {
     const renderInsuranceTab = () => (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Insurance Provider <span className="text-red-500">*</span>
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Insurance Provider</label>
                 <input
                     type="text" name="insurance_provider" value={formData.insurance_provider}
-                    onChange={handleInputChange} onBlur={handleBlur}
-                    className={`form-input ${touched.insurance_provider && errors.insurance_provider ? 'border-red-500' : ''}`}
+                    onChange={handleInputChange} className="form-input"
                 />
-                {touched.insurance_provider && errors.insurance_provider && <p className="mt-1 text-xs text-red-500">{errors.insurance_provider}</p>}
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Insurance Policy Number <span className="text-red-500">*</span>
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Insurance Policy Number</label>
                 <input
                     type="text" name="insurance_policy_number" value={formData.insurance_policy_number}
-                    onChange={handleInputChange} onBlur={handleBlur}
-                    className={`form-input ${touched.insurance_policy_number && errors.insurance_policy_number ? 'border-red-500' : ''}`}
+                    onChange={handleInputChange} className="form-input"
                 />
-                {touched.insurance_policy_number && errors.insurance_policy_number && <p className="mt-1 text-xs text-red-500">{errors.insurance_policy_number}</p>}
             </div>
 
             <div>

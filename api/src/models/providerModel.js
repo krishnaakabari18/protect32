@@ -2,11 +2,10 @@ const pool = require('../config/database');
 
 class ProviderModel {
   static async create(providerData) {
-    const { 
-      id, specialty, experience_years, clinic_name, contact_number, 
-      location, coordinates, about, clinic_photos, clinic_video_url, 
+    const {
+      id, specialty, experience_years, clinic_name, contact_number,
+      location, coordinates, about, clinic_photos, clinic_video_url,
       availability, time_slots,
-      // New fields
       dental_chairs, iopa_xray_type, has_opg, has_ultrasonic_cleaner,
       intraoral_camera_type, rct_equipment, autoclave_type,
       sterilization_protocol, disinfection_protocol,
@@ -18,11 +17,11 @@ class ProviderModel {
       email, years_of_experience, state_dental_council_reg_number,
       state_dental_council_reg_photo, profile_photo
     } = providerData;
-    
+
     const query = `
       INSERT INTO providers (
-        id, specialty, experience_years, clinic_name, contact_number, 
-        location, coordinates, about, clinic_photos, clinic_video_url, 
+        id, specialty, experience_years, clinic_name, contact_number,
+        location, coordinates, about, clinic_photos, clinic_video_url,
         availability, time_slots,
         dental_chairs, iopa_xray_type, has_opg, has_ultrasonic_cleaner,
         intraoral_camera_type, rct_equipment, autoclave_type,
@@ -35,13 +34,13 @@ class ProviderModel {
         email, years_of_experience, state_dental_council_reg_number,
         state_dental_council_reg_photo, profile_photo
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41)
       RETURNING *
     `;
-    
+
     const values = [
-      id, specialty, experience_years || 0, clinic_name, contact_number, 
-      location, coordinates, about, clinic_photos || [], clinic_video_url, 
+      id, specialty, experience_years || 0, clinic_name, contact_number,
+      location, coordinates, about, clinic_photos || [], clinic_video_url,
       availability, time_slots ? JSON.stringify(time_slots) : null,
       dental_chairs || 2, iopa_xray_type || 'Digital', has_opg || false, has_ultrasonic_cleaner || true,
       intraoral_camera_type || 'USB Model', rct_equipment || 'Endomotor', autoclave_type || 'Pressure cooker type',
@@ -54,74 +53,91 @@ class ProviderModel {
       email, years_of_experience, state_dental_council_reg_number,
       state_dental_council_reg_photo, profile_photo
     ];
-    
+
     const result = await pool.query(query, values);
     return result.rows[0];
   }
 
   static async findAll(filters = {}) {
     let query = `
-      SELECT 
-        p.*, 
-        u.first_name, 
-        u.last_name, 
-        u.email as user_email, 
-        u.profile_picture as user_profile_picture 
-      FROM providers p 
-      LEFT JOIN users u ON p.id = u.id 
+      SELECT
+        p.*,
+        u.first_name, u.last_name,
+        u.email as user_email,
+        u.profile_picture as user_profile_picture,
+        COALESCE(
+          (SELECT json_agg(pp.procedure_id::text)
+           FROM provider_procedures pp WHERE pp.provider_id = p.id),
+          '[]'::json
+        ) as procedure_ids
+      FROM providers p
+      LEFT JOIN users u ON p.id = u.id
       WHERE 1=1
     `;
     const values = [];
-    let paramCount = 1;
+    let p = 1;
 
     if (filters.specialty) {
-      query += ` AND p.specialty ILIKE $${paramCount}`;
+      query += ` AND p.specialty ILIKE $${p++}`;
       values.push(`%${filters.specialty}%`);
-      paramCount++;
     }
-
     if (filters.location) {
-      query += ` AND p.location ILIKE $${paramCount}`;
+      query += ` AND p.location ILIKE $${p++}`;
       values.push(`%${filters.location}%`);
-      paramCount++;
     }
-
     if (filters.pincode) {
-      query += ` AND p.pincode = $${paramCount}`;
+      query += ` AND p.pincode = $${p++}`;
       values.push(filters.pincode);
-      paramCount++;
+    }
+    if (filters.search) {
+      query += ` AND (p.full_name ILIKE $${p} OR p.clinic_name ILIKE $${p} OR p.specialty ILIKE $${p})`;
+      values.push(`%${filters.search}%`);
+      p++;
     }
 
-    query += ' ORDER BY p.rating DESC, p.created_at DESC';
+    query += ' ORDER BY p.created_at DESC';
     const result = await pool.query(query, values);
     return result.rows;
   }
 
   static async findById(id) {
     const query = `
-      SELECT 
-        p.*, 
-        u.first_name, 
-        u.last_name, 
-        u.email as user_email, 
-        u.profile_picture as user_profile_picture 
-      FROM providers p 
-      LEFT JOIN users u ON p.id = u.id 
+      SELECT
+        p.*,
+        u.first_name, u.last_name,
+        u.email as user_email,
+        u.profile_picture as user_profile_picture,
+        COALESCE(
+          (SELECT json_agg(pp.procedure_id::text)
+           FROM provider_procedures pp WHERE pp.provider_id = p.id),
+          '[]'::json
+        ) as procedure_ids
+      FROM providers p
+      LEFT JOIN users u ON p.id = u.id
       WHERE p.id = $1
     `;
     const result = await pool.query(query, [id]);
     return result.rows[0];
   }
 
+  static async syncProcedures(providerId, procedureIds = []) {
+    await pool.query('DELETE FROM provider_procedures WHERE provider_id = $1', [providerId]);
+    if (!procedureIds || procedureIds.length === 0) return;
+    const placeholders = procedureIds.map((_, i) => `($1, $${i + 2})`).join(', ');
+    await pool.query(
+      `INSERT INTO provider_procedures (provider_id, procedure_id) VALUES ${placeholders} ON CONFLICT DO NOTHING`,
+      [providerId, ...procedureIds]
+    );
+  }
+
   static async update(id, providerData) {
     const fields = [];
     const values = [];
-    let paramCount = 1;
+    let p = 1;
 
-    // All updatable fields
     const allowedFields = [
-      'specialty', 'experience_years', 'clinic_name', 'contact_number', 
-      'location', 'coordinates', 'about', 'clinic_photos', 'clinic_video_url', 
+      'specialty', 'experience_years', 'clinic_name', 'contact_number',
+      'location', 'coordinates', 'about', 'clinic_photos', 'clinic_video_url',
       'availability', 'time_slots',
       'dental_chairs', 'iopa_xray_type', 'has_opg', 'has_ultrasonic_cleaner',
       'intraoral_camera_type', 'rct_equipment', 'autoclave_type',
@@ -137,41 +153,28 @@ class ProviderModel {
 
     allowedFields.forEach(key => {
       if (providerData[key] !== undefined) {
-        // Handle JSON fields
         if (['time_slots', 'specialists_availability', 'clinics', 'coordinates'].includes(key) && providerData[key]) {
-          fields.push(`${key} = $${paramCount}`);
+          fields.push(`${key} = $${p++}`);
           values.push(JSON.stringify(providerData[key]));
-          paramCount++;
         } else {
-          fields.push(`${key} = $${paramCount}`);
+          fields.push(`${key} = $${p++}`);
           values.push(providerData[key]);
-          paramCount++;
         }
       }
     });
 
-    if (fields.length === 0) {
-      throw new Error('No fields to update');
-    }
+    if (fields.length === 0) throw new Error('No fields to update');
 
-    // Add updated_at
-    fields.push(`updated_at = CURRENT_TIMESTAMP`);
-    
+    fields.push('updated_at = CURRENT_TIMESTAMP');
     values.push(id);
-    const query = `
-      UPDATE providers 
-      SET ${fields.join(', ')} 
-      WHERE id = $${paramCount} 
-      RETURNING *
-    `;
-    
+
+    const query = `UPDATE providers SET ${fields.join(', ')} WHERE id = $${p} RETURNING *`;
     const result = await pool.query(query, values);
     return result.rows[0];
   }
 
   static async delete(id) {
-    const query = 'DELETE FROM providers WHERE id = $1 RETURNING *';
-    const result = await pool.query(query, [id]);
+    const result = await pool.query('DELETE FROM providers WHERE id = $1 RETURNING *', [id]);
     return result.rows[0];
   }
 }

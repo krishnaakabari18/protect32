@@ -247,7 +247,15 @@ class ProviderController {
       console.log('Creating provider with data:', providerData);
       const provider = await ProviderModel.create(providerData);
       console.log('Provider created successfully:', provider);
-      
+
+      // Sync procedures
+      try {
+        const procedureIds = req.body.procedure_ids
+          ? (typeof req.body.procedure_ids === 'string' ? JSON.parse(req.body.procedure_ids) : req.body.procedure_ids)
+          : [];
+        await ProviderModel.syncProcedures(provider.id, procedureIds);
+      } catch (e) { console.error('Error syncing procedures:', e); }
+
       // Convert relative paths to absolute URLs
       const providerWithUrls = convertProviderUrls(provider);
       
@@ -471,7 +479,15 @@ class ProviderController {
       if (!provider) {
         return res.status(404).json({ error: 'Provider not found' });
       }
-      
+
+      // Sync procedures
+      try {
+        const procedureIds = req.body.procedure_ids
+          ? (typeof req.body.procedure_ids === 'string' ? JSON.parse(req.body.procedure_ids) : req.body.procedure_ids)
+          : [];
+        await ProviderModel.syncProcedures(provider.id, procedureIds);
+      } catch (e) { console.error('Error syncing procedures:', e); }
+
       // Convert relative paths to absolute URLs
       const providerWithUrls = convertProviderUrls(provider);
       

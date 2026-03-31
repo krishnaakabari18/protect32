@@ -66,6 +66,7 @@ const DEFAULT_VALUES = {
     time_slots: DEFAULT_TIME_SLOTS.map(s => ({ ...s })),
     clinic_photos: [],
     clinic_video_url: '',
+    procedure_ids: [] as string[],
 };
 
 const ProvidersCRUD = () => {
@@ -73,6 +74,8 @@ const ProvidersCRUD = () => {
     const [activeTab, setActiveTab] = useState('provider');
     const [items, setItems] = useState<any[]>([]);
     const [users, setUsers] = useState<any[]>([]);
+    const [procedures, setProcedures] = useState<any[]>([]);
+    const [procedureDropdownOpen, setProcedureDropdownOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 });
@@ -89,7 +92,28 @@ const ProvidersCRUD = () => {
     const cities = ['Mumbai','Delhi','Bangalore','Chennai','Kolkata','Hyderabad','Pune','Ahmedabad'];
     const states = ['Maharashtra','Delhi','Karnataka','Tamil Nadu','West Bengal','Telangana','Gujarat'];
 
-    useEffect(() => { fetchUsers(); fetchItems(); }, [pagination.page, pagination.limit]);
+    useEffect(() => { fetchUsers(); fetchItems(); fetchProcedures(); }, [pagination.page, pagination.limit]);
+
+    // Close procedure dropdown on outside click
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            if (!target.closest('.procedure-dropdown-container')) setProcedureDropdownOpen(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    const fetchProcedures = async () => {
+        try {
+            const token = localStorage.getItem('auth_token');
+            const res = await fetch(`${API_ENDPOINTS.procedures}?limit=1000&is_active=true`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+            });
+            const data = await res.json();
+            if (res.ok) setProcedures(data.data || []);
+        } catch (e) { console.error(e); }
+    };
 
     const fetchUsers = async () => {
         try {
@@ -171,6 +195,8 @@ const ProvidersCRUD = () => {
                 if (params[key] === null || params[key] === undefined) return;
                 if (['specialists_availability','clinics','time_slots','coordinates'].includes(key)) {
                     fd.append(key, JSON.stringify(params[key]));
+                } else if (key === 'procedure_ids') {
+                    fd.append('procedure_ids', JSON.stringify(params[key] || []));
                 } else if (['state_dental_council_reg_photo','profile_photo'].includes(key)) {
                     if (params[key] instanceof File) fd.append(key, params[key]);
                 } else if (key === 'clinic_photos') {
@@ -216,6 +242,9 @@ const ProvidersCRUD = () => {
             // Always ensure exactly 1 clinic
             if (!json.clinics || json.clinics.length === 0) json.clinics = [{ ...DEFAULT_CLINIC }];
             else json.clinics = [json.clinics[0]];
+            // Load procedure_ids
+            json.procedure_ids = Array.isArray(item.procedure_ids) ? item.procedure_ids
+                : (typeof item.procedure_ids === 'string' ? JSON.parse(item.procedure_ids) : []);
         }
         setParams(json); setAddModal(true);
     };
@@ -400,6 +429,59 @@ const ProvidersCRUD = () => {
                     <div className="mt-2 relative inline-block">
                         <img src={imgSrc(params.profile_photo)} alt="Profile" className="w-24 h-24 object-cover rounded-full border" onError={e => { e.currentTarget.style.display='none'; }} />
                         {!isView && <button type="button" onClick={() => params.profile_photo instanceof File ? setParams({...params, profile_photo: null}) : deleteProviderImage('profile_photo', params.profile_photo)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">×</button>}
+                    </div>
+                )}
+            </div>
+            {/* Procedures multi-select */}
+            <div className="md:col-span-3">
+                <label>Procedures</label>
+                <div className="relative procedure-dropdown-container">
+                    <button
+                        type="button"
+                        className="form-input w-full text-left flex items-center justify-between"
+                        onClick={() => !isView && setProcedureDropdownOpen(o => !o)}
+                        disabled={isView}
+                    >
+                        <span className="truncate">
+                            {params.procedure_ids?.length > 0
+                                ? procedures.filter(p => params.procedure_ids.includes(p.id)).map(p => p.name).join(', ')
+                                : 'Select Procedures'}
+                        </span>
+                        <span className="ml-2 text-gray-400">▾</span>
+                    </button>
+                    {procedureDropdownOpen && !isView && (
+                        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                            {procedures.length === 0 ? (
+                                <div className="px-4 py-3 text-sm text-gray-400">No procedures available</div>
+                            ) : procedures.map(proc => (
+                                <label key={proc.id} className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        className="form-checkbox"
+                                        checked={params.procedure_ids?.includes(proc.id) || false}
+                                        onChange={e => {
+                                            const current: string[] = params.procedure_ids || [];
+                                            const updated = e.target.checked
+                                                ? [...current, proc.id]
+                                                : current.filter((id: string) => id !== proc.id);
+                                            setParams({ ...params, procedure_ids: updated });
+                                        }}
+                                    />
+                                    <span className="text-sm">{proc.name}</span>
+                                    {proc.category && <span className="ml-auto text-xs text-gray-400">{proc.category}</span>}
+                                </label>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                {params.procedure_ids?.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                        {procedures.filter(p => params.procedure_ids.includes(p.id)).map(p => (
+                            <span key={p.id} className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary rounded px-2 py-0.5">
+                                {p.name}
+                                {!isView && <button type="button" onClick={() => setParams({ ...params, procedure_ids: params.procedure_ids.filter((id: string) => id !== p.id) })}>×</button>}
+                            </span>
+                        ))}
                     </div>
                 )}
             </div>

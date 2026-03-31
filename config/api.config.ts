@@ -88,6 +88,12 @@ export const API_ENDPOINTS = {
   // Plan Features
   planFeatures: `${API_BASE_URL}/plan-features`,
   
+  // CMS Pages
+  cmsPages: `${API_BASE_URL}/cms-pages`,
+
+  // FAQs
+  faqs: `${API_BASE_URL}/faqs`,
+  
   // Notifications
   notifications: `${API_BASE_URL}/notifications`,
   

@@ -156,6 +156,12 @@ const SidebarDentist = () => {
                             {can('support-tickets') && menuItem('/management/support-tickets',
                                 <IconHelp className="shrink-0 group-hover:!text-primary" />, 'Support Tickets')}
 
+                            {can('cms-pages') && menuItem('/management/cms-pages',
+                                <IconFile className="shrink-0 group-hover:!text-primary" />, 'CMS Pages')}
+
+                            {can('faqs') && menuItem('/management/faqs',
+                                <IconFile className="shrink-0 group-hover:!text-primary" />, 'FAQs')}
+
                             {can('patienteducation') && menuItem('/management/patienteducation',
                                 <IconNotes className="shrink-0 group-hover:!text-primary" />, 'Patient Education')}
                         </ul>

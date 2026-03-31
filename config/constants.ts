@@ -23,17 +23,17 @@ export const ADMIN_USER_TYPE_OPTIONS = [
 // To add/remove menu access for a role, edit the arrays below.
 // Available keys: users, patients, providers, appointments, treatment-plans,
 //   prescriptions, plans, provider-fees, payments, documents,
-//   reviews, notifications, support-tickets, patienteducation
+//   reviews, notifications, support-tickets, patienteducation, cms-pages
 export const MENU_PERMISSIONS: Record<string, string[]> = {
     super_admin: [
         'users', 'patients', 'providers', 'appointments', 'treatment-plans',
         'prescriptions', 'plans', 'provider-fees', 'payments', 'documents',
-        'reviews', 'notifications', 'support-tickets', 'patienteducation',
+        'reviews', 'notifications', 'support-tickets', 'patienteducation', 'cms-pages', 'faqs',
     ],
     admin: [
         'patients', 'providers', 'appointments', 'treatment-plans',
         'prescriptions', 'plans', 'provider-fees', 'payments', 'documents',
-        'reviews', 'notifications', 'support-tickets', 'patienteducation',
+        'reviews', 'notifications', 'support-tickets', 'patienteducation', 'cms-pages', 'faqs',
     ],
     support: [
         'patients', 'appointments', 'support-tickets', 'notifications',

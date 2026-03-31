@@ -339,12 +339,12 @@ const DocumentsCRUD = () => {
             </div>
 
             {/* Filters */}
-            <div className="flex flex-wrap gap-3 mb-5">
-                <select className="form-select" value={filterPatient} onChange={e => { setFilterPatient(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}>
+            <div className="flex flex-wrap items-center gap-3 mb-5">
+                <select className="form-select w-auto" value={filterPatient} onChange={e => { setFilterPatient(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}>
                     <option value="">All Patients</option>
                     {patients.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
                 </select>
-                <select className="form-select" value={filterType} onChange={e => { setFilterType(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}>
+                <select className="form-select w-auto" value={filterType} onChange={e => { setFilterType(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}>
                     <option value="">All Types</option>
                     {DOCUMENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>

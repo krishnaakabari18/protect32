@@ -246,4 +246,7 @@ router.delete('/:id', ProviderController.deleteProvider);
  */
 router.delete('/:id/images/:imageType', ProviderController.deleteProviderImage);
 
+// Get procedures assigned to a specific provider
+router.get('/:id/procedures', ProviderController.getProviderProcedures);
+
 module.exports = router;

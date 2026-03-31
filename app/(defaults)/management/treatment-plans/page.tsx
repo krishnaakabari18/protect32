@@ -21,7 +21,7 @@ const TreatmentPlansPage = () => {
                         ? `${row.provider_first_name} ${row.provider_last_name}`
                         : value || '-'
                 },
-                { key: 'diagnosis', label: 'Diagnosis' },
+                { key: 'diagnosis', label: 'Diagnosis', render: (value) => value ? <span className="text-sm">{value}</span> : '-' },
                 {
                     key: 'estimated_cost',
                     label: 'Estimated Cost (₹)',
@@ -61,7 +61,18 @@ const TreatmentPlansPage = () => {
                     apiEndpoint: 'providers', apiValueKey: 'id',
                     apiLabelFormat: (item: any) => item.full_name || item.clinic_name || item.id
                 },
-                { key: 'diagnosis', label: 'Diagnosis', type: 'text', required: true, placeholder: 'Enter diagnosis' },
+                {
+                    key: 'diagnosis',
+                    label: 'Diagnosis (Procedures)',
+                    type: 'multi-checkbox-select',
+                    required: true,
+                    placeholder: 'Select Procedures',
+                    colSpan: 2,
+                    dependsOn: 'provider_id',
+                    dependentApiEndpoint: (providerId: string) => `providers/${providerId}/procedures`,
+                    apiValueKey: 'id',
+                    apiLabelFormat: (item: any) => item.category ? `${item.name} (${item.category})` : item.name,
+                },
                 { key: 'treatment_description', label: 'Treatment Description', type: 'textarea', colSpan: 2, placeholder: 'Describe the treatment plan' },
                 { key: 'estimated_cost', label: 'Estimated Cost (₹)', type: 'number', placeholder: 'Enter cost' },
                 { key: 'start_date', label: 'Start Date', type: 'date' },
@@ -84,7 +95,7 @@ const TreatmentPlansPage = () => {
                 id: null,
                 patient_id: '',
                 provider_id: '',
-                diagnosis: '',
+                diagnosis: [],
                 treatment_description: '',
                 estimated_cost: '',
                 start_date: '',

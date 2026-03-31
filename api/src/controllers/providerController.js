@@ -607,6 +607,24 @@ class ProviderController {
       res.status(500).json({ error: error.message });
     }
   }
+
+  static async getProviderProcedures(req, res) {
+    try {
+      const pool = require('../config/database');
+      const { id } = req.params;
+      const result = await pool.query(
+        `SELECT p.id, p.name, p.category, p.description
+         FROM procedures p
+         INNER JOIN provider_procedures pp ON pp.procedure_id = p.id
+         WHERE pp.provider_id = $1 AND p.is_active = true
+         ORDER BY p.category, p.name`,
+        [id]
+      );
+      res.json({ data: result.rows });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
 }
 
 // Export both the controller and the upload middleware

@@ -23,7 +23,7 @@ interface Column {
 interface FormField {
     key: string;
     label: string;
-    type: 'text' | 'email' | 'password' | 'number' | 'date' | 'datetime-local' | 'textarea' | 'select' | 'checkbox' | 'api-select';
+    type: 'text' | 'email' | 'password' | 'number' | 'date' | 'datetime-local' | 'textarea' | 'select' | 'checkbox' | 'api-select' | 'dependent-api-select' | 'multi-checkbox-select';
     required?: boolean;
     options?: { value: string; label: string }[];
     placeholder?: string;
@@ -36,6 +36,10 @@ interface FormField {
     apiLabelKey?: string;
     apiValueKey?: string;
     apiLabelFormat?: (item: any) => string;
+    // For dependent-api-select: fetch options based on another field's value
+    dependsOn?: string;                          // key of the field this depends on
+    dependentApiEndpoint?: (val: string) => string; // builds endpoint from parent value
+    // For multi-checkbox-select: same as dependent-api-select but multi-select with checkboxes
 }
 
 interface GenericCRUDProps {
@@ -70,6 +74,8 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
     const [search, setSearch] = useState('');
     const [filterValue, setFilterValue] = useState('');
     const [apiSelectOptions, setApiSelectOptions] = useState<Record<string, { value: string; label: string }[]>>({});
+    const [dependentOptions, setDependentOptions] = useState<Record<string, { value: string; label: string }[]>>({});
+    const [multiSelectOpen, setMultiSelectOpen] = useState<Record<string, boolean>>({});
     const [touched, setTouched] = useState<Record<string, boolean>>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
     
@@ -115,6 +121,52 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
                 console.error(`Failed to fetch options for ${field.key}`, e);
             }
         });
+    }, []);
+
+    // Fetch dependent options when parent field value changes
+    useEffect(() => {
+        const dependentFields = formFields.filter(
+            f => (f.type === 'dependent-api-select' || f.type === 'multi-checkbox-select') && f.dependsOn && f.dependentApiEndpoint
+        );
+        dependentFields.forEach(async (field) => {
+            const parentVal = params[field.dependsOn!];
+            if (!parentVal) {
+                setDependentOptions(prev => ({ ...prev, [field.key]: [] }));
+                return;
+            }
+            try {
+                const token = localStorage.getItem('auth_token');
+                const endpoint = field.dependentApiEndpoint!(parentVal);
+                const response = await fetch(`${API_BASE_URL}/${endpoint}`, {
+                    headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    const items = data.data || [];
+                    const valueKey = field.apiValueKey || 'id';
+                    const options = items.map((item: any) => ({
+                        value: String(item[valueKey]),
+                        label: field.apiLabelFormat
+                            ? field.apiLabelFormat(item)
+                            : item[field.apiLabelKey || 'name'] || String(item[valueKey]),
+                    }));
+                    setDependentOptions(prev => ({ ...prev, [field.key]: options }));
+                }
+            } catch (e) {
+                console.error(`Failed to fetch dependent options for ${field.key}`, e);
+            }
+        });
+    }, [formFields.filter(f => f.dependsOn).map(f => params[f.dependsOn!]).join(','), addModal]);
+
+    // Close multi-select dropdowns on outside click
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (!(e.target as HTMLElement).closest('.multi-select-container')) {
+                setMultiSelectOpen({});
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
     }, []);
 
     const fetchItems = async () => {
@@ -178,8 +230,14 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
     const changeValue = (e: any) => {
         const { value, id, type, checked } = e.target;
         const newVal = type === 'checkbox' ? checked : value;
-        setParams({ ...params, [id]: newVal });
-        // Clear error once user starts typing/selecting
+        const newParams = { ...params, [id]: newVal };
+        // Reset dependent fields when parent changes
+        formFields.forEach(f => {
+            if (f.dependsOn === id) {
+                newParams[f.key] = f.type === 'multi-checkbox-select' ? [] : '';
+            }
+        });
+        setParams(newParams);
         if (errors[id]) {
             setErrors(prev => { const n = { ...prev }; delete n[id]; return n; });
         }
@@ -255,6 +313,10 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
                     } else {
                         body[field.key] = params[field.key];
                     }
+                } else if (field.type === 'multi-checkbox-select') {
+                    // Send as JSON array string or comma-separated
+                    const val = params[field.key];
+                    body[field.key] = Array.isArray(val) ? val.join(',') : (val || '');
                 }
             });
 
@@ -296,9 +358,16 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
             // Format dates for date input fields (YYYY-MM-DD format)
             const formattedItem = { ...item };
             formFields.forEach(field => {
-                if ((field.type === 'date' || field.type === 'datetime-local') && formattedItem[field.key]) {
-                    const dateValue = formattedItem[field.key];
-                    if (dateValue) {
+                // Parse multi-checkbox-select: stored as comma-separated string, needs to be array
+                if (field.type === 'multi-checkbox-select') {
+                    const val = formattedItem[field.key];
+                    if (typeof val === 'string' && val) {
+                        formattedItem[field.key] = val.split(',').map((s: string) => s.trim()).filter(Boolean);
+                    } else if (!Array.isArray(val)) {
+                        formattedItem[field.key] = [];
+                    }
+                }
+                if ((field.type === 'date' || field.type === 'datetime-local') && formattedItem[field.key]) {                    const dateValue = formattedItem[field.key];                    if (dateValue) {
                         if (field.type === 'date') {
                             // For date fields, extract YYYY-MM-DD directly from the string
                             // This avoids timezone conversion issues
@@ -332,7 +401,7 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
         } else {
             setParams(json);
         }
-        
+        setMultiSelectOpen({});
         setAddModal(true);
     };
 
@@ -758,7 +827,77 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
                                                                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                                                                         ))}
                                                                     </select>
-                                                                ) : field.type === 'checkbox' ? (
+                                                                ) : field.type === 'dependent-api-select' ? (
+                                                                    <select
+                                                                        id={field.key}
+                                                                        className={`form-select ${touched[field.key] && errors[field.key] ? 'border-red-500 focus:border-red-500' : ''}`}
+                                                                        value={params[field.key] || ''}
+                                                                        onChange={changeValue}
+                                                                        onBlur={handleBlur}
+                                                                        disabled={field.disabled || !params[field.dependsOn!]}
+                                                                    >
+                                                                        <option value="">{!params[field.dependsOn!] ? `Select ${formFields.find(f => f.key === field.dependsOn)?.label || 'parent'} first` : (field.placeholder || `Select ${field.label}`)}</option>
+                                                                        {(dependentOptions[field.key] || []).map(opt => (
+                                                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                                        ))}
+                                                                    </select>
+                                                                ) : field.type === 'multi-checkbox-select' ? (() => {
+                                                                    const opts = dependentOptions[field.key] || [];
+                                                                    const selected: string[] = Array.isArray(params[field.key]) ? params[field.key] : [];
+                                                                    const isOpen = multiSelectOpen[field.key] || false;
+                                                                    const parentVal = params[field.dependsOn!];
+                                                                    return (
+                                                                        <div className="relative multi-select-container">
+                                                                            <button
+                                                                                type="button"
+                                                                                className={`form-input w-full text-left flex items-center justify-between ${touched[field.key] && errors[field.key] ? 'border-red-500' : ''}`}
+                                                                                onClick={() => !field.disabled && parentVal && setMultiSelectOpen(p => ({ ...p, [field.key]: !p[field.key] }))}
+                                                                                disabled={field.disabled || !parentVal}
+                                                                            >
+                                                                                <span className="truncate text-sm">
+                                                                                    {!parentVal
+                                                                                        ? `Select ${formFields.find(f => f.key === field.dependsOn)?.label || 'provider'} first`
+                                                                                        : selected.length > 0
+                                                                                            ? opts.filter(o => selected.includes(o.value)).map(o => o.label).join(', ')
+                                                                                            : (field.placeholder || `Select ${field.label}`)}
+                                                                                </span>
+                                                                                <span className="ml-2 text-gray-400 flex-shrink-0">▾</span>
+                                                                            </button>
+                                                                            {isOpen && parentVal && (
+                                                                                <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-52 overflow-y-auto">
+                                                                                    {opts.length === 0 ? (
+                                                                                        <div className="px-4 py-3 text-sm text-gray-400">No procedures assigned to this provider</div>
+                                                                                    ) : opts.map(opt => (
+                                                                                        <label key={opt.value} className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
+                                                                                            <input
+                                                                                                type="checkbox"
+                                                                                                className="form-checkbox"
+                                                                                                checked={selected.includes(opt.value)}
+                                                                                                onChange={e => {
+                                                                                                    const updated = e.target.checked
+                                                                                                        ? [...selected, opt.value]
+                                                                                                        : selected.filter(v => v !== opt.value);
+                                                                                                    setParams((p: any) => ({ ...p, [field.key]: updated }));
+                                                                                                }}
+                                                                                            />
+                                                                                            <span className="text-sm">{opt.label}</span>
+                                                                                        </label>
+                                                                                    ))}
+                                                                                </div>
+                                                                            )}
+                                                                            {selected.length > 0 && (
+                                                                                <div className="mt-2 flex flex-wrap gap-1">
+                                                                                    {opts.filter(o => selected.includes(o.value)).map(o => (
+                                                                                        <span key={o.value} className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary rounded px-2 py-0.5">
+                                                                                            {o.label}
+                                                                                            {!field.disabled && <button type="button" onClick={() => setParams((p: any) => ({ ...p, [field.key]: selected.filter(v => v !== o.value) }))}>×</button>}
+                                                                                        </span>
+                                                                                    ))}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                })() : field.type === 'checkbox' ? (
                                                                     <label className="inline-flex cursor-pointer">
                                                                         <input
                                                                             id={field.key}

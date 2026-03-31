@@ -34,6 +34,7 @@ const SupportTicketsCRUD = () => {
         id: null,
         patient_id: '',
         provider_id: '',
+        ticket_type: '',
         subject: '',
         description: '',
         status: 'Open',
@@ -162,6 +163,7 @@ const SupportTicketsCRUD = () => {
         const newErrors: Record<string, string> = {};
         const newTouched: Record<string, boolean> = {};
         if (!params.patient_id) { newErrors.patient_id = 'Patient is required.'; newTouched.patient_id = true; }
+        if (!params.ticket_type) { newErrors.ticket_type = 'Ticket type is required.'; newTouched.ticket_type = true; }
         if (!params.subject) { newErrors.subject = 'Subject is required.'; newTouched.subject = true; }
         if (!params.description) { newErrors.description = 'Description is required.'; newTouched.description = true; }
         setTouched(prev => ({ ...prev, ...newTouched }));
@@ -364,7 +366,7 @@ const SupportTicketsCRUD = () => {
     const handleBlur = (e: any) => {
         const { name, value } = e.target;
         setTouched(prev => ({ ...prev, [name]: true }));
-        const requiredFields: Record<string, string> = { patient_id: 'Patient', subject: 'Subject', description: 'Description' };
+        const requiredFields: Record<string, string> = { patient_id: 'Patient', ticket_type: 'Ticket type', subject: 'Subject', description: 'Description' };
         if (requiredFields[name] && !value) {
             setErrors(prev => ({ ...prev, [name]: `${requiredFields[name]} is required.` }));
         } else {
@@ -499,6 +501,7 @@ const SupportTicketsCRUD = () => {
                                             <th>Patient</th>
                                             <th>Phone</th>
                                             <th>Provider</th>
+                                            <th>Ticket Type</th>
                                             <th>Subject</th>
                                             <th>Status</th>
                                             <th>Created Date</th>
@@ -520,6 +523,7 @@ const SupportTicketsCRUD = () => {
                                                         ? `Dr. ${item.provider_first_name} ${item.provider_last_name}`
                                                         : '-'}
                                                 </td>
+                                                <td>{item.ticket_type || '-'}</td>
                                                 <td>{item.subject}</td>
                                                 <td>
                                                     <span className={`badge ${
@@ -743,6 +747,24 @@ const SupportTicketsCRUD = () => {
                                                         </option>
                                                     ))}
                                                 </select>
+                                            </div>
+                                            <div>
+                                                <label htmlFor="ticket_type">Ticket Type <span className="text-red-500">*</span></label>
+                                                <select
+                                                    id="ticket_type"
+                                                    name="ticket_type"
+                                                    className={`form-select ${touched.ticket_type && errors.ticket_type ? 'border-red-500' : ''}`}
+                                                    value={params.ticket_type}
+                                                    onChange={changeValue}
+                                                    onBlur={handleBlur}
+                                                    disabled={modalMode === 'view'}
+                                                >
+                                                    <option value="">Select Ticket Type</option>
+                                                    <option value="Query">Query</option>
+                                                    <option value="Technical Support">Technical Support</option>
+                                                    <option value="Refund Payment">Refund Payment</option>
+                                                </select>
+                                                {touched.ticket_type && errors.ticket_type && <p className="mt-1 text-xs text-red-500">{errors.ticket_type}</p>}
                                             </div>
                                             <div className="col-span-2">
                                                 <label htmlFor="subject">Subject <span className="text-red-500">*</span></label>

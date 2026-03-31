@@ -2,13 +2,13 @@ const pool = require('../config/database');
 
 class SupportTicketModel {
   static async create(ticketData) {
-    const { patient_id, provider_id, subject, description, status } = ticketData;
+    const { patient_id, provider_id, ticket_type, subject, description, status } = ticketData;
     const query = `
-      INSERT INTO support_tickets (patient_id, provider_id, subject, description, status)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO support_tickets (patient_id, provider_id, ticket_type, subject, description, status)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
     `;
-    const values = [patient_id, provider_id || null, subject, description, status || 'Open'];
+    const values = [patient_id, provider_id || null, ticket_type || null, subject, description, status || 'Open'];
     const result = await pool.query(query, values);
     return result.rows[0];
   }
@@ -16,7 +16,7 @@ class SupportTicketModel {
   static async findAll(filters = {}) {
     let query = `
       SELECT 
-        st.id, st.patient_id, st.provider_id, st.subject, st.description, st.status,
+        st.id, st.patient_id, st.provider_id, st.ticket_type, st.subject, st.description, st.status,
         TO_CHAR(st.created_at, 'YYYY-MM-DD HH24:MI:SS') as created_at,
         TO_CHAR(st.updated_at, 'YYYY-MM-DD HH24:MI:SS') as updated_at,
         u1.first_name as patient_first_name, 
@@ -97,8 +97,8 @@ class SupportTicketModel {
     const values = [];
     let paramCount = 1;
 
-    const allowedFields = ['patient_id', 'provider_id', 'subject', 'description', 'status'];
-    
+    const allowedFields = ['patient_id', 'provider_id', 'ticket_type', 'subject', 'description', 'status'];
+
     allowedFields.forEach(key => {
       if (ticketData[key] !== undefined) {
         fields.push(`${key} = $${paramCount}`);
@@ -107,14 +107,12 @@ class SupportTicketModel {
       }
     });
 
-    if (fields.length === 0) {
-      return null;
-    }
+    if (fields.length === 0) return null;
 
     values.push(id);
     const query = `
       UPDATE support_tickets 
-      SET ${fields.join(', ')} 
+      SET ${fields.join(', ')}, updated_at = NOW()
       WHERE id = $${paramCount} 
       RETURNING *
     `;

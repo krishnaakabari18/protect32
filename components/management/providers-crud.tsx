@@ -71,6 +71,8 @@ const DEFAULT_VALUES = {
 
 const ProvidersCRUD = () => {
     const [addModal, setAddModal] = useState(false);
+    const [addProcedureModal, setAddProcedureModal] = useState(false);
+    const [newProcedure, setNewProcedure] = useState({ name: '', category: 'Diagnostic & Preventive' });
     const [activeTab, setActiveTab] = useState('provider');
     const [items, setItems] = useState<any[]>([]);
     const [users, setUsers] = useState<any[]>([]);
@@ -265,6 +267,26 @@ const ProvidersCRUD = () => {
         else { const t: any = Swal.mixin({ toast: true, position: 'top', showConfirmButton: false, timer: 3000, customClass: { container: 'toast' } }); t.fire({ icon: type, title: msg, padding: '10px 20px' }); }
     };
 
+    const saveProcedure = async () => {
+        if (!newProcedure.name.trim()) { showMessage('Please enter procedure name', 'error'); return; }
+        try {
+            const token = localStorage.getItem('auth_token');
+            const res = await fetch(API_ENDPOINTS.procedures, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+                body: JSON.stringify(newProcedure),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                showMessage('Procedure added successfully');
+                setAddProcedureModal(false);
+                setNewProcedure({ name: '', category: 'Diagnostic & Preventive' });
+                setProcedures(prev => [...prev, data.data]);
+                setParams((p: any) => ({ ...p, procedure_ids: [...(p.procedure_ids || []), data.data.id] }));
+            } else showMessage(data.error || 'Failed to add procedure', 'error');
+        } catch (e: any) { showMessage('Error: ' + e.message, 'error'); }
+    };
+
     // ─── Field helpers ───────────────────────────────────────────────────────
     const cv = (e: any) => {
         const { name, value, type, checked } = e.target;
@@ -434,7 +456,15 @@ const ProvidersCRUD = () => {
             </div>
             {/* Procedures multi-select */}
             <div className="md:col-span-3">
-                <label>Procedures</label>
+                <div className="flex items-center justify-between mb-1">
+                    <label>Procedures</label>
+                    {!isView && (
+                        <button type="button" className="text-primary text-sm hover:underline"
+                            onClick={() => { setNewProcedure({ name: '', category: 'Diagnostic & Preventive' }); setAddProcedureModal(true); }}>
+                            + Add New Procedure
+                        </button>
+                    )}
+                </div>
                 <div className="relative procedure-dropdown-container">
                     <button
                         type="button"
@@ -876,6 +906,57 @@ const ProvidersCRUD = () => {
                                                 <button type="button" className="btn btn-outline-primary" onClick={() => setAddModal(false)}>Close</button>
                                             </div>
                                         )}
+                                    </div>
+                                </DialogPanel>
+                            </TransitionChild>
+                        </div>
+                    </div>
+                </Dialog>
+            </Transition>
+
+            {/* Add New Procedure Modal */}
+            <Transition appear show={addProcedureModal} as={Fragment}>
+                <Dialog as="div" open={addProcedureModal} onClose={() => setAddProcedureModal(false)}>
+                    <TransitionChild as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0" enterTo="opacity-100" leave="ease-in duration-200" leaveFrom="opacity-100" leaveTo="opacity-0">
+                        <div className="fixed inset-0 bg-[black]/60" />
+                    </TransitionChild>
+                    <div className="fixed inset-0 z-[1000] overflow-y-auto">
+                        <div className="flex min-h-screen items-center justify-center px-4">
+                            <TransitionChild as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100" leave="ease-in duration-200" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95">
+                                <DialogPanel className="panel w-full max-w-lg overflow-hidden rounded-lg border-0 p-0 text-black dark:text-white-dark">
+                                    <div className="flex items-center justify-between bg-[#fbfbfb] px-5 py-3 dark:bg-[#121c2c]">
+                                        <h5 className="text-lg font-bold">Add New Procedure</h5>
+                                        <button type="button" className="text-white-dark hover:text-dark" onClick={() => setAddProcedureModal(false)}><IconX /></button>
+                                    </div>
+                                    <div className="p-5 space-y-4">
+                                        <div>
+                                            <label>Category <span className="text-red-500">*</span></label>
+                                            <select className="form-select" value={newProcedure.category}
+                                                onChange={e => setNewProcedure({ ...newProcedure, category: e.target.value })}>
+                                                <option value="Diagnostic & Preventive">Diagnostic & Preventive</option>
+                                                <option value="Restorative">Restorative</option>
+                                                <option value="Endodontic">Endodontic</option>
+                                                <option value="Periodontal">Periodontal</option>
+                                                <option value="Prosthodontics, Removable">Prosthodontics, Removable</option>
+                                                <option value="Implant">Implant</option>
+                                                <option value="Prosthodontics, Fixed">Prosthodontics, Fixed</option>
+                                                <option value="OS">OS</option>
+                                                <option value="Ortho">Ortho</option>
+                                                <option value="Adjunctive">Adjunctive</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label>Procedure Name <span className="text-red-500">*</span></label>
+                                            <input type="text" className="form-input" placeholder="Enter procedure name"
+                                                value={newProcedure.name}
+                                                onChange={e => setNewProcedure({ ...newProcedure, name: e.target.value })}
+                                                onKeyDown={e => e.key === 'Enter' && saveProcedure()}
+                                                autoFocus />
+                                        </div>
+                                        <div className="flex justify-end gap-3 pt-2">
+                                            <button type="button" className="btn btn-outline-danger" onClick={() => setAddProcedureModal(false)}>Cancel</button>
+                                            <button type="button" className="btn btn-primary" onClick={saveProcedure}>Add Procedure</button>
+                                        </div>
                                     </div>
                                 </DialogPanel>
                             </TransitionChild>

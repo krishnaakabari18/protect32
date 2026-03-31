@@ -1,48 +1,51 @@
 const pool = require('../config/database');
 
+// Resolves comma-separated procedure IDs to names
+const PROCEDURE_NAMES_EXPR = `
+  (SELECT string_agg(pr.name, ', ' ORDER BY pr.name)
+   FROM procedures pr
+   WHERE pr.id::text = ANY(string_to_array(pf.procedure, ',')))
+  AS procedure_names
+`;
+
 class ProviderFeeModel {
   static async create(feeData) {
     const { provider_id, procedure, fee, discount_percent, status } = feeData;
-    const query = `
-      INSERT INTO provider_fees (provider_id, procedure, fee, discount_percent, status)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING *
-    `;
-    const values = [provider_id, procedure, fee, discount_percent || 0, status || 'approved'];
-    const result = await pool.query(query, values);
+    const result = await pool.query(
+      `INSERT INTO provider_fees (provider_id, procedure, fee, discount_percent, status)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [provider_id, procedure, fee, discount_percent || 0, status || 'approved']
+    );
     return result.rows[0];
   }
 
   static async findAll(filters = {}) {
     let query = `
-      SELECT pf.*, 
-             u.first_name as provider_first_name, 
+      SELECT pf.*,
+             u.first_name as provider_first_name,
              u.last_name as provider_last_name,
-             u.email as provider_email
+             u.email as provider_email,
+             ${PROCEDURE_NAMES_EXPR}
       FROM provider_fees pf
       LEFT JOIN providers p ON pf.provider_id = p.id
       LEFT JOIN users u ON p.id = u.id
       WHERE 1=1
     `;
     const values = [];
-    let paramCount = 1;
+    let p = 1;
 
     if (filters.provider_id) {
-      query += ` AND pf.provider_id = $${paramCount}`;
+      query += ` AND pf.provider_id = $${p++}`;
       values.push(filters.provider_id);
-      paramCount++;
     }
-
     if (filters.status) {
-      query += ` AND pf.status = $${paramCount}`;
+      query += ` AND pf.status = $${p++}`;
       values.push(filters.status);
-      paramCount++;
     }
-
     if (filters.search) {
-      query += ` AND (pf.procedure ILIKE $${paramCount} OR u.first_name ILIKE $${paramCount} OR u.last_name ILIKE $${paramCount})`;
+      query += ` AND (pf.procedure ILIKE $${p} OR u.first_name ILIKE $${p} OR u.last_name ILIKE $${p})`;
       values.push(`%${filters.search}%`);
-      paramCount++;
+      p++;
     }
 
     query += ' ORDER BY pf.created_at DESC';
@@ -51,62 +54,62 @@ class ProviderFeeModel {
   }
 
   static async findById(id) {
-    const query = `
-      SELECT pf.*, 
-             u.first_name as provider_first_name, 
-             u.last_name as provider_last_name,
-             u.email as provider_email
-      FROM provider_fees pf
-      LEFT JOIN providers p ON pf.provider_id = p.id
-      LEFT JOIN users u ON p.id = u.id
-      WHERE pf.id = $1
-    `;
-    const result = await pool.query(query, [id]);
+    const result = await pool.query(
+      `SELECT pf.*,
+              u.first_name as provider_first_name,
+              u.last_name as provider_last_name,
+              u.email as provider_email,
+              ${PROCEDURE_NAMES_EXPR}
+       FROM provider_fees pf
+       LEFT JOIN providers p ON pf.provider_id = p.id
+       LEFT JOIN users u ON p.id = u.id
+       WHERE pf.id = $1`,
+      [id]
+    );
     return result.rows[0];
   }
 
   static async findByProviderId(providerId) {
-    const query = `
-      SELECT pf.*, 
-             u.first_name as provider_first_name, 
-             u.last_name as provider_last_name
-      FROM provider_fees pf
-      LEFT JOIN providers p ON pf.provider_id = p.id
-      LEFT JOIN users u ON p.id = u.id
-      WHERE pf.provider_id = $1
-      ORDER BY pf.procedure ASC
-    `;
-    const result = await pool.query(query, [providerId]);
-    return result.rows;
+    const result = await pool.query(
+      `SELECT pf.*,
+              u.first_name as provider_first_name,
+              u.last_name as provider_last_name,
+              ${PROCEDURE_NAMES_EXPR}
+       FROM provider_fees pf
+       LEFT JOIN providers p ON pf.provider_id = p.id
+       LEFT JOIN users u ON p.id = u.id
+       WHERE pf.provider_id = $1
+       ORDER BY pf.procedure ASC`,
+      [providerId]
+    );
+    return result.rows[0];
   }
 
   static async update(id, feeData) {
     const fields = [];
     const values = [];
-    let paramCount = 1;
+    let p = 1;
 
     Object.keys(feeData).forEach(key => {
       if (feeData[key] !== undefined && key !== 'id') {
-        fields.push(`${key} = $${paramCount}`);
+        fields.push(`${key} = $${p++}`);
         values.push(feeData[key]);
-        paramCount++;
       }
     });
 
-    if (fields.length === 0) {
-      throw new Error('No fields to update');
-    }
+    if (fields.length === 0) throw new Error('No fields to update');
 
-    fields.push(`updated_at = CURRENT_TIMESTAMP`);
+    fields.push('updated_at = CURRENT_TIMESTAMP');
     values.push(id);
-    const query = `UPDATE provider_fees SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING *`;
-    const result = await pool.query(query, values);
+    const result = await pool.query(
+      `UPDATE provider_fees SET ${fields.join(', ')} WHERE id = $${p} RETURNING *`,
+      values
+    );
     return result.rows[0];
   }
 
   static async delete(id) {
-    const query = 'DELETE FROM provider_fees WHERE id = $1 RETURNING *';
-    const result = await pool.query(query, [id]);
+    const result = await pool.query('DELETE FROM provider_fees WHERE id = $1 RETURNING *', [id]);
     return result.rows[0];
   }
 
@@ -114,31 +117,19 @@ class ProviderFeeModel {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-
       const results = [];
       for (const fee of fees) {
-        const query = `
-          INSERT INTO provider_fees (provider_id, procedure, fee, discount_percent, status)
-          VALUES ($1, $2, $3, $4, $5)
-          ON CONFLICT (provider_id, procedure) 
-          DO UPDATE SET 
-            fee = EXCLUDED.fee,
-            discount_percent = EXCLUDED.discount_percent,
-            status = EXCLUDED.status,
-            updated_at = CURRENT_TIMESTAMP
-          RETURNING *
-        `;
-        const values = [
-          providerId,
-          fee.procedure,
-          fee.fee,
-          fee.discount_percent || 0,
-          fee.status || 'approved'
-        ];
-        const result = await client.query(query, values);
+        const result = await client.query(
+          `INSERT INTO provider_fees (provider_id, procedure, fee, discount_percent, status)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (provider_id, procedure)
+           DO UPDATE SET fee = EXCLUDED.fee, discount_percent = EXCLUDED.discount_percent,
+             status = EXCLUDED.status, updated_at = CURRENT_TIMESTAMP
+           RETURNING *`,
+          [providerId, fee.procedure, fee.fee, fee.discount_percent || 0, fee.status || 'approved']
+        );
         results.push(result.rows[0]);
       }
-
       await client.query('COMMIT');
       return results;
     } catch (error) {

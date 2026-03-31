@@ -141,6 +141,8 @@ const ProviderFeesCRUD = () => {
     const [providers, setProviders] = useState<any[]>([]);
     const [procedures, setProcedures] = useState<any[]>([]);
     const [procedureCategories, setProcedureCategories] = useState<any[]>([]);
+    const [providerProcedures, setProviderProcedures] = useState<any[]>([]);
+    const [procedureDropdownOpen, setProcedureDropdownOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [selectedProvider, setSelectedProvider] = useState('');
@@ -155,7 +157,7 @@ const ProviderFeesCRUD = () => {
     const defaultValues = {
         id: null,
         provider_id: '',
-        procedure: '',
+        procedure: [] as string[],
         fee: '',
         discount_percent: 0,
         status: 'approved',
@@ -224,7 +226,6 @@ const ProviderFeesCRUD = () => {
             });
             const data = await response.json();
             if (response.ok && data.success) {
-                // Store the data as-is from the API
                 setProcedureCategories(data.data || []);
             } else {
                 console.error('Failed to fetch procedures:', data);
@@ -233,6 +234,36 @@ const ProviderFeesCRUD = () => {
             console.error('Error fetching procedures by category:', error);
         }
     };
+
+    const fetchProviderProcedures = async (providerId: string) => {
+        if (!providerId) { setProviderProcedures([]); return; }
+        try {
+            const token = localStorage.getItem('auth_token');
+            const res = await fetch(`${API_ENDPOINTS.providers}/${providerId}/procedures`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+            });
+            const data = await res.json();
+            if (res.ok) setProviderProcedures(data.data || []);
+        } catch (e) { console.error(e); }
+    };
+
+    // Fetch provider procedures when provider changes in modal
+    useEffect(() => {
+        fetchProviderProcedures(params.provider_id);
+        if (addModal) setParams((p: any) => ({ ...p, procedure: [] }));
+        setProcedureDropdownOpen(false);
+    }, [params.provider_id]);
+
+    // Close dropdown on outside click
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (!(e.target as HTMLElement).closest('.procedure-dropdown-container')) {
+                setProcedureDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
 
     const fetchItems = async () => {
         setLoading(true);
@@ -285,7 +316,7 @@ const ProviderFeesCRUD = () => {
             newTouched.provider_id = true; 
         }
         
-        if (!params.procedure) { 
+        if (!params.procedure || (Array.isArray(params.procedure) && params.procedure.length === 0)) { 
             newErrors.procedure = 'Procedure is required.'; 
             newTouched.procedure = true; 
         }
@@ -337,6 +368,12 @@ const ProviderFeesCRUD = () => {
             const url = params.id ? `${API_ENDPOINTS.providerFees}/${params.id}` : API_ENDPOINTS.providerFees;
             const method = params.id ? 'PUT' : 'POST';
 
+            const submitData = { ...params };
+            // Convert procedure array to comma-separated string
+            if (Array.isArray(submitData.procedure)) {
+                submitData.procedure = submitData.procedure.join(',');
+            }
+
             const response = await fetch(url, {
                 method,
                 headers: {
@@ -344,7 +381,7 @@ const ProviderFeesCRUD = () => {
                     'Authorization': `Bearer ${token}`,
                     'ngrok-skip-browser-warning': 'true',
                 },
-                body: JSON.stringify(params),
+                body: JSON.stringify(submitData),
             });
 
             const data = await response.json();
@@ -367,6 +404,7 @@ const ProviderFeesCRUD = () => {
         setModalMode(mode);
         setTouched({});
         setErrors({});
+        setProcedureDropdownOpen(false);
         const json = JSON.parse(JSON.stringify(defaultValues));
         
         if (item) {
@@ -375,6 +413,15 @@ const ProviderFeesCRUD = () => {
                     json[key] = item[key];
                 }
             });
+            // Parse procedure: stored as comma-separated string, needs to be array
+            if (typeof json.procedure === 'string' && json.procedure) {
+                json.procedure = json.procedure.split(',').map((s: string) => s.trim()).filter(Boolean);
+            } else if (!Array.isArray(json.procedure)) {
+                json.procedure = [];
+            }
+            if (item.provider_id) fetchProviderProcedures(item.provider_id);
+        } else {
+            setProviderProcedures([]);
         }
         
         setParams(json);
@@ -621,7 +668,7 @@ const ProviderFeesCRUD = () => {
                                             <tr key={item.id}>
                                                 <td>{(pagination.page - 1) * pagination.limit + index + 1}</td>
                                                 <td>
-                                                    <div className="whitespace-nowrap font-semibold">{item.procedure}</div>
+                                                    <div className="whitespace-nowrap font-semibold">{item.procedure_names || item.procedure}</div>
                                                 </td>
                                                 <td>
                                                     {item.provider_first_name && item.provider_last_name
@@ -674,7 +721,7 @@ const ProviderFeesCRUD = () => {
                                         )}
                                     </div>
                                     <div className="px-6 pb-6 pt-4">
-                                        <div className="text-lg font-semibold mb-2">{item.procedure}</div>
+                                        <div className="text-lg font-semibold mb-2">{item.procedure_names || item.procedure}</div>
                                         <div className="text-white-dark text-sm mb-3">
                                             {item.provider_first_name && item.provider_last_name
                                                 ? `${item.provider_first_name} ${item.provider_last_name}`
@@ -813,56 +860,69 @@ const ProviderFeesCRUD = () => {
 
                                             <div>
                                                 <div className="flex items-center justify-between mb-1">
-                                                    <label htmlFor="procedure">Procedure *</label>
-                                                    {modalMode !== 'view' && modalMode !== 'edit' && (
-                                                        <button
-                                                            type="button"
-                                                            className="text-primary text-sm hover:underline"
-                                                            onClick={() => setAddProcedureModal(true)}
-                                                        >
+                                                    <label>Procedure <span className="text-red-500">*</span></label>
+                                                    {/* {modalMode !== 'view' && (
+                                                        <button type="button" className="text-primary text-sm hover:underline" onClick={() => setAddProcedureModal(true)}>
                                                             + Add New Procedure
                                                         </button>
+                                                    )} */}
+                                                </div>
+                                                <div className="relative procedure-dropdown-container">
+                                                    <button
+                                                        type="button"
+                                                        className={`form-input w-full text-left flex items-center justify-between ${touched.procedure && errors.procedure ? 'border-red-500' : ''}`}
+                                                        onClick={() => modalMode !== 'view' && params.provider_id && setProcedureDropdownOpen(o => !o)}
+                                                        disabled={modalMode === 'view' || !params.provider_id}
+                                                    >
+                                                        <span className="truncate text-sm">
+                                                            {!params.provider_id
+                                                                ? 'Select Provider first'
+                                                                : Array.isArray(params.procedure) && params.procedure.length > 0
+                                                                    ? providerProcedures.filter(p => params.procedure.includes(p.id)).map(p => p.name).join(', ') || params.procedure.join(', ')
+                                                                    : 'Select Procedures'}
+                                                        </span>
+                                                        <span className="ml-2 text-gray-400 flex-shrink-0">▾</span>
+                                                    </button>
+                                                    {procedureDropdownOpen && modalMode !== 'view' && params.provider_id && (
+                                                        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-52 overflow-y-auto">
+                                                            {providerProcedures.length === 0 ? (
+                                                                <div className="px-4 py-3 text-sm text-gray-400">No procedures assigned to this provider</div>
+                                                            ) : providerProcedures.map((proc: any) => {
+                                                                const selected: string[] = Array.isArray(params.procedure) ? params.procedure : [];
+                                                                return (
+                                                                    <label key={proc.id} className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            className="form-checkbox"
+                                                                            checked={selected.includes(proc.id)}
+                                                                            onChange={e => {
+                                                                                const updated = e.target.checked
+                                                                                    ? [...selected, proc.id]
+                                                                                    : selected.filter((id: string) => id !== proc.id);
+                                                                                setParams({ ...params, procedure: updated });
+                                                                                if (updated.length > 0) setErrors(prev => { const n = { ...prev }; delete n.procedure; return n; });
+                                                                            }}
+                                                                        />
+                                                                        <span className="text-sm">{proc.name}</span>
+                                                                        {proc.category && <span className="ml-auto text-xs text-gray-400">{proc.category}</span>}
+                                                                    </label>
+                                                                );
+                                                            })}
+                                                        </div>
                                                     )}
                                                 </div>
-                                                <select
-                                                    id="procedure_id"
-                                                    name="procedure_id"
-                                                    className={`form-select ${touched.procedure && errors.procedure ? 'border-red-500' : ''}`}
-                                                    value={params.procedure_id || ''}
-                                                    onChange={(e) => {
-                                                        const selectedId = e.target.value;
-                                                        const selectedProc = procedureCategories
-                                                            .flatMap((cat: any) => cat.procedures)
-                                                            .find((p: any) => p.id === selectedId);
-                                                        const newProc = selectedProc?.name || '';
-                                                        setParams({ 
-                                                            ...params, 
-                                                            procedure_id: selectedId,
-                                                            procedure: newProc
-                                                        });
-                                                        if (newProc) setErrors(prev => { const n = { ...prev }; delete n.procedure; return n; });
-                                                    }}
-                                                    onBlur={() => {
-                                                        setTouched(prev => ({ ...prev, procedure: true }));
-                                                        if (!params.procedure) setErrors(prev => ({ ...prev, procedure: 'Procedure is required.' }));
-                                                        else setErrors(prev => { const n = { ...prev }; delete n.procedure; return n; });
-                                                    }}
-                                                    disabled={modalMode === 'view'}
-                                                >
-                                                    <option value="">Select Procedure</option>
-                                                    {procedureCategories.map((category: any) => (
-                                                        <optgroup key={category.category} label={category.category}>
-                                                            {category.procedures.map((proc: any) => (
-                                                                <option 
-                                                                    key={proc.id} 
-                                                                    value={proc.id}
-                                                                >
-                                                                    {proc.name}
-                                                                </option>
-                                                            ))}
-                                                        </optgroup>
-                                                    ))}
-                                                </select>
+                                                {Array.isArray(params.procedure) && params.procedure.length > 0 && (
+                                                    <div className="mt-2 flex flex-wrap gap-1">
+                                                        {providerProcedures.filter(p => params.procedure.includes(p.id)).map((p: any) => (
+                                                            <span key={p.id} className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary rounded px-2 py-0.5">
+                                                                {p.name}
+                                                                {modalMode !== 'view' && (
+                                                                    <button type="button" onClick={() => setParams({ ...params, procedure: params.procedure.filter((id: string) => id !== p.id) })}>×</button>
+                                                                )}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
                                                 {touched.procedure && errors.procedure && <p className="mt-1 text-xs text-red-500">{errors.procedure}</p>}
                                             </div>
                                             <div>

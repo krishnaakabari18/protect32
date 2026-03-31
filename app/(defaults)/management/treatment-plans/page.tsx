@@ -17,11 +17,15 @@ const TreatmentPlansPage = () => {
                 {
                     key: 'provider_id',
                     label: 'Provider',
-                    render: (value, row) => row.provider_first_name && row.provider_last_name
-                        ? `${row.provider_first_name} ${row.provider_last_name}`
-                        : value || '-'
+                    render: (value, row) => row.provider_full_name || value || '-'
                 },
-                { key: 'diagnosis', label: 'Diagnosis', render: (value) => value ? <span className="text-sm">{value}</span> : '-' },
+                {
+                    key: 'diagnosis',
+                    label: 'Diagnosis',
+                    render: (value, row) => (row.diagnosis_names || value)
+                        ? <span className="text-sm">{row.diagnosis_names || value}</span>
+                        : '-'
+                },
                 {
                     key: 'estimated_cost',
                     label: 'Estimated Cost (₹)',

@@ -17,6 +17,8 @@ const ReviewsCRUD = () => {
     const [items, setItems] = useState<any[]>([]);
     const [patients, setPatients] = useState<any[]>([]);
     const [providers, setProviders] = useState<any[]>([]);
+    const [procedures, setProcedures] = useState<any[]>([]);
+    const [procedureDropdownOpen, setProcedureDropdownOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [filterRating, setFilterRating] = useState('');
     
@@ -33,6 +35,7 @@ const ReviewsCRUD = () => {
         provider_id: '',
         rating: '',
         comment: '',
+        diagnosis: [] as string[],
     };
 
     const [params, setParams] = useState<any>(JSON.parse(JSON.stringify(defaultValues)));
@@ -99,6 +102,37 @@ const ReviewsCRUD = () => {
         }
     };
 
+    const fetchProcedures = async (providerId: string) => {
+        if (!providerId) { setProcedures([]); return; }
+        try {
+            const token = localStorage.getItem('auth_token');
+            const res = await fetch(`${API_ENDPOINTS.providers}/${providerId}/procedures`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+            });
+            const data = await res.json();
+            if (res.ok) setProcedures(data.data || []);
+        } catch (e) { console.error(e); }
+    };
+
+    // Fetch procedures when provider changes
+    useEffect(() => {
+        fetchProcedures(params.provider_id);
+        // Reset diagnosis when provider changes (only if modal is open)
+        if (addModal) setParams((p: any) => ({ ...p, diagnosis: [] }));
+        setProcedureDropdownOpen(false);
+    }, [params.provider_id]);
+
+    // Close procedure dropdown on outside click
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (!(e.target as HTMLElement).closest('.procedure-dropdown-container')) {
+                setProcedureDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
     const fetchItems = async () => {
         setLoading(true);
         try {
@@ -164,8 +198,10 @@ const ReviewsCRUD = () => {
 
             // Prepare data - remove id for new records
             const submitData = { ...params };
-            if (!params.id) {
-                delete submitData.id;
+            if (!params.id) delete submitData.id;
+            // Convert diagnosis array to comma-separated string
+            if (Array.isArray(submitData.diagnosis)) {
+                submitData.diagnosis = submitData.diagnosis.join(',');
             }
 
             const response = await fetch(url, {
@@ -198,6 +234,7 @@ const ReviewsCRUD = () => {
         setModalMode(mode);
         setTouched({});
         setErrors({});
+        setProcedureDropdownOpen(false);
         const json = JSON.parse(JSON.stringify(defaultValues));
         
         if (item) {
@@ -206,6 +243,16 @@ const ReviewsCRUD = () => {
                     json[key] = item[key];
                 }
             });
+            // Parse diagnosis: stored as comma-separated string, needs to be array
+            if (typeof json.diagnosis === 'string' && json.diagnosis) {
+                json.diagnosis = json.diagnosis.split(',').map((s: string) => s.trim()).filter(Boolean);
+            } else if (!Array.isArray(json.diagnosis)) {
+                json.diagnosis = [];
+            }
+            // Fetch procedures for this provider
+            if (item.provider_id) fetchProcedures(item.provider_id);
+        } else {
+            setProcedures([]);
         }
         
         setParams(json);
@@ -373,6 +420,7 @@ const ReviewsCRUD = () => {
                                             <th>#</th>
                                             <th>Patient</th>
                                             <th>Provider</th>
+                                            <th>Diagnosis</th>
                                             <th>Rating</th>
                                             <th>Comment</th>
                                             <th>Created Date</th>
@@ -391,6 +439,11 @@ const ReviewsCRUD = () => {
                                                 <td>
                                                     {item.provider_first_name && item.provider_last_name
                                                         ? `Dr. ${item.provider_first_name} ${item.provider_last_name}`
+                                                        : '-'}
+                                                </td>
+                                                <td className="max-w-[160px]">
+                                                    {item.diagnosis_names || item.diagnosis
+                                                        ? <span className="text-sm">{(item.diagnosis_names || item.diagnosis).length > 40 ? (item.diagnosis_names || item.diagnosis).substring(0, 40) + '...' : (item.diagnosis_names || item.diagnosis)}</span>
                                                         : '-'}
                                                 </td>
                                                 <td>
@@ -604,9 +657,68 @@ const ReviewsCRUD = () => {
                                                 </select>
                                                 {touched.provider_id && errors.provider_id && <p className="mt-1 text-xs text-red-500">{errors.provider_id}</p>}
                                             </div>
+                                            {/* Diagnosis multi-select */}
                                             <div>
-                                                <label htmlFor="rating">Rating (1-5) <span className="text-red-500">*</span></label>
-                                                <select
+                                                <label>Diagnosis (Procedures)</label>
+                                                <div className="relative procedure-dropdown-container">
+                                                    <button
+                                                        type="button"
+                                                        className="form-input w-full text-left flex items-center justify-between"
+                                                        onClick={() => modalMode !== 'view' && params.provider_id && setProcedureDropdownOpen(o => !o)}
+                                                        disabled={modalMode === 'view' || !params.provider_id}
+                                                    >
+                                                        <span className="truncate text-sm">
+                                                            {!params.provider_id
+                                                                ? 'Select Provider first'
+                                                                : Array.isArray(params.diagnosis) && params.diagnosis.length > 0
+                                                                    ? procedures.filter(p => params.diagnosis.includes(p.id)).map(p => p.name).join(', ') || params.diagnosis.join(', ')
+                                                                    : 'Select Procedures'}
+                                                        </span>
+                                                        <span className="ml-2 text-gray-400 flex-shrink-0">▾</span>
+                                                    </button>
+                                                    {procedureDropdownOpen && modalMode !== 'view' && params.provider_id && (
+                                                        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-52 overflow-y-auto">
+                                                            {procedures.length === 0 ? (
+                                                                <div className="px-4 py-3 text-sm text-gray-400">No procedures assigned to this provider</div>
+                                                            ) : procedures.map((proc: any) => {
+                                                                const selected: string[] = Array.isArray(params.diagnosis) ? params.diagnosis : [];
+                                                                return (
+                                                                    <label key={proc.id} className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            className="form-checkbox"
+                                                                            checked={selected.includes(proc.id)}
+                                                                            onChange={e => {
+                                                                                const updated = e.target.checked
+                                                                                    ? [...selected, proc.id]
+                                                                                    : selected.filter((id: string) => id !== proc.id);
+                                                                                setParams({ ...params, diagnosis: updated });
+                                                                            }}
+                                                                        />
+                                                                        <span className="text-sm">{proc.name}</span>
+                                                                        {proc.category && <span className="ml-auto text-xs text-gray-400">{proc.category}</span>}
+                                                                    </label>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                {Array.isArray(params.diagnosis) && params.diagnosis.length > 0 && (
+                                                    <div className="mt-2 flex flex-wrap gap-1">
+                                                        {procedures.filter(p => params.diagnosis.includes(p.id)).map((p: any) => (
+                                                            <span key={p.id} className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary rounded px-2 py-0.5">
+                                                                {p.name}
+                                                                {modalMode !== 'view' && (
+                                                                    <button type="button" onClick={() => setParams({ ...params, diagnosis: params.diagnosis.filter((id: string) => id !== p.id) })}>×</button>
+                                                                )}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div>
+                                                <label htmlFor="rating">Rating (1-5) <span className="text-red-500">*</span></label>                                                <select
                                                     id="rating"
                                                     name="rating"
                                                     className={`form-select ${touched.rating && errors.rating ? 'border-red-500' : ''}`}

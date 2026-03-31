@@ -74,17 +74,18 @@ const PrescriptionsCRUD = () => {
                         key: 'date_prescribed',
                         label: 'Date Prescribed',
                         render: v => v ? v.split('T')[0] : '-'
-                    },
-                    {
-                        key: 'start_date',
-                        label: 'Start Date',
-                        render: v => v ? v.split('T')[0] : '-'
-                    },
-                    {
-                        key: 'end_date',
-                        label: 'End Date',
-                        render: v => v ? v.split('T')[0] : '-'
                     }
+                    // ,
+                    // {
+                    //     key: 'start_date',
+                    //     label: 'Start Date',
+                    //     render: v => v ? v.split('T')[0] : '-'
+                    // },
+                    // {
+                    //     key: 'end_date',
+                    //     label: 'End Date',
+                    //     render: v => v ? v.split('T')[0] : '-'
+                    // }
             ]}
             formFields={[
                 { 
@@ -122,7 +123,7 @@ const PrescriptionsCRUD = () => {
                 { key: 'date_prescribed', label: 'Date Prescribed', type: 'date', placeholder: 'Defaults to today if not set' },
                 { key: 'instructions', label: 'Instructions', type: 'textarea', colSpan: 2, placeholder: 'Special instructions' },
                 { key: 'start_date', label: 'Start Date', type: 'date' },
-                { key: 'end_date', label: 'End Date', type: 'date' },
+                // { key: 'end_date', label: 'End Date', type: 'date' },
             ]}
             defaultValues={{
                 id: null,

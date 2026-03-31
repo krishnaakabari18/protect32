@@ -39,7 +39,7 @@ const AppointmentsCRUD = () => {
         end_time: '',
         duration_minutes: 30,
         service: '',
-        status: 'Upcoming',
+        status: '',
         notes: '',
         cancellation_reason: '',
     };
@@ -454,7 +454,6 @@ const AppointmentsCRUD = () => {
                         <option value="Upcoming">Upcoming</option>
                         <option value="Completed">Completed</option>
                         <option value="Cancelled">Cancelled</option>
-                        <option value="No-Show">No-Show</option>
                     </select>
                 </div>
                 {(filterFromDate || filterToDate || filterProvider || filterStatus) && (
@@ -815,11 +814,10 @@ const AppointmentsCRUD = () => {
                                                     value={params.status}
                                                     onChange={changeValue}
                                                     disabled={modalMode === 'view'}
-                                                >
+                                                >   <option value="">Select Status</option>
                                                     <option value="Upcoming">Upcoming</option>
                                                     <option value="Completed">Completed</option>
                                                     <option value="Cancelled">Cancelled</option>
-                                                    <option value="No-Show">No-Show</option>
                                                 </select>
                                             </div>
                                             <div className="col-span-2">

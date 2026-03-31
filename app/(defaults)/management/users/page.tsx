@@ -6,8 +6,8 @@ export const metadata: Metadata = {
     title: 'Users Management',
 };
 
-const Contacts = () => {
+const UsersPage = () => {
     return <UsersCrud />;
 };
 
-export default Contacts;
+export default UsersPage;

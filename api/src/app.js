@@ -19,7 +19,7 @@ const corsOptions = {
       'http://localhost:3000',
       'http://localhost:3001', 
       'http://localhost:3002',
-      'http://localhost:8090',
+      'http://localhost:8080',
       'http://localhost:3050',
       'https://occupiable-milissa-ennuyante.ngrok-free.dev',
       'https://occupiable-milissa-ennuyante.ngrok-free.dev', // Legacy support

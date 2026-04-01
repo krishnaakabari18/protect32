@@ -5,64 +5,54 @@ import IconPencil from '@/components/icon/icon-pencil';
 import IconTrash from '@/components/icon/icon-trash';
 import IconEye from '@/components/icon/icon-eye';
 import IconDownload from '@/components/icon/icon-download';
-import IconFile from '@/components/icon/icon-file';
 import IconPlus from '@/components/icon/icon-plus';
 import { Transition, Dialog, TransitionChild, DialogPanel } from '@headlessui/react';
-import React, { Fragment, useEffect, useRef, useState } from 'react';
+import React, { Fragment, useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
 import { API_ENDPOINTS } from '@/config/api.config';
-
-// ─── helpers ────────────────────────────────────────────────────────────────
 
 const DOCUMENT_TYPES = [
     'Medical Record', 'X-Ray', 'Lab Report', 'Prescription',
     'Insurance', 'Treatment Plan', 'Consent Form', 'Other',
 ];
 
-/** Strip special chars, collapse spaces, trim */
-const sanitizeName = (raw: string) =>
-    raw.replace(/[^a-zA-Z0-9 _\-]/g, '').replace(/\s+/g, ' ').trim();
-
-/** Auto-generate name from type + date when name is blank */
+const sanitizeName = (raw: string) => raw.replace(/[^a-zA-Z0-9 _\-]/g, '').replace(/\s+/g, ' ').trim();
 const autoName = (type: string, date: string) => {
     const d = date ? new Date(date).toLocaleDateString('en-GB').replace(/\//g, '-') : new Date().toLocaleDateString('en-GB').replace(/\//g, '-');
     return sanitizeName(`${type || 'Document'} ${d}`);
 };
-
 const formatDate = (s: string) => {
     if (!s) return '-';
     try { return new Date(s).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
     catch { return '-'; }
 };
-
 const formatSize = (b: number) => {
     if (!b) return '0 B';
     const k = 1024, sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(b) / Math.log(k));
     return (b / Math.pow(k, i)).toFixed(1) + ' ' + sizes[i];
 };
-
 const fileIcon = (mime: string) => mime?.includes('pdf') ? '📄' : mime?.includes('image') ? '🖼️' : '📎';
 
-// ─── row type for multi-row add ──────────────────────────────────────────────
-interface DocRow {
+interface DocItem {
+    id?: string;           // existing item id (edit mode)
     name: string;
     document_type: string;
     upload_date: string;
-    files: File[];
+    file: File | null;     // new file chosen
+    existingFile?: { path: string; file_originalname: string; file_mimetype: string; file_size: number } | null;
     nameError: string;
     typeError: string;
-    existingFile?: any; // for edit mode: the server file this row represents
 }
 
-const emptyRow = (): DocRow => ({
+const emptyItem = (): DocItem => ({
     name: '', document_type: '', upload_date: new Date().toISOString().split('T')[0],
-    files: [], nameError: '', typeError: '',
+    file: null, existingFile: null, nameError: '', typeError: '',
 });
 
-// ─── component ───────────────────────────────────────────────────────────────
 const DocumentsCRUD = () => {
     const [addModal, setAddModal] = useState(false);
+    const [modalMode, setModalMode] = useState<'create' | 'edit' | 'view'>('create');
     const [items, setItems] = useState<any[]>([]);
     const [patients, setPatients] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -70,17 +60,11 @@ const DocumentsCRUD = () => {
     const [filterPatient, setFilterPatient] = useState('');
     const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 });
 
-    // ── form state ──
-    const [modalMode, setModalMode] = useState<'create' | 'edit' | 'view'>('create');
     const [patientId, setPatientId] = useState('');
     const [patientError, setPatientError] = useState('');
-    const [rows, setRows] = useState<DocRow[]>([emptyRow()]);
+    const [docItems, setDocItems] = useState<DocItem[]>([emptyItem()]);
 
-    // edit/view single doc
-    const [editItem, setEditItem] = useState<any>(null);
-    const [editPatientId, setEditPatientId] = useState('');
-    const [editPatientError, setEditPatientError] = useState('');
-    const [editRows, setEditRows] = useState<DocRow[]>([emptyRow()]);
+    const [editId, setEditId] = useState('');
 
     useEffect(() => { fetchPatients(); fetchItems(); }, [pagination.page, pagination.limit, filterType, filterPatient]);
 
@@ -111,32 +95,8 @@ const DocumentsCRUD = () => {
         } catch (e) { console.error(e); } finally { setLoading(false); }
     };
 
-    // ── row helpers ──
-    const updateRow = (i: number, field: keyof DocRow, value: any) => {
-        setRows(prev => {
-            const next = [...prev];
-            next[i] = { ...next[i], [field]: value };
-            // clear errors on change
-            if (field === 'name') next[i].nameError = '';
-            if (field === 'document_type') next[i].typeError = '';
-            return next;
-        });
-    };
-
-    const addRow = () => setRows(prev => [...prev, emptyRow()]);
-    const removeRow = (i: number) => setRows(prev => prev.filter((_, idx) => idx !== i));
-
-    const handleRowFiles = (i: number, e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = Array.from(e.target.files || []);
-        const valid = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-        if (files.some(f => !valid.includes(f.type))) { showMessage('Only PDF and image files allowed', 'error'); return; }
-        if (files.some(f => f.size > 10 * 1024 * 1024)) { showMessage('Max file size is 10MB', 'error'); return; }
-        updateRow(i, 'files', files);
-    };
-
-    // ── edit row helpers ──
-    const updateEditRow = (i: number, field: keyof DocRow, value: any) => {
-        setEditRows(prev => {
+    const updateItem = (i: number, field: keyof DocItem, value: any) => {
+        setDocItems(prev => {
             const next = [...prev];
             next[i] = { ...next[i], [field]: value };
             if (field === 'name') next[i].nameError = '';
@@ -144,103 +104,74 @@ const DocumentsCRUD = () => {
             return next;
         });
     };
-    const addEditRow = () => setEditRows(prev => [...prev, emptyRow()]);
-    const removeEditRow = (i: number) => setEditRows(prev => prev.filter((_, idx) => idx !== i));
-    const handleEditRowFiles = (i: number, e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = Array.from(e.target.files || []);
-        const valid = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-        if (files.some(f => !valid.includes(f.type))) { showMessage('Only PDF and image files allowed', 'error'); return; }
-        if (files.some(f => f.size > 10 * 1024 * 1024)) { showMessage('Max file size is 10MB', 'error'); return; }
-        updateEditRow(i, 'files', files);
+
+    const handleFile = (i: number, e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0] || null;
+        if (file) {
+            const valid = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+            if (!valid.includes(file.type)) { showMessage('Only PDF and image files allowed', 'error'); return; }
+            if (file.size > 10 * 1024 * 1024) { showMessage('Max file size is 10MB', 'error'); return; }
+        }
+        updateItem(i, 'file', file);
     };
 
-    // ── validate & save (create — multiple rows) ──
+    const validate = () => {
+        let valid = true;
+        if (!patientId) { setPatientError('Patient is required.'); valid = false; } else setPatientError('');
+        const validated = docItems.map(item => {
+            const r = { ...item };
+            if (!item.document_type) { r.typeError = 'Document type is required.'; valid = false; }
+            if (!item.name.trim()) r.name = autoName(item.document_type, item.upload_date);
+            else r.name = sanitizeName(item.name);
+            return r;
+        });
+        setDocItems(validated);
+        return valid ? validated : null;
+    };
+
     const saveCreate = async () => {
-        let valid = true;
-        if (!patientId) { setPatientError('Patient is required.'); valid = false; }
-        else setPatientError('');
-
-        const validated = rows.map(row => {
-            const r = { ...row };
-            if (!row.document_type) { r.typeError = 'Document type is required.'; valid = false; }
-            const finalName = row.name.trim() ? sanitizeName(row.name) : autoName(row.document_type, row.upload_date);
-            r.name = finalName;
-            return r;
-        });
-        setRows(validated);
-        if (!valid) return;
-
-        if (validated.some(r => r.files.length === 0)) { showMessage('Please select at least one file per document', 'error'); return; }
-
-        setLoading(true);
-        try {
-            const token = localStorage.getItem('auth_token');
-            // One API call per row so each gets its own type/name/files
-            for (const row of validated) {
-                const fd = new FormData();
-                fd.append('patient_id', patientId);
-                fd.append('name', row.name);
-                fd.append('document_type', row.document_type);
-                if (row.upload_date) fd.append('upload_date', row.upload_date);
-                row.files.forEach(f => fd.append('files', f));
-                const res = await fetch(API_ENDPOINTS.documents, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
-                    body: fd,
-                });
-                const data = await res.json();
-                if (!res.ok) { showMessage(data.error || 'Operation failed', 'error'); return; }
-            }
-            showMessage('Document(s) saved successfully.');
-            setAddModal(false);
-            fetchItems();
-        } catch (err: any) { showMessage('Error: ' + err.message, 'error'); }
-        finally { setLoading(false); }
-    };
-
-    // ── validate & save (edit) ──
-    const saveEdit = async () => {
-        let valid = true;
-        if (!editPatientId) { setEditPatientError('Patient is required.'); valid = false; }
-        else setEditPatientError('');
-
-        const validated = editRows.map(row => {
-            const r = { ...row };
-            if (!row.document_type) { r.typeError = 'Document type is required.'; valid = false; }
-            const finalName = row.name.trim() ? sanitizeName(row.name) : autoName(row.document_type, row.upload_date);
-            r.name = finalName;
-            return r;
-        });
-        setEditRows(validated);
-        if (!valid) return;
-
-        const primary = validated[0];
+        const validated = validate();
+        if (!validated) return;
+        if (validated.some(it => !it.file)) { showMessage('Please select a file for each document', 'error'); return; }
         setLoading(true);
         try {
             const token = localStorage.getItem('auth_token');
             const fd = new FormData();
-            fd.append('patient_id', editPatientId);
-            fd.append('name', primary.name);
-            fd.append('document_type', primary.document_type);
-            if (primary.upload_date) fd.append('upload_date', primary.upload_date);
-
-            // Send new files; for rows with no new file, send existing path so backend keeps it
-            validated.forEach((row) => {
-                if (row.files.length > 0) {
-                    row.files.forEach(f => fd.append('files', f));
-                } else if (row.existingFile) {
-                    fd.append('keep_files', row.existingFile.path);
-                }
+            fd.append('patient_id', patientId);
+            const meta = validated.map(it => ({ name: it.name, document_type: it.document_type, upload_date: it.upload_date }));
+            fd.append('items', JSON.stringify(meta));
+            validated.forEach(it => { if (it.file) fd.append('files', it.file); });
+            const res = await fetch(API_ENDPOINTS.documents, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+                body: fd,
             });
-            fd.append('keep_existing_files', 'true');
+            const data = await res.json();
+            if (res.ok) { showMessage('Documents saved successfully.'); setAddModal(false); fetchItems(); }
+            else showMessage(data.error || 'Operation failed', 'error');
+        } catch (err: any) { showMessage('Error: ' + err.message, 'error'); }
+        finally { setLoading(false); }
+    };
 
-            const res = await fetch(`${API_ENDPOINTS.documents}/${editItem.id}`, {
+    const saveEdit = async () => {
+        const validated = validate();
+        if (!validated) return;
+        setLoading(true);
+        try {
+            const token = localStorage.getItem('auth_token');
+            const fd = new FormData();
+            fd.append('patient_id', patientId);
+            const meta = validated.map(it => ({ id: it.id, name: it.name, document_type: it.document_type, upload_date: it.upload_date }));
+            fd.append('items', JSON.stringify(meta));
+            // Append files in order — null slot means keep existing (backend handles by index)
+            validated.forEach(it => { fd.append('files', it.file || new Blob([])); });
+            const res = await fetch(`${API_ENDPOINTS.documents}/${editId}`, {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
                 body: fd,
             });
             const data = await res.json();
-            if (res.ok) { showMessage('Document updated successfully.'); setAddModal(false); fetchItems(); }
+            if (res.ok) { showMessage('Documents updated successfully.'); setAddModal(false); fetchItems(); }
             else showMessage(data.error || 'Update failed', 'error');
         } catch (err: any) { showMessage('Error: ' + err.message, 'error'); }
         finally { setLoading(false); }
@@ -249,71 +180,70 @@ const DocumentsCRUD = () => {
     const openCreate = () => {
         setModalMode('create');
         setPatientId(''); setPatientError('');
-        setRows([emptyRow()]);
+        setDocItems([emptyItem()]);
         setAddModal(true);
     };
 
-    const openEdit = (item: any) => {
-        setModalMode('edit');
-        setEditItem(item);
-        setEditPatientId(item.patient_id || '');
-        setEditPatientError('');
-        const existing = parsedFiles(item);
-        // one row per existing file, pre-filled with doc metadata
-        const rows = existing.length > 0
-            ? existing.map((f: any) => ({
-                name: item.name || '',
-                document_type: item.document_type || '',
-                upload_date: item.upload_date ? item.upload_date.split('T')[0] : new Date().toISOString().split('T')[0],
-                files: [],
-                nameError: '',
-                typeError: '',
-                existingFile: f,
-            }))
-            : [{ ...emptyRow(), name: item.name || '', document_type: item.document_type || '', upload_date: item.upload_date ? item.upload_date.split('T')[0] : new Date().toISOString().split('T')[0] }];
-        setEditRows(rows);
-        setAddModal(true);
+    const openEdit = async (record: any) => {
+        setLoading(true);
+        try {
+            const token = localStorage.getItem('auth_token');
+            const res = await fetch(`${API_ENDPOINTS.documents}/${record.id}`, { headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' } });
+            const data = await res.json();
+            const full = res.ok ? data.data : record;
+            setModalMode('edit');
+            setEditId(full.id);
+            setPatientId(full.patient_id || ''); setPatientError('');
+            const its: DocItem[] = (full.items || []).map((it: any) => ({
+                id: it.id, name: it.name || '', document_type: it.document_type || '',
+                upload_date: it.upload_date ? it.upload_date.split('T')[0] : new Date().toISOString().split('T')[0],
+                file: null,
+                existingFile: it.file_path ? { path: it.file_path, file_originalname: it.file_originalname, file_mimetype: it.file_mimetype, file_size: it.file_size } : null,
+                nameError: '', typeError: '',
+            }));
+            setDocItems(its.length > 0 ? its : [emptyItem()]);
+            setAddModal(true);
+        } catch (e) { console.error(e); }
+        finally { setLoading(false); }
     };
 
-    const openView = (item: any) => {
-        setModalMode('view');
-        setEditItem(item);
-        setEditPatientId(item.patient_id || '');
-        const existing = parsedFiles(item);
-        const rows = existing.length > 0
-            ? existing.map((f: any) => ({
-                name: item.name || '',
-                document_type: item.document_type || '',
-                upload_date: item.upload_date ? item.upload_date.split('T')[0] : new Date().toISOString().split('T')[0],
-                files: [],
-                nameError: '',
-                typeError: '',
-                existingFile: f,
-            }))
-            : [{ ...emptyRow(), name: item.name || '', document_type: item.document_type || '', upload_date: item.upload_date ? item.upload_date.split('T')[0] : new Date().toISOString().split('T')[0] }];
-        setEditRows(rows);
-        setAddModal(true);
+    const openView = async (record: any) => {
+        setLoading(true);
+        try {
+            const token = localStorage.getItem('auth_token');
+            const res = await fetch(`${API_ENDPOINTS.documents}/${record.id}`, { headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' } });
+            const data = await res.json();
+            const full = res.ok ? data.data : record;
+            setModalMode('view');
+            setEditId(full.id);
+            setPatientId(full.patient_id || '');
+            const its: DocItem[] = (full.items || []).map((it: any) => ({
+                id: it.id, name: it.name || '', document_type: it.document_type || '',
+                upload_date: it.upload_date ? it.upload_date.split('T')[0] : '',
+                file: null,
+                existingFile: it.file_path ? { path: it.file_path, file_originalname: it.file_originalname, file_mimetype: it.file_mimetype, file_size: it.file_size } : null,
+                nameError: '', typeError: '',
+            }));
+            setDocItems(its.length > 0 ? its : [emptyItem()]);
+            setAddModal(true);
+        } catch (e) { console.error(e); }
+        finally { setLoading(false); }
     };
 
-    const deleteItem = async (item: any) => {
-        const result = await Swal.fire({ icon: 'warning', title: 'Are you sure?', text: 'This will delete the document and all files!', showCancelButton: true, confirmButtonText: 'Delete' });
+    const deleteRecord = async (record: any) => {
+        const result = await Swal.fire({ icon: 'warning', title: 'Are you sure?', text: 'This will delete all documents and files!', showCancelButton: true, confirmButtonText: 'Delete' });
         if (!result.value) return;
         try {
             const token = localStorage.getItem('auth_token');
-            const res = await fetch(`${API_ENDPOINTS.documents}/${item.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' } });
-            if (res.ok) { showMessage('Document deleted successfully.'); fetchItems(); }
+            const res = await fetch(`${API_ENDPOINTS.documents}/${record.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' } });
+            if (res.ok) { showMessage('Deleted successfully.'); fetchItems(); }
             else { const d = await res.json(); showMessage(d.error || 'Delete failed', 'error'); }
         } catch (err: any) { showMessage('Error: ' + err.message, 'error'); }
     };
 
     const showMessage = (msg = '', type = 'success') => {
-        if (type === 'success') Swal.fire({ icon: 'success', title: msg, showConfirmButton: true, confirmButtonText: 'OK', timer: 3000, timerProgressBar: true });
+        if (type === 'success') Swal.fire({ icon: 'success', title: msg, timer: 3000, timerProgressBar: true, showConfirmButton: true, confirmButtonText: 'OK' });
         else { const t: any = Swal.mixin({ toast: true, position: 'top', showConfirmButton: false, timer: 3000, customClass: { container: 'toast' } }); t.fire({ icon: type, title: msg, padding: '10px 20px' }); }
-    };
-
-    const getFilesCount = (item: any) => {
-        if (!item.files) return 0;
-        try { return (typeof item.files === 'string' ? JSON.parse(item.files) : item.files).length; } catch { return 0; }
     };
 
     const downloadFile = (filePath: string) => {
@@ -321,16 +251,10 @@ const DocumentsCRUD = () => {
         window.open(`${base}/${filePath}`, '_blank');
     };
 
-    const parsedFiles = (item: any): any[] => {
-        if (!item?.files) return [];
-        try { return typeof item.files === 'string' ? JSON.parse(item.files) : item.files; } catch { return []; }
-    };
-
     const isView = modalMode === 'view';
 
     return (
         <div>
-            {/* Header */}
             <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
                 <h2 className="text-xl">Documents</h2>
                 <button type="button" className="btn btn-primary" onClick={openCreate}>
@@ -338,7 +262,6 @@ const DocumentsCRUD = () => {
                 </button>
             </div>
 
-            {/* Filters */}
             <div className="flex flex-wrap items-center gap-3 mb-5">
                 <select className="form-select w-auto" value={filterPatient} onChange={e => { setFilterPatient(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}>
                     <option value="">All Patients</option>
@@ -353,27 +276,26 @@ const DocumentsCRUD = () => {
                 )}
             </div>
 
-            {/* Table */}
             {loading ? (
                 <div className="flex items-center justify-center h-64"><span className="animate-spin border-4 border-primary border-l-transparent rounded-full w-12 h-12 inline-block"></span></div>
             ) : (
                 <div className="panel mt-5 overflow-hidden border-0 p-0">
                     <div className="table-responsive">
                         <table className="table-striped table-hover">
-                            <thead><tr><th>#</th><th>Document Name</th><th>Patient</th><th>Type</th><th>Files</th><th>Upload Date</th><th className="!text-center">Actions</th></tr></thead>
+                            <thead><tr><th>#</th><th>Documents</th><th>Patient</th><th>Types</th><th>Items</th><th>Upload Date</th><th className="!text-center">Actions</th></tr></thead>
                             <tbody>
                                 {items.length === 0 ? <tr><td colSpan={7} className="text-center py-8">No documents found</td></tr> : items.map((item, idx) => (
                                     <tr key={item.id}>
                                         <td>{(pagination.page - 1) * pagination.limit + idx + 1}</td>
-                                        <td className="font-semibold">{item.name}</td>
+                                        <td className="font-semibold max-w-xs truncate">{item.document_names || '-'}</td>
                                         <td>{item.patient_first_name && item.patient_last_name ? `${item.patient_first_name} ${item.patient_last_name}` : '-'}</td>
-                                        <td><span className="badge bg-primary">{item.document_type}</span></td>
-                                        <td><span className="badge bg-info">{getFilesCount(item)} files</span></td>
+                                        <td><span className="text-sm">{item.document_types || '-'}</span></td>
+                                        <td><span className="badge bg-info">{item.items_count || 0} items</span></td>
                                         <td>{formatDate(item.upload_date)}</td>
                                         <td><div className="flex gap-2 items-center justify-center">
                                             <button type="button" className="btn btn-sm btn-outline-info" onClick={() => openView(item)}><IconEye /></button>
                                             <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => openEdit(item)}><IconPencil /></button>
-                                            <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => deleteItem(item)}><IconTrash /></button>
+                                            <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => deleteRecord(item)}><IconTrash /></button>
                                         </div></td>
                                     </tr>
                                 ))}
@@ -412,187 +334,91 @@ const DocumentsCRUD = () => {
                                     </div>
                                     <div className="p-5 max-h-[80vh] overflow-y-auto">
 
-                                        {/* ── CREATE MODE ── */}
-                                        {modalMode === 'create' && (
-                                            <>
-                                                {/* Patient select */}
-                                                <div className="mb-5">
-                                                    <label>Patient <span className="text-red-500">*</span></label>
-                                                    <select className={`form-select ${patientError ? 'border-red-500' : ''}`} value={patientId}
-                                                        onChange={e => { setPatientId(e.target.value); setPatientError(''); }}>
-                                                        <option value="">Select Patient</option>
-                                                        {patients.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
-                                                    </select>
-                                                    {patientError && <p className="mt-1 text-xs text-red-500">{patientError}</p>}
-                                                </div>
+                                        {/* Patient */}
+                                        <div className="mb-5">
+                                            <label>Patient <span className="text-red-500">*</span></label>
+                                            <select className={`form-select ${patientError ? 'border-red-500' : ''}`} value={patientId}
+                                                onChange={e => { setPatientId(e.target.value); setPatientError(''); }} disabled={isView}>
+                                                <option value="">Select Patient</option>
+                                                {patients.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
+                                            </select>
+                                            {patientError && <p className="mt-1 text-xs text-red-500">{patientError}</p>}
+                                        </div>
 
-                                                {/* Document rows */}
-                                                <div className="space-y-4">
-                                                    {rows.map((row, i) => (
-                                                        <div key={i} className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-800 relative">
-                                                            <div className="flex items-center justify-between mb-3">
-                                                                <span className="font-semibold text-sm">Document {i + 1}</span>
-                                                                {rows.length > 1 && (
-                                                                    <button type="button" className="text-danger hover:text-red-700 text-sm" onClick={() => removeRow(i)}>Remove</button>
-                                                                )}
-                                                            </div>
-                                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                                                {/* Type */}
-                                                                <div>
-                                                                    <label className="text-sm">Document Type <span className="text-red-500">*</span></label>
-                                                                    <select className={`form-select ${row.typeError ? 'border-red-500' : ''}`} value={row.document_type}
-                                                                        onChange={e => updateRow(i, 'document_type', e.target.value)}>
-                                                                        <option value="">Select Type</option>
-                                                                        {DOCUMENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                                                                    </select>
-                                                                    {row.typeError && <p className="mt-1 text-xs text-red-500">{row.typeError}</p>}
-                                                                </div>
-                                                                {/* Date */}
-                                                                <div>
-                                                                    <label className="text-sm">Upload Date</label>
-                                                                    <input type="date" className="form-input" value={row.upload_date}
-                                                                        onChange={e => updateRow(i, 'upload_date', e.target.value)} />
-                                                                </div>
-                                                                {/* Name */}
-                                                                <div>
-                                                                    <label className="text-sm">Document Name <span className="text-gray-400 text-xs">(auto if blank)</span></label>
-                                                                    <input type="text" className="form-input" placeholder="Leave blank to auto-generate"
-                                                                        value={row.name}
-                                                                        onChange={e => updateRow(i, 'name', e.target.value)} />
-                                                                    <p className="text-xs text-gray-400 mt-0.5">No special characters allowed</p>
-                                                                </div>
-                                                                {/* File upload */}
-                                                                <div className="sm:col-span-3">
-                                                                    <label className="text-sm">Files (PDF / Images, max 10MB each)</label>
-                                                                    <input type="file" className="form-input" multiple accept=".pdf,.jpg,.jpeg,.png,.gif,.webp"
-                                                                        onChange={e => handleRowFiles(i, e)} />
-                                                                    {row.files.length > 0 && (
-                                                                        <div className="mt-2 flex flex-wrap gap-2">
-                                                                            {row.files.map((f, fi) => (
-                                                                                <span key={fi} className="text-xs bg-gray-200 dark:bg-gray-700 rounded px-2 py-1 flex items-center gap-1">
-                                                                                    {fileIcon(f.type)} {f.name} ({formatSize(f.size)})
-                                                                                    <button type="button" className="text-danger ml-1" onClick={() => {
-                                                                                        const updated = [...row.files]; updated.splice(fi, 1);
-                                                                                        updateRow(i, 'files', updated);
-                                                                                    }}>×</button>
-                                                                                </span>
-                                                                            ))}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </div>
+                                        {/* Document cards */}
+                                        <div className="space-y-4">
+                                            {docItems.map((item, i) => (
+                                                <div key={i} className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-800">
+                                                    <div className="flex items-center justify-between mb-3">
+                                                        <span className="font-semibold text-sm">Document {i + 1}</span>
+                                                        {!isView && docItems.length > 1 && (
+                                                            <button type="button" className="text-danger text-sm" onClick={() => setDocItems(prev => prev.filter((_, idx) => idx !== i))}>Remove</button>
+                                                        )}
+                                                    </div>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                                        <div>
+                                                            <label className="text-sm">Document Type {!isView && <span className="text-red-500">*</span>}</label>
+                                                            <select className={`form-select ${item.typeError ? 'border-red-500' : ''}`} value={item.document_type}
+                                                                onChange={e => updateItem(i, 'document_type', e.target.value)} disabled={isView}>
+                                                                <option value="">Select Type</option>
+                                                                {DOCUMENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                                                            </select>
+                                                            {item.typeError && <p className="mt-1 text-xs text-red-500">{item.typeError}</p>}
                                                         </div>
-                                                    ))}
+                                                        <div>
+                                                            <label className="text-sm">Upload Date</label>
+                                                            <input type="date" className="form-input" value={item.upload_date}
+                                                                onChange={e => updateItem(i, 'upload_date', e.target.value)} disabled={isView} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-sm">Document Name <span className="text-gray-400 text-xs">(auto if blank)</span></label>
+                                                            <input type="text" className="form-input" placeholder="Leave blank to auto-generate"
+                                                                value={item.name} onChange={e => updateItem(i, 'name', e.target.value)} disabled={isView} />
+                                                            {!isView && <p className="text-xs text-gray-400 mt-0.5">No special characters allowed</p>}
+                                                        </div>
+                                                        <div className="sm:col-span-3">
+                                                            <label className="text-sm">File (PDF / Image, max 10MB)</label>
+                                                            {/* Existing file */}
+                                                            {item.existingFile && !item.file && (
+                                                                <div className="flex items-center gap-2 mb-1 p-2 bg-gray-100 dark:bg-gray-700 rounded text-sm">
+                                                                    {fileIcon(item.existingFile.file_mimetype)} {item.existingFile.file_originalname}
+                                                                    <span className="text-xs text-gray-400">({formatSize(item.existingFile.file_size)})</span>
+                                                                    {!isView && <span className="text-xs text-gray-400 ml-auto">Choose below to replace</span>}
+                                                                    <button type="button" className="btn btn-sm btn-outline-primary ml-auto" onClick={() => downloadFile(item.existingFile!.path)}><IconDownload className="w-4 h-4" /></button>
+                                                                </div>
+                                                            )}
+                                                            {/* New file chosen */}
+                                                            {item.file && (
+                                                                <div className="flex items-center gap-2 mb-1 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-sm border border-blue-200 dark:border-blue-700">
+                                                                    {fileIcon(item.file.type)} {item.file.name} <span className="text-xs text-gray-400">({formatSize(item.file.size)})</span>
+                                                                    {!isView && <button type="button" className="text-danger ml-auto" onClick={() => updateItem(i, 'file', null)}>×</button>}
+                                                                </div>
+                                                            )}
+                                                            {!isView && (
+                                                                <input type="file" className="form-input" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp"
+                                                                    onChange={e => handleFile(i, e)} />
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
+                                            ))}
+                                        </div>
 
-                                                {/* Add more row */}
-                                                <button type="button" className="mt-3 btn btn-outline-primary btn-sm" onClick={addRow}>
-                                                    <IconPlus className="w-4 h-4 mr-1" />Add More Document
+                                        {!isView && (
+                                            <button type="button" className="mt-3 btn btn-outline-primary btn-sm"
+                                                onClick={() => setDocItems(prev => [...prev, emptyItem()])}>
+                                                <IconPlus className="w-4 h-4 mr-1" />Add More Document
+                                            </button>
+                                        )}
+
+                                        <div className="mt-6 flex justify-end gap-3 border-t pt-4">
+                                            <button type="button" className="btn btn-outline-danger" onClick={() => setAddModal(false)}>{isView ? 'Close' : 'Cancel'}</button>
+                                            {!isView && (
+                                                <button type="button" className="btn btn-primary" onClick={modalMode === 'create' ? saveCreate : saveEdit} disabled={loading}>
+                                                    {loading ? 'Saving...' : modalMode === 'create' ? 'Save Documents' : 'Update Documents'}
                                                 </button>
-
-                                                <div className="mt-6 flex justify-end gap-3 border-t pt-4">
-                                                    <button type="button" className="btn btn-outline-danger" onClick={() => setAddModal(false)}>Cancel</button>
-                                                    <button type="button" className="btn btn-primary" onClick={saveCreate} disabled={loading}>{loading ? 'Saving...' : 'Save Documents'}</button>
-                                                </div>
-                                            </>
-                                        )}
-
-                                        {/* ── EDIT / VIEW MODE ── */}
-                                        {(modalMode === 'edit' || modalMode === 'view') && (
-                                            <>
-                                                {/* Patient select */}
-                                                <div className="mb-5">
-                                                    <label>Patient <span className="text-red-500">*</span></label>
-                                                    <select className={`form-select ${editPatientError ? 'border-red-500' : ''}`} value={editPatientId}
-                                                        onChange={e => { setEditPatientId(e.target.value); setEditPatientError(''); }} disabled={isView}>
-                                                        <option value="">Select Patient</option>
-                                                        {patients.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
-                                                    </select>
-                                                    {editPatientError && <p className="mt-1 text-xs text-red-500">{editPatientError}</p>}
-                                                </div>
-
-                                                {/* Document rows — identical layout to create */}
-                                                <div className="space-y-4">
-                                                    {editRows.map((row, i) => (
-                                                        <div key={i} className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-800 relative">
-                                                            <div className="flex items-center justify-between mb-3">
-                                                                <span className="font-semibold text-sm">Document {i + 1}</span>
-                                                                {!isView && editRows.length > 1 && (
-                                                                    <button type="button" className="text-danger hover:text-red-700 text-sm" onClick={() => removeEditRow(i)}>Remove</button>
-                                                                )}
-                                                            </div>
-                                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                                                {/* Type */}
-                                                                <div>
-                                                                    <label className="text-sm">Document Type {!isView && <span className="text-red-500">*</span>}</label>
-                                                                    <select className={`form-select ${row.typeError ? 'border-red-500' : ''}`} value={row.document_type}
-                                                                        onChange={e => updateEditRow(i, 'document_type', e.target.value)} disabled={isView}>
-                                                                        <option value="">Select Type</option>
-                                                                        {DOCUMENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                                                                    </select>
-                                                                    {row.typeError && <p className="mt-1 text-xs text-red-500">{row.typeError}</p>}
-                                                                </div>
-                                                                {/* Date */}
-                                                                <div>
-                                                                    <label className="text-sm">Upload Date</label>
-                                                                    <input type="date" className="form-input" value={row.upload_date}
-                                                                        onChange={e => updateEditRow(i, 'upload_date', e.target.value)} disabled={isView} />
-                                                                </div>
-                                                                {/* Name */}
-                                                                <div>
-                                                                    <label className="text-sm">Document Name <span className="text-gray-400 text-xs">(auto if blank)</span></label>
-                                                                    <input type="text" className="form-input" placeholder="Leave blank to auto-generate"
-                                                                        value={row.name} onChange={e => updateEditRow(i, 'name', e.target.value)} disabled={isView} />
-                                                                    {!isView && <p className="text-xs text-gray-400 mt-0.5">No special characters allowed</p>}
-                                                                </div>
-                                                                {/* Files */}
-                                                                <div className="sm:col-span-3">
-                                                                    <label className="text-sm">Files (PDF / Images, max 10MB each)</label>
-                                                                    {/* Show existing file name as hint */}
-                                                                    {row.existingFile && row.files.length === 0 && (
-                                                                        <div className="flex items-center gap-2 mb-1 p-2 bg-gray-100 dark:bg-gray-700 rounded text-sm">
-                                                                            {fileIcon(row.existingFile.mimetype)} {row.existingFile.originalname}
-                                                                            <span className="text-xs text-gray-400">({formatSize(row.existingFile.size)})</span>
-                                                                            {!isView && <span className="text-xs text-gray-400 ml-auto">Choose a file below to replace</span>}
-                                                                            <button type="button" className="btn btn-sm btn-outline-primary ml-auto" onClick={() => downloadFile(row.existingFile.path)}><IconDownload className="w-4 h-4" /></button>
-                                                                        </div>
-                                                                    )}
-                                                                    {!isView && (
-                                                                        <input type="file" className="form-input" multiple accept=".pdf,.jpg,.jpeg,.png,.gif,.webp"
-                                                                            onChange={e => handleEditRowFiles(i, e)} />
-                                                                    )}
-                                                                    {row.files.length > 0 && (
-                                                                        <div className="mt-2 flex flex-wrap gap-2">
-                                                                            {row.files.map((f, fi) => (
-                                                                                <span key={fi} className="text-xs bg-gray-200 dark:bg-gray-700 rounded px-2 py-1 flex items-center gap-1">
-                                                                                    {fileIcon(f.type)} {f.name} ({formatSize(f.size)})
-                                                                                    <button type="button" className="text-danger ml-1" onClick={() => {
-                                                                                        const updated = [...row.files]; updated.splice(fi, 1);
-                                                                                        updateEditRow(i, 'files', updated);
-                                                                                    }}>×</button>
-                                                                                </span>
-                                                                            ))}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-
-                                                {/* Add more row */}
-                                                {!isView && (
-                                                    <button type="button" className="mt-3 btn btn-outline-primary btn-sm" onClick={addEditRow}>
-                                                        <IconPlus className="w-4 h-4 mr-1" />Add More Document
-                                                    </button>
-                                                )}
-
-                                                <div className="mt-6 flex justify-end gap-3 border-t pt-4">
-                                                    <button type="button" className="btn btn-outline-danger" onClick={() => setAddModal(false)}>{isView ? 'Close' : 'Cancel'}</button>
-                                                    {!isView && <button type="button" className="btn btn-primary" onClick={saveEdit} disabled={loading}>{loading ? 'Saving...' : 'Update Document'}</button>}
-                                                </div>
-                                            </>
-                                        )}
+                                            )}
+                                        </div>
                                     </div>
                                 </DialogPanel>
                             </TransitionChild>

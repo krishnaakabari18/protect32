@@ -159,29 +159,4 @@ router.put('/:id', AuthMiddleware.authenticate, uploadDocuments, DocumentControl
  */
 router.delete('/:id', AuthMiddleware.authenticate, DocumentController.delete);
 
-/**
- * @swagger
- * /documents/{id}/files/{fileIndex}:
- *   delete:
- *     summary: Delete a specific file from a document
- *     tags: [Documents]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *       - in: path
- *         name: fileIndex
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: File deleted successfully
- */
-router.delete('/:id/files/:fileIndex', AuthMiddleware.authenticate, DocumentController.deleteFile);
-
 module.exports = router;

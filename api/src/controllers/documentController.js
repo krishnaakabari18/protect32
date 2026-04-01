@@ -1,260 +1,126 @@
 const DocumentModel = require('../models/documentModel');
 const { deleteFiles, getFileInfo } = require('../utils/documentUpload');
-const { convertDocumentUrls } = require('../utils/urlHelper');
 
 class DocumentController {
   static async create(req, res) {
     try {
-      const { patient_id, provider_id, name, document_type, notes } = req.body;
-      const uploaded_by = req.user.id;
+      const { patient_id, provider_id } = req.body;
+      const uploaded_by = req.user?.id || null;
 
-      // Get uploaded files info
-      const files = req.files ? req.files.map(file => getFileInfo(file)) : [];
+      if (!patient_id) return res.status(400).json({ error: 'patient_id is required' });
 
-      if (files.length === 0) {
-        return res.status(400).json({ error: 'At least one file is required' });
+      // Parse items metadata sent as JSON string
+      let items = [];
+      try { items = JSON.parse(req.body.items || '[]'); } catch { items = []; }
+
+      if (items.length === 0) return res.status(400).json({ error: 'At least one document item is required' });
+
+      // Create parent record
+      const doc = await DocumentModel.create({ patient_id, provider_id, uploaded_by, upload_date: items[0]?.upload_date });
+
+      // Map uploaded files by index
+      const uploadedFiles = req.files || [];
+
+      // Create each item
+      for (let i = 0; i < items.length; i++) {
+        const meta = items[i];
+        const file = uploadedFiles[i];
+        await DocumentModel.createItem(doc.id, {
+          name: meta.name,
+          document_type: meta.document_type,
+          upload_date: meta.upload_date || null,
+          file_path: file ? file.path.replace(/\\/g, '/') : null,
+          file_originalname: file ? file.originalname : null,
+          file_mimetype: file ? file.mimetype : null,
+          file_size: file ? file.size : 0,
+        });
       }
 
-      const documentData = {
-        patient_id,
-        provider_id,
-        name,
-        document_type,
-        files,
-        notes,
-        uploaded_by
-      };
-
-      const data = await DocumentModel.create(documentData);
-      
-      // Convert relative paths to absolute URLs
-      const dataWithUrls = convertDocumentUrls(data);
-      
-      res.status(201).json({ 
-        message: 'Document created successfully', 
-        data: dataWithUrls,
-        filesUploaded: files.length
-      });
+      const full = await DocumentModel.findById(doc.id);
+      res.status(201).json({ message: 'Document created successfully', data: full });
     } catch (error) {
-      // Clean up uploaded files if database insert fails
-      if (req.files) {
-        const filePaths = req.files.map(file => file.path);
-        deleteFiles(filePaths);
-      }
+      if (req.files) deleteFiles(req.files.map(f => f.path));
       res.status(500).json({ error: error.message });
     }
   }
 
   static async getAll(req, res) {
     try {
-      const { page = 1, limit = 10, patient_id, provider_id, document_type } = req.query;
-      
+      const { page = 1, limit = 10, patient_id, document_type } = req.query;
       const filters = {};
       if (patient_id) filters.patient_id = patient_id;
-      if (provider_id) filters.provider_id = provider_id;
       if (document_type) filters.document_type = document_type;
 
       const data = await DocumentModel.findAll(filters);
-      
-      // Convert relative paths to absolute URLs for all documents
-      const dataWithUrls = data.map(doc => convertDocumentUrls(doc));
-      
-      // Pagination
-      const pageNum = parseInt(page);
-      const limitNum = parseInt(limit);
-      const startIndex = (pageNum - 1) * limitNum;
-      const endIndex = startIndex + limitNum;
-      const paginatedData = dataWithUrls.slice(startIndex, endIndex);
-      
-      res.json({ 
-        data: paginatedData,
-        pagination: {
-          page: pageNum,
-          limit: limitNum,
-          total: dataWithUrls.length,
-          totalPages: Math.ceil(dataWithUrls.length / limitNum)
-        }
+      const pageNum = parseInt(page), limitNum = parseInt(limit);
+      const start = (pageNum - 1) * limitNum;
+      res.json({
+        data: data.slice(start, start + limitNum),
+        pagination: { page: pageNum, limit: limitNum, total: data.length, totalPages: Math.ceil(data.length / limitNum) }
       });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
+    } catch (error) { res.status(500).json({ error: error.message }); }
   }
 
   static async getById(req, res) {
     try {
       const data = await DocumentModel.findById(req.params.id);
-      if (!data) {
-        return res.status(404).json({ error: 'Document not found' });
-      }
-      
-      // Convert relative paths to absolute URLs
-      const dataWithUrls = convertDocumentUrls(data);
-      
-      res.json({ data: dataWithUrls });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
+      if (!data) return res.status(404).json({ error: 'Document not found' });
+      res.json({ data });
+    } catch (error) { res.status(500).json({ error: error.message }); }
   }
 
   static async update(req, res) {
     try {
-      const { patient_id, provider_id, name, document_type, notes, keep_existing_files } = req.body;
-      
-      // Get existing document
-      const existingDoc = await DocumentModel.findById(req.params.id);
-      if (!existingDoc) {
-        // Clean up uploaded files if document not found
-        if (req.files) {
-          const filePaths = req.files.map(file => file.path);
-          deleteFiles(filePaths);
-        }
+      const { patient_id } = req.body;
+      const existing = await DocumentModel.findById(req.params.id);
+      if (!existing) {
+        if (req.files) deleteFiles(req.files.map(f => f.path));
         return res.status(404).json({ error: 'Document not found' });
       }
 
-      // Get new uploaded files
-      const newFiles = req.files ? req.files.map(file => getFileInfo(file)) : [];
-      
-      // Handle existing files
-      let files = [];
-      if (keep_existing_files === 'true' && existingDoc.files) {
-        // Keep existing files and add new ones
-        const existingFiles = typeof existingDoc.files === 'string' 
-          ? JSON.parse(existingDoc.files) 
-          : existingDoc.files;
-        files = [...existingFiles, ...newFiles];
-      } else {
-        // Replace with new files only
-        files = newFiles;
-        
-        // Delete old files from filesystem
-        if (existingDoc.files) {
-          const oldFiles = typeof existingDoc.files === 'string' 
-            ? JSON.parse(existingDoc.files) 
-            : existingDoc.files;
-          const oldFilePaths = oldFiles.map(f => f.path);
-          deleteFiles(oldFilePaths);
-        }
-      }
+      let items = [];
+      try { items = JSON.parse(req.body.items || '[]'); } catch { items = []; }
 
-      if (files.length === 0) {
-        return res.status(400).json({ error: 'At least one file is required' });
-      }
+      const uploadedFiles = req.files || [];
 
-      const documentData = {
-        patient_id,
-        provider_id,
-        name,
-        document_type,
-        files,
-        notes
-      };
-
-      const data = await DocumentModel.update(req.params.id, documentData);
-      
-      // Convert relative paths to absolute URLs
-      const dataWithUrls = convertDocumentUrls(data);
-      
-      res.json({ 
-        message: 'Document updated successfully', 
-        data: dataWithUrls,
-        filesCount: files.length
+      // Build new items list — merge existing file paths with new uploads
+      const newItems = items.map((meta, i) => {
+        const newFile = uploadedFiles[i];
+        const existingItem = existing.items?.find(it => it.id === meta.id);
+        return {
+          name: meta.name,
+          document_type: meta.document_type,
+          upload_date: meta.upload_date || null,
+          file_path: newFile ? newFile.path.replace(/\\/g, '/') : (existingItem?.file_path || null),
+          file_originalname: newFile ? newFile.originalname : (existingItem?.file_originalname || null),
+          file_mimetype: newFile ? newFile.mimetype : (existingItem?.file_mimetype || null),
+          file_size: newFile ? newFile.size : (existingItem?.file_size || 0),
+        };
       });
+
+      await DocumentModel.update(req.params.id, { patient_id, upload_date: newItems[0]?.upload_date });
+      await DocumentModel.replaceItems(req.params.id, newItems);
+
+      const full = await DocumentModel.findById(req.params.id);
+      res.json({ message: 'Document updated successfully', data: full });
     } catch (error) {
-      // Clean up uploaded files if update fails
-      if (req.files) {
-        const filePaths = req.files.map(file => file.path);
-        deleteFiles(filePaths);
-      }
+      if (req.files) deleteFiles(req.files.map(f => f.path));
       res.status(500).json({ error: error.message });
     }
   }
 
   static async delete(req, res) {
     try {
-      // Get document to retrieve file paths
-      const document = await DocumentModel.findById(req.params.id);
-      if (!document) {
-        return res.status(404).json({ error: 'Document not found' });
+      const doc = await DocumentModel.findById(req.params.id);
+      if (!doc) return res.status(404).json({ error: 'Document not found' });
+      // Delete physical files
+      if (doc.items) {
+        const paths = doc.items.map(it => it.file_path).filter(Boolean);
+        if (paths.length) deleteFiles(paths);
       }
-
-      // Delete from database
       await DocumentModel.delete(req.params.id);
-
-      // Delete all associated files from filesystem
-      if (document.files) {
-        const files = typeof document.files === 'string' 
-          ? JSON.parse(document.files) 
-          : document.files;
-        const filePaths = files.map(f => f.path);
-        const deletedFiles = deleteFiles(filePaths);
-        const successCount = deletedFiles.filter(result => result === true).length;
-        
-        res.json({ 
-          message: 'Document deleted successfully',
-          filesDeleted: successCount,
-          totalFiles: filePaths.length
-        });
-      } else {
-        res.json({ message: 'Document deleted successfully' });
-      }
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  }
-
-  // Delete a specific file from a document
-  static async deleteFile(req, res) {
-    try {
-      const { id, fileIndex } = req.params;
-      
-      const document = await DocumentModel.findById(id);
-      if (!document) {
-        return res.status(404).json({ error: 'Document not found' });
-      }
-
-      const files = typeof document.files === 'string' 
-        ? JSON.parse(document.files) 
-        : document.files;
-
-      const index = parseInt(fileIndex);
-      if (index < 0 || index >= files.length) {
-        return res.status(400).json({ error: 'Invalid file index' });
-      }
-
-      // Delete file from filesystem
-      const fileToDelete = files[index];
-      deleteFiles([fileToDelete.path]);
-
-      // Remove from array
-      files.splice(index, 1);
-
-      if (files.length === 0) {
-        return res.status(400).json({ error: 'Cannot delete last file. Delete the entire document instead.' });
-      }
-
-      // Update document
-      const documentData = {
-        patient_id: document.patient_id,
-        provider_id: document.provider_id,
-        name: document.name,
-        document_type: document.document_type,
-        files,
-        notes: document.notes
-      };
-
-      const data = await DocumentModel.update(id, documentData);
-      
-      // Convert relative paths to absolute URLs
-      const dataWithUrls = convertDocumentUrls(data);
-      
-      res.json({ 
-        message: 'File deleted successfully', 
-        data: dataWithUrls,
-        remainingFiles: files.length
-      });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
+      res.json({ message: 'Document deleted successfully' });
+    } catch (error) { res.status(500).json({ error: error.message }); }
   }
 }
 

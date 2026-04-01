@@ -142,6 +142,11 @@ router.post('/login', AuthController.login);
  *   post:
  *     summary: Send OTP to mobile number
  *     tags: [Authentication]
+ *     description: |
+ *       Send a one-time password to the given mobile number.
+ *       - If the number is **not registered**, a new user account is automatically created and OTP is sent.
+ *       - If the number **already exists**, OTP is sent to log in.
+ *       No `purpose` field required.
  *     requestBody:
  *       required: true
  *       content:
@@ -150,17 +155,33 @@ router.post('/login', AuthController.login);
  *             type: object
  *             required:
  *               - mobile_number
- *               - purpose
  *             properties:
  *               mobile_number:
  *                 type: string
  *                 example: "+1234567890"
- *               purpose:
- *                 type: string
- *                 enum: [registration, login, password_reset, mobile_verification]
  *     responses:
  *       200:
  *         description: OTP sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "OTP sent successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     mobile_number:
+ *                       type: string
+ *                     is_new_user:
+ *                       type: boolean
+ *                       description: true if a new account was created
+ *                     expires_in_minutes:
+ *                       type: number
+ *       400:
+ *         description: mobile_number is required
  */
 router.post('/send-otp', AuthController.sendOTP);
 
@@ -168,14 +189,12 @@ router.post('/send-otp', AuthController.sendOTP);
  * @swagger
  * /auth/verify-otp:
  *   post:
- *     summary: Verify OTP and login/register/verify mobile
+ *     summary: Verify OTP and login (works for both new and existing users)
  *     tags: [Authentication]
  *     description: |
- *       Verify OTP code sent to mobile number.
- *       - For mobile_verification: Verifies and activates existing user's mobile number
- *       - For registration: Creates new user account
- *       - For login: Authenticates existing user
- *       - For password_reset: Allows password reset
+ *       Verify the OTP sent to a mobile number.
+ *       - Works for **both new and existing users** — no `purpose` needed.
+ *       - On success, marks the mobile as verified and returns JWT tokens.
  *     requestBody:
  *       required: true
  *       content:
@@ -185,36 +204,17 @@ router.post('/send-otp', AuthController.sendOTP);
  *             required:
  *               - mobile_number
  *               - otp_code
- *               - purpose
  *             properties:
  *               mobile_number:
  *                 type: string
  *                 example: "+1234567890"
- *                 description: Mobile number with country code
  *               otp_code:
  *                 type: string
  *                 example: "123456"
- *                 description: 6-digit OTP code (123456 in test mode)
- *               purpose:
- *                 type: string
- *                 enum: [registration, login, password_reset, mobile_verification]
- *                 example: "mobile_verification"
- *                 description: Purpose of OTP verification
- *               user_data:
- *                 type: object
- *                 description: Required only for registration purpose
- *                 properties:
- *                   first_name:
- *                     type: string
- *                   last_name:
- *                     type: string
- *                   user_type:
- *                     type: string
- *                   password:
- *                     type: string
+ *                 description: 6-digit OTP code
  *     responses:
  *       200:
- *         description: OTP verified successfully
+ *         description: OTP verified — returns user and tokens
  *         content:
  *           application/json:
  *             schema:
@@ -234,34 +234,19 @@ router.post('/send-otp', AuthController.sendOTP);
  *                           format: uuid
  *                         mobile_number:
  *                           type: string
- *                         first_name:
- *                           type: string
- *                         last_name:
- *                           type: string
  *                         mobile_verified:
- *                           type: boolean
- *                           example: true
- *                         is_verified:
  *                           type: boolean
  *                           example: true
  *                         user_type:
  *                           type: string
  *                     accessToken:
  *                       type: string
- *                       description: JWT access token
  *                     refreshToken:
  *                       type: string
- *                       description: JWT refresh token
  *       400:
- *         description: Invalid or expired OTP
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: "Invalid or expired OTP"
+ *         description: Invalid or expired OTP / too many attempts
+ *       404:
+ *         description: User not found
  */
 router.post('/verify-otp', AuthController.verifyOTP);
 
@@ -560,5 +545,60 @@ router.post('/change-password', AuthMiddleware.authenticate, AuthController.chan
  *                   example: "Mobile number and full name are required"
  */
 router.post('/mobile-register', AuthController.mobileRegister);
+
+/**
+ * @swagger
+ * /auth/mobile-login:
+ *   post:
+ *     summary: Register or Login with mobile number
+ *     tags: [Authentication]
+ *     description: |
+ *       Single endpoint for mobile-based auth.
+ *       - If `mobile_number` **does not exist** → creates a new user with the given `user_type` and sends OTP.
+ *       - If `mobile_number` **already exists** → sends OTP to log in.
+ *       After receiving OTP, call `POST /auth/verify-otp` with `{ mobile_number, otp_code }` to get tokens.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - mobile_number
+ *             properties:
+ *               mobile_number:
+ *                 type: string
+ *                 example: "+1234567890"
+ *               user_type:
+ *                 type: string
+ *                 enum: [patient, provider, admin]
+ *                 default: patient
+ *                 description: Only used when creating a new user
+ *     responses:
+ *       200:
+ *         description: OTP sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "OTP sent to your mobile number."
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     mobile_number:
+ *                       type: string
+ *                     is_new_user:
+ *                       type: boolean
+ *                       description: true if a new account was just created
+ *                     expires_in_minutes:
+ *                       type: number
+ *                       example: 10
+ *       400:
+ *         description: mobile_number is required
+ */
+router.post('/mobile-login', AuthController.mobileLoginOrRegister);
 
 module.exports = router;

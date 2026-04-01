@@ -115,87 +115,81 @@ class AuthController {
     }
   }
 
-  // Send OTP to Mobile
+  // Send OTP to Mobile — no purpose needed
+  // If mobile exists: send OTP to login. If not: create user and send OTP.
   static async sendOTP(req, res) {
     try {
-      const { mobile_number, purpose } = req.body; // purpose: 'registration', 'login', 'password_reset'
+      const { mobile_number } = req.body;
 
-      const otp = OTPUtil.generate(parseInt(process.env.OTP_LENGTH));
-      
-      // Check if user exists for login purpose
-      if (purpose === 'login') {
-        const query = 'SELECT * FROM users WHERE mobile_number = $1';
-        const pool = require('../config/database');
-        const result = await pool.query(query, [mobile_number]);
-        
-        if (!result.rows[0]) {
-          return res.status(404).json({ error: 'User not found with this mobile number' });
-        }
+      if (!mobile_number) {
+        return res.status(400).json({ error: 'mobile_number is required' });
       }
 
-      await AuthModel.createOTP(null, mobile_number, otp, purpose);
+      const pool = require('../config/database');
+      const result = await pool.query('SELECT id FROM users WHERE mobile_number = $1', [mobile_number]);
+      const isNewUser = !result.rows[0];
+
+      // Create user if not exists (minimal record, verified after OTP)
+      if (isNewUser) {
+        await pool.query(
+          `INSERT INTO users (mobile_number, user_type, mobile_verified, is_verified, is_active)
+           VALUES ($1, 'patient', false, false, true)`,
+          [mobile_number]
+        );
+      }
+
+      const otp = OTPUtil.generate(parseInt(process.env.OTP_LENGTH) || 6);
+      await AuthModel.createOTP(null, mobile_number, otp, 'login');
       await OTPUtil.sendSMS(mobile_number, otp);
 
       res.json({
         message: 'OTP sent successfully',
-        data: { mobile_number, expires_in_minutes: process.env.OTP_EXPIRE_MINUTES }
+        data: {
+          mobile_number,
+          is_new_user: isNewUser,
+          expires_in_minutes: process.env.OTP_EXPIRE_MINUTES || 10,
+        }
       });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
   }
 
-  // Verify OTP and Login/Register
+  // Verify OTP — works for both new and existing users
   static async verifyOTP(req, res) {
     try {
-    const { mobile_number, otp_code, purpose, user_data } = req.body;
+      const { mobile_number, otp_code } = req.body;
 
-      const otpRecord = await AuthModel.verifyOTP(mobile_number, otp_code, purpose);
-      
+      if (!mobile_number || !otp_code) {
+        return res.status(400).json({ error: 'mobile_number and otp_code are required' });
+      }
+
+      const otpRecord = await AuthModel.verifyOTP(mobile_number, otp_code);
       if (!otpRecord) {
         return res.status(400).json({ error: 'Invalid or expired OTP' });
       }
-
       if (otpRecord.attempts >= 3) {
         return res.status(400).json({ error: 'Too many attempts. Please request a new OTP' });
       }
 
       await AuthModel.markOTPVerified(otpRecord.id);
 
-      let user;
       const pool = require('../config/database');
+      const result = await pool.query('SELECT * FROM users WHERE mobile_number = $1', [mobile_number]);
+      let user = result.rows[0];
 
-      if (purpose === 'registration') {
-        // Create new user
-        const password_hash = user_data?.password ? await bcrypt.hash(user_data.password, 10) : null;
-        user = await UserModel.create({
-          mobile_number,
-          password_hash,
-          first_name: user_data?.first_name || '',
-          last_name: user_data?.last_name || '',
-          user_type: user_data?.user_type || 'patient',
-          mobile_verified: true,
-          is_verified: true
-        });
-      } else if (purpose === 'login' || purpose === 'mobile_verification') {
-        // Find existing user
-        const query = 'SELECT * FROM users WHERE mobile_number = $1';
-        const result = await pool.query(query, [mobile_number]);
-        user = result.rows[0];
-        
-        if (!user) {
-          return res.status(404).json({ error: 'User not found' });
-        }
-
-        // Update mobile verified status
-        await UserModel.update(user.id, { mobile_verified: true, is_online: true, last_seen: new Date() });
+      if (!user) {
+        return res.status(404).json({ error: 'User not found. Please request OTP again.' });
       }
+
+      // Mark mobile as verified and set online
+      await UserModel.update(user.id, { mobile_verified: true, is_verified: true, is_online: true, last_seen: new Date() });
+      user = await UserModel.findById(user.id);
 
       delete user.password_hash;
 
       const accessToken = JWTUtil.generateAccessToken(user.id, user.user_type);
       const refreshToken = JWTUtil.generateRefreshToken(user.id);
-      
       const deviceInfo = { userAgent: req.headers['user-agent'] || 'unknown', platform: req.headers['sec-ch-ua-platform'] || 'unknown' };
       await AuthModel.createRefreshToken(user.id, refreshToken, deviceInfo, req.ip);
 
@@ -390,7 +384,54 @@ class AuthController {
     }
   }
 
-  // Mobile Registration (for Mobile App)
+  // Mobile Login / Register — single endpoint
+  // POST { mobile_number, user_type? }
+  // If user exists → send OTP to login
+  // If user doesn't exist → create user with user_type then send OTP
+  static async mobileLoginOrRegister(req, res) {
+    try {
+      const { mobile_number, user_type } = req.body;
+
+      if (!mobile_number) {
+        return res.status(400).json({ error: 'mobile_number is required' });
+      }
+
+      const pool = require('../config/database');
+      const existing = await pool.query('SELECT id, user_type FROM users WHERE mobile_number = $1', [mobile_number]);
+
+      let isNewUser = false;
+
+      if (!existing.rows[0]) {
+        // Create new user
+        await pool.query(
+          `INSERT INTO users (mobile_number, user_type, mobile_verified, is_verified, is_active)
+           VALUES ($1, $2, false, false, true)`,
+          [mobile_number, user_type || 'patient']
+        );
+        isNewUser = true;
+      }
+
+      // Generate and send OTP
+      const otp = OTPUtil.generate(parseInt(process.env.OTP_LENGTH) || 6);
+      await AuthModel.createOTP(null, mobile_number, otp, 'login');
+      await OTPUtil.sendSMS(mobile_number, otp);
+
+      res.json({
+        message: isNewUser
+          ? 'Account created. OTP sent to your mobile number.'
+          : 'OTP sent to your mobile number.',
+        data: {
+          mobile_number,
+          is_new_user: isNewUser,
+          expires_in_minutes: parseInt(process.env.OTP_EXPIRE_MINUTES) || 10,
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  // Mobile Registration (for Mobile App) — legacy, kept for backward compat
   static async mobileRegister(req, res) {
     try {
       const { mobile_number, full_name, user_type } = req.body;

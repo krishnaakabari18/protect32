@@ -13,14 +13,14 @@ class AuthModel {
     return result.rows[0];
   }
 
-  static async verifyOTP(mobileNumber, otpCode, purpose) {
+  static async verifyOTP(mobileNumber, otpCode) {
     const query = `
       SELECT * FROM otp_verifications 
-      WHERE mobile_number = $1 AND otp_code = $2 AND purpose = $3 
+      WHERE mobile_number = $1 AND otp_code = $2
       AND is_verified = false AND expires_at > NOW()
       ORDER BY created_at DESC LIMIT 1
     `;
-    const result = await pool.query(query, [mobileNumber, otpCode, purpose]);
+    const result = await pool.query(query, [mobileNumber, otpCode]);
     return result.rows[0];
   }
 

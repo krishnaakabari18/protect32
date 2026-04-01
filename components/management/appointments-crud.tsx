@@ -42,6 +42,7 @@ const AppointmentsCRUD = () => {
         status: '',
         notes: '',
         cancellation_reason: '',
+        appointment_code: '',
     };
 
     const [params, setParams] = useState<any>(JSON.parse(JSON.stringify(defaultValues)));
@@ -50,9 +51,23 @@ const AppointmentsCRUD = () => {
     const [touched, setTouched] = useState<Record<string, boolean>>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
 
+    // Generate appointment code: P32-YYYYMMDD-HHmmss
+    const generateCode = (date: string, time: string) => {
+        if (!date || !time) return '';
+        const d = date.replace(/-/g, '').substring(0, 8);
+        const t = time.replace(/:/g, '').substring(0, 6).padEnd(6, '0');
+        return `P32-${d}-${t}`;
+    };
+
+    // Auto-generate code when date/time changes (create mode only)
+    useEffect(() => {
+        if (modalMode === 'create' && params.appointment_date && params.start_time) {
+            setParams((prev: any) => ({ ...prev, appointment_code: generateCode(params.appointment_date, params.start_time) }));
+        }
+    }, [params.appointment_date, params.start_time, modalMode]);
+
     // Helper function to format date safely
-    const formatDate = (dateStr: string) => {
-        if (!dateStr) return '-';
+    const formatDate = (dateStr: string) => {        if (!dateStr) return '-';
         try {
             // Extract just the date part (YYYY-MM-DD)
             const datePart = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
@@ -488,6 +503,7 @@ const AppointmentsCRUD = () => {
                                     <thead>
                                         <tr>
                                             <th>#</th>
+                                            <th>Appointment Code</th>
                                             <th>Patient</th>
                                             <th>Provider</th>
                                             <th>Date</th>
@@ -502,6 +518,7 @@ const AppointmentsCRUD = () => {
                                         {items.map((item: any, index: number) => (
                                             <tr key={item.id}>
                                                 <td>{(pagination.page - 1) * pagination.limit + index + 1}</td>
+                                                <td><code className="text-xs bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">{item.appointment_code || '-'}</code></td>
                                                 <td>
                                                     {item.patient_first_name && item.patient_last_name
                                                         ? `${item.patient_first_name} ${item.patient_last_name}`
@@ -686,6 +703,19 @@ const AppointmentsCRUD = () => {
                                     </div>
                                     <div className="p-5">
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            {/* Appointment Code — always read-only */}
+                                            <div className="col-span-2">
+                                                <label htmlFor="appointment_code">Appointment ID</label>
+                                                <input
+                                                    id="appointment_code"
+                                                    type="text"
+                                                    className="form-input bg-gray-100 font-mono text-sm"
+                                                    value={params.appointment_code || (modalMode === 'create' ? 'Auto-generated after selecting patient, date & time' : '-')}
+                                                    disabled
+                                                    readOnly
+                                                />
+                                                {modalMode === 'create' && <p className="text-xs text-gray-400 mt-0.5">Format: P32-DATE-TIME</p>}
+                                            </div>
                                             <div>
                                                 <label htmlFor="patient_id">Patient <span className="text-red-500">*</span></label>
                                                 <select

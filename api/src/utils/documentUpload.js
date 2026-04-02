@@ -36,14 +36,10 @@ const documentStorage = multer.diskStorage({
 // File filter for documents (PDF and images only)
 const documentFileFilter = (req, file, cb) => {
   const allowedMimes = [
-    'image/jpeg',
-    'image/jpg', 
-    'image/png',
-    'image/gif',
-    'image/webp',
-    'application/pdf'
+    'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+    'application/pdf',
+    'application/octet-stream' // empty Blob placeholder from frontend
   ];
-  
   if (allowedMimes.includes(file.mimetype)) {
     cb(null, true);
   } else {

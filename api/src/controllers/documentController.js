@@ -83,18 +83,25 @@ class DocumentController {
 
       const uploadedFiles = req.files || [];
 
-      // Build new items list — merge existing file paths with new uploads
+      // Build new items list — if uploaded file is 0 bytes it means "keep existing"
       const newItems = items.map((meta, i) => {
         const newFile = uploadedFiles[i];
+        const hasRealFile = newFile && newFile.size > 0;
         const existingItem = existing.items?.find(it => it.id === meta.id);
+
+        // Clean up 0-byte placeholder files
+        if (newFile && !hasRealFile) {
+          try { require('fs').unlinkSync(newFile.path); } catch {}
+        }
+
         return {
           name: meta.name,
           document_type: meta.document_type,
           upload_date: meta.upload_date || null,
-          file_path: newFile ? newFile.path.replace(/\\/g, '/') : (existingItem?.file_path || null),
-          file_originalname: newFile ? newFile.originalname : (existingItem?.file_originalname || null),
-          file_mimetype: newFile ? newFile.mimetype : (existingItem?.file_mimetype || null),
-          file_size: newFile ? newFile.size : (existingItem?.file_size || 0),
+          file_path: hasRealFile ? newFile.path.replace(/\\/g, '/') : (existingItem?.file_path || null),
+          file_originalname: hasRealFile ? newFile.originalname : (existingItem?.file_originalname || null),
+          file_mimetype: hasRealFile ? newFile.mimetype : (existingItem?.file_mimetype || null),
+          file_size: hasRealFile ? newFile.size : (existingItem?.file_size || 0),
         };
       });
 

@@ -1,13 +1,13 @@
-import ComponentsDashboardSales from '@/components/dashboard/components-dashboard-sales';
+import ComponentsDashboardDental from '@/components/dashboard/components-dashboard-dental';
 import { Metadata } from 'next';
 import React from 'react';
 
 export const metadata: Metadata = {
-    title: 'Protect32',
+    title: 'Dashboard - Protect32',
 };
 
-const Sales = () => {
-    return <ComponentsDashboardSales />;
+const Dashboard = () => {
+    return <ComponentsDashboardDental />;
 };
 
-export default Sales;
+export default Dashboard;

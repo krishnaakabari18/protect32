@@ -1,8 +1,6 @@
 const express = require('express');
 const router = express.Router();
 
-
-
 // Import all v1 routes
 const authRoutes = require('./authRoutes');
 const userRoutes = require('./userRoutes');
@@ -26,6 +24,7 @@ const planFeatureRoutes = require('./planFeatureRoutes');
 const cmsPageRoutes = require('./cmsPageRoutes');
 const faqRoutes = require('./faqRoutes');
 const settingsRoutes = require('./settingsRoutes');
+const dashboardRoutes = require('./dashboardRoutes');
 
 // Mount routes
 router.use('/auth', authRoutes);
@@ -50,5 +49,6 @@ router.use('/plan-features', planFeatureRoutes);
 router.use('/cms-pages', cmsPageRoutes);
 router.use('/faqs', faqRoutes);
 router.use('/settings', settingsRoutes);
+router.use('/dashboard', dashboardRoutes);
 
 module.exports = router;

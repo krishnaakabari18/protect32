@@ -102,6 +102,9 @@ export const API_ENDPOINTS = {
   
   // Settings
   settings: `${API_BASE_URL}/settings`,
+  
+  // Dashboard
+  dashboard: `${API_BASE_URL}/dashboard`,
 };
 
 // Helper function to build endpoint with ID

@@ -25,6 +25,7 @@ const educationImageRoutes = require('./educationImageRoutes');
 const planFeatureRoutes = require('./planFeatureRoutes');
 const cmsPageRoutes = require('./cmsPageRoutes');
 const faqRoutes = require('./faqRoutes');
+const settingsRoutes = require('./settingsRoutes');
 
 // Mount routes
 router.use('/auth', authRoutes);
@@ -48,5 +49,6 @@ router.use('/education-images', educationImageRoutes);
 router.use('/plan-features', planFeatureRoutes);
 router.use('/cms-pages', cmsPageRoutes);
 router.use('/faqs', faqRoutes);
+router.use('/settings', settingsRoutes);
 
 module.exports = router;

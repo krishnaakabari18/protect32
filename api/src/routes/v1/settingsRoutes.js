@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const settingsController = require('../../controllers/settingsController');
+const { uploadSettingsImages } = require('../../controllers/settingsController');
 const { authenticate } = require('../../middleware/auth');
 
 /**
@@ -455,5 +456,71 @@ router.post('/test-razorpay', authenticate, settingsController.testRazorpay);
  *         description: SMS connection test failed
  */
 router.post('/test-sms', authenticate, settingsController.testSMS);
+
+/**
+ * @swagger
+ * /api/v1/settings/upload-images:
+ *   post:
+ *     summary: Upload Site Logo, Favicon and Open Graph Image
+ *     description: Upload one or more branding images. Each is stored in uploads/settings/ and the path is saved to settings.
+ *     tags: [Settings]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               site_logo:
+ *                 type: string
+ *                 format: binary
+ *                 description: Site logo image (JPEG, PNG, WebP — max 5MB)
+ *               favicon:
+ *                 type: string
+ *                 format: binary
+ *                 description: Favicon image (ICO, PNG — max 5MB)
+ *               og_image:
+ *                 type: string
+ *                 format: binary
+ *                 description: Open Graph image for social sharing (JPEG, PNG — max 5MB)
+ *     responses:
+ *       200:
+ *         description: Images uploaded and saved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Images uploaded successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     site_logo:
+ *                       type: string
+ *                       example: http://localhost:8080/uploads/settings/site_logo_1234567890.png
+ *                     favicon:
+ *                       type: string
+ *                       example: http://localhost:8080/uploads/settings/favicon_1234567890.ico
+ *                     seo_og_image:
+ *                       type: string
+ *                       example: http://localhost:8080/uploads/settings/og_image_1234567890.jpg
+ *       400:
+ *         description: No image files provided
+ *       401:
+ *         description: Unauthorized
+ */
+router.post('/upload-images', authenticate, (req, res, next) => {
+  uploadSettingsImages(req, res, (err) => {
+    if (err) return res.status(400).json({ success: false, error: err.message });
+    next();
+  });
+}, settingsController.uploadImages);
 
 module.exports = router;

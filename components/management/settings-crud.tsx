@@ -65,9 +65,88 @@ const SettingsCRUD = () => {
         seo_og_image: ''
     });
 
+    const [imageUploading, setImageUploading] = useState(false);
+    const [imagePreviews, setImagePreviews] = useState<Record<string, string>>({});
+
     useEffect(() => {
         fetchSettings();
     }, []);
+
+    const handleImageUpload = async (field: 'site_logo' | 'favicon' | 'og_image', file: File) => {
+        // Show local preview immediately
+        const previewUrl = URL.createObjectURL(file);
+        setImagePreviews(prev => ({ ...prev, [field]: previewUrl }));
+
+        setImageUploading(true);
+        try {
+            const token = localStorage.getItem('auth_token');
+            const fd = new FormData();
+            fd.append(field, file);
+            const res = await fetch(`${API_ENDPOINTS.settings}/upload-images`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+                body: fd,
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                // Update settings state with returned URL
+                const urlMap: Record<string, string> = {
+                    site_logo: data.data.site_logo,
+                    favicon: data.data.favicon,
+                    og_image: data.data.seo_og_image,
+                };
+                setSettings((prev: any) => ({
+                    ...prev,
+                    ...(field === 'site_logo' && { site_logo: data.data.site_logo }),
+                    ...(field === 'favicon' && { favicon: data.data.favicon }),
+                    ...(field === 'og_image' && { seo_og_image: data.data.seo_og_image }),
+                }));
+              //  Swal.fire({ icon: 'success', title: 'Image uploaded', timer: 1500, showConfirmButton: false });
+            } else {
+               // Swal.fire('Error', data.error || 'Upload failed', 'error');
+                setImagePreviews(prev => { const n = { ...prev }; delete n[field]; return n; });
+            }
+        } catch (err: any) {
+            Swal.fire('Error', err.message, 'error');
+            setImagePreviews(prev => { const n = { ...prev }; delete n[field]; return n; });
+        } finally {
+            setImageUploading(false);
+        }
+    };
+
+    const ImageUploadField = ({
+        field, label, hint, currentUrl
+    }: { field: 'site_logo' | 'favicon' | 'og_image'; label: string; hint?: string; currentUrl?: string }) => {
+        const preview = imagePreviews[field] || currentUrl;
+        return (
+            <div>
+                <label className="block text-sm font-medium mb-1">{label}</label>
+                {preview && (
+                    <div className="mb-2">
+                        <img
+                            src={preview}
+                            alt={label}
+                            className="h-20 object-contain rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-1"
+                            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                    </div>
+                )}
+                <input
+                    type="file"
+                    accept="image/*"
+                    className="form-input"
+                    disabled={imageUploading}
+                    onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) handleImageUpload(field, file);
+                        e.target.value = '';
+                    }}
+                />
+                {hint && <p className="text-xs text-gray-500 mt-1">{hint}</p>}
+                {imageUploading && <p className="text-xs text-primary mt-1">Uploading...</p>}
+            </div>
+        );
+    };
 
     const fetchSettings = async () => {
         setLoading(true);
@@ -351,15 +430,12 @@ const SettingsCRUD = () => {
             <div className="panel">
                 <h5 className="text-lg font-semibold mb-4">Site Branding</h5>
                 <div className="grid grid-cols-1 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Site Logo</label>
-                        <input
-                            type="file"
-                            accept="image/*"
-                            className="form-input"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">Recommended size: 1200x800px</p>
-                    </div>
+                    <ImageUploadField
+                        field="site_logo"
+                        label="Site Logo"
+                        hint="Recommended size: 1200x800px"
+                        currentUrl={settings.site_logo}
+                    />
                     <div>
                         <label className="block text-sm font-medium mb-1">Site Name</label>
                         <input
@@ -371,14 +447,12 @@ const SettingsCRUD = () => {
                             placeholder="Protect32"
                         />
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Favicon</label>
-                        <input
-                            type="file"
-                            accept="image/*"
-                            className="form-input"
-                        />
-                    </div>
+                    <ImageUploadField
+                        field="favicon"
+                        label="Favicon"
+                        hint="Recommended: 32x32px ICO or PNG"
+                        currentUrl={settings.favicon}
+                    />
                 </div>
             </div>
 
@@ -643,15 +717,12 @@ const SettingsCRUD = () => {
                             placeholder="dental, clinic, management, system"
                         />
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Open Graph Image</label>
-                        <input
-                            type="file"
-                            accept="image/*"
-                            className="form-input"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">Recommended size: 1200x630px</p>
-                    </div>
+                    <ImageUploadField
+                        field="og_image"
+                        label="Open Graph Image"
+                        hint="Recommended size: 1200x630px"
+                        currentUrl={settings.seo_og_image}
+                    />
                 </div>
             </div>
         </div>

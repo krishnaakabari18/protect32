@@ -31,7 +31,7 @@ const ComponentsChartsRadar = () => {
                     show: false,
                 },
             },
-            colors: ['#4361ee'],
+            colors: ['#0057b8'],
             xaxis: {
                 categories: ['January', 'February', 'March', 'April', 'May', 'June'],
             },
@@ -74,7 +74,7 @@ const radarChart: any = {
                 show: false,
             },
         },
-        colors: ['#4361ee'],
+        colors: ['#0057b8'],
         xaxis: {
             categories: ['January', 'February', 'March', 'April', 'May', 'June'],
         },

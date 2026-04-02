@@ -820,7 +820,7 @@ const ComponentsDashboardSales = () => {
                         </div>
 
                         <div className="panel h-full overflow-hidden border-0 p-0">
-                            <div className="min-h-[190px] bg-gradient-to-r from-[#4361ee] to-[#160f6b] p-6">
+                            <div className="min-h-[190px] bg-gradient-to-r from-[#0057b8] to-[#160f6b] p-6">
                                 <div className="mb-6 flex items-center justify-between">
                                     <div className="flex items-center rounded-full bg-black/50 p-1 font-semibold text-white ltr:pr-3 rtl:pl-3">
                                         <img className="block h-8 w-8 rounded-full border-2 border-white/50 object-cover ltr:mr-1 rtl:ml-1" src="/assets/images/profile-34.jpeg" alt="avatar" />

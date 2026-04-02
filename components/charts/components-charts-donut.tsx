@@ -26,7 +26,7 @@ const ComponentsChartsDonut = () => {
                 show: false,
             },
             labels: ['Team A', 'Team B', 'Team C'],
-            colors: ['#4361ee', '#805dca', '#e2a03f'],
+            colors: ['#0057b8', '#805dca', '#e2a03f'],
             responsive: [
                 {
                     breakpoint: 480,
@@ -67,7 +67,7 @@ const donutChart: any = {
             show: false,
         },
         labels: ['Team A', 'Team B', 'Team C'],
-        colors: ['#4361ee', '#805dca', '#e2a03f'],
+        colors: ['#0057b8', '#805dca', '#e2a03f'],
         responsive: [
             {
                 breakpoint: 480,

@@ -24,7 +24,7 @@ const ComponentsChartsPie = () => {
                 },
             },
             labels: ['Team A', 'Team B', 'Team C', 'Team D', 'Team E'],
-            colors: ['#4361ee', '#805dca', '#00ab55', '#e7515a', '#e2a03f'],
+            colors: ['#0057b8', '#805dca', '#00ab55', '#e7515a', '#e2a03f'],
             responsive: [
                 {
                     breakpoint: 480,
@@ -65,7 +65,7 @@ const pieChart: any = {
             },
         },
         labels: ['Team A', 'Team B', 'Team C', 'Team D', 'Team E'],
-        colors: ['#4361ee', '#805dca', '#00ab55', '#e7515a', '#e2a03f'],
+        colors: ['#0057b8', '#805dca', '#00ab55', '#e7515a', '#e2a03f'],
         responsive: [
             {
                 breakpoint: 480,

@@ -30,7 +30,7 @@ const ColorLibrary = () => {
                                 <div className="-m-2.5 h-[84px] w-20 bg-primary transition-all duration-700 group-hover:scale-110 ltr:mr-4 ltr:rounded-l-md rtl:ml-4 rtl:rounded-r-md"></div>
                                 <div>
                                     <h5 className="text-sm sm:text-base">Primary</h5>
-                                    <span className="text-white-dark">#4361ee</span>
+                                    <span className="text-white-dark">#0057b8</span>
                                 </div>
                             </div>
                             <div className="panel group flex items-center rounded-md p-2.5">

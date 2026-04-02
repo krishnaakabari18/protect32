@@ -58,7 +58,7 @@ const ComponentsChartsBubble = () => {
                     show: false,
                 },
             },
-            colors: ['#4361ee', '#00ab55'],
+            colors: ['#0057b8', '#00ab55'],
             dataLabels: {
                 enabled: false,
             },
@@ -126,7 +126,7 @@ const bubbleChart: any = {
                 show: false,
             },
         },
-        colors: ['#4361ee', '#00ab55'],
+        colors: ['#0057b8', '#00ab55'],
         dataLabels: {
             enabled: false,
         },

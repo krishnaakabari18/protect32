@@ -28,7 +28,7 @@ const ComponentsChartsLine = () => {
                 type: 'line',
                 toolbar: false,
             },
-            colors: ['#4361EE'],
+            colors: ['#0057b8'],
             tooltip: {
                 marker: false,
                 y: {
@@ -79,7 +79,7 @@ const lineChart: any = {
             type: 'line',
             toolbar: false,
         },
-        colors: ['#4361EE'],
+        colors: ['#0057b8'],
         tooltip: {
             marker: false,
             y: {

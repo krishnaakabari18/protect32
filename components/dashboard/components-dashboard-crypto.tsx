@@ -726,7 +726,7 @@ const ComponentsDashboardCrypto = () => {
             markers: {
                 size: 0,
             },
-            colors: ['#4361ee'],
+            colors: ['#0057b8'],
             grid: {
                 padding: {
                     top: 0,

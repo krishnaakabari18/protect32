@@ -26,7 +26,7 @@ const ComponentsChartsRadialBar = () => {
                     show: false,
                 },
             },
-            colors: ['#4361ee', '#805dca', '#e2a03f'],
+            colors: ['#0057b8', '#805dca', '#e2a03f'],
             grid: {
                 borderColor: isDark ? '#191e3a' : '#e0e6ed',
             },
@@ -78,7 +78,7 @@ const radialBarChart: any = {
                 show: false,
             },
         },
-        colors: ['#4361ee', '#805dca', '#e2a03f'],
+        colors: ['#0057b8', '#805dca', '#e2a03f'],
         grid: {
             borderColor: isDark ? '#191e3a' : '#e0e6ed',
         },

@@ -1,7 +1,7 @@
 export default function TestPage() {
     return (
         <div style={{ padding: '50px', textAlign: 'center' }}>
-            <h1 style={{ fontSize: '48px', color: '#4361ee' }}>✅ Server is Working!</h1>
+            <h1 style={{ fontSize: '48px', color: '#0057b8' }}>✅ Server is Working!</h1>
             <p style={{ fontSize: '24px', marginTop: '20px' }}>
                 If you can see this page, your Next.js server is running correctly.
             </p>
@@ -10,7 +10,7 @@ export default function TestPage() {
                     href="/auth/boxed-signin" 
                     style={{ 
                         padding: '15px 30px', 
-                        backgroundColor: '#4361ee', 
+                        backgroundColor: '#0057b8', 
                         color: 'white', 
                         textDecoration: 'none',
                         borderRadius: '8px',

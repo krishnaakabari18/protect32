@@ -21,12 +21,12 @@ const BoxedSignIn = () => {
 
             <div className="relative flex min-h-screen items-center  bg-cover bg-center bg-no-repeat px-6 py-10  sm:px-16">
                
-                <div className="relative w-full max-w-[870px] rounded-md bg-[linear-gradient(45deg,#fff9f9_0%,rgba(255,255,255,0)_25%,rgba(255,255,255,0)_75%,_#fff9f9_100%)] p-2 dark:bg-[linear-gradient(52.22deg,#0E1726_0%,rgba(14,23,38,0)_18.66%,rgba(14,23,38,0)_51.04%,rgba(14,23,38,0)_80.07%,#0E1726_100%)]">
+                <div className="relative w-full max-w-[600px] rounded-md bg-[linear-gradient(45deg,#fff9f9_0%,rgba(255,255,255,0)_25%,rgba(255,255,255,0)_75%,_#fff9f9_100%)] p-2 dark:bg-[linear-gradient(52.22deg,#0E1726_0%,rgba(14,23,38,0)_18.66%,rgba(14,23,38,0)_51.04%,rgba(14,23,38,0)_80.07%,#0E1726_100%)]">
                     <div className="relative flex flex-col justify-center rounded-md bg-white/60 px-6 py-10 backdrop-blur-lg dark:bg-black/50">
                         
-                        <div className="mx-auto w-full max-w-[440px]">
-                            <div className="mb-10">
-                                <img src="/assets/images/auth/logo.png" alt="Protect32 Logo" />
+                        <div className="mx-auto w-full max-w-[340px]">
+                            <div className="mb-5" style={{textAlign:'center'}}>
+                                <img src="/assets/images/auth/logo.png" alt="Protect32 Logo" style={{display:'inline'}} />
                                 <h1 className="text-3xl font-extrabold uppercase !leading-snug text-primary md:text-4xl">Sign in</h1>
                                 <p className="text-base font-bold leading-normal text-white-dark">Enter your email and password to login</p>
                             </div>

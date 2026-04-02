@@ -26,7 +26,7 @@ const ComponentsChartsPolarArea = () => {
                     show: false,
                 },
             },
-            colors: ['#4361ee', '#805dca', '#00ab55', '#e7515a', '#e2a03f', '#2196f3', '#3b3f5c'],
+            colors: ['#0057b8', '#805dca', '#00ab55', '#e7515a', '#e2a03f', '#2196f3', '#3b3f5c'],
             stroke: {
                 show: false,
             },
@@ -79,7 +79,7 @@ const polarAreaChart: any = {
                 show: false,
             },
         },
-        colors: ['#4361ee', '#805dca', '#00ab55', '#e7515a', '#e2a03f', '#2196f3', '#3b3f5c'],
+        colors: ['#0057b8', '#805dca', '#00ab55', '#e7515a', '#e2a03f', '#2196f3', '#3b3f5c'],
         stroke: {
             show: false,
         },

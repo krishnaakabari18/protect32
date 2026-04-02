@@ -39,7 +39,7 @@ const ComponentsChartsBar = () => {
                 show: true,
                 width: 1,
             },
-            colors: ['#4361ee'],
+            colors: ['#0057b8'],
             xaxis: {
                 categories: ['Sun', 'Mon', 'Tue', 'Wed', 'Thur', 'Fri', 'Sat'],
                 axisBorder: {
@@ -96,7 +96,7 @@ const barChart: any = {
             show: true,
             width: 1,
         },
-        colors: ['#4361ee'],
+        colors: ['#0057b8'],
         xaxis: {
             categories: ['Sun', 'Mon', 'Tue', 'Wed', 'Thur', 'Fri', 'Sat'],
             axisBorder: {

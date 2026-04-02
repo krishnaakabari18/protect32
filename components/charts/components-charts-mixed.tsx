@@ -46,7 +46,7 @@ const ComponentsChartsMixed = () => {
             dataLabels: {
                 enabled: false,
             },
-            colors: ['#2196f3', '#00ab55', '#4361ee'],
+            colors: ['#2196f3', '#00ab55', '#0057b8'],
             stroke: {
                 width: [0, 2, 2],
                 curve: 'smooth',
@@ -136,7 +136,7 @@ const mixedChart: any = {
         dataLabels: {
             enabled: false,
         },
-        colors: ['#2196f3', '#00ab55', '#4361ee'],
+        colors: ['#2196f3', '#00ab55', '#0057b8'],
         stroke: {
             width: [0, 2, 2],
             curve: 'smooth',

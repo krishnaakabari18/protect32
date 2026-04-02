@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { API_ENDPOINTS } from '@/config/api.config';
 import IconCalendar from '@/components/icon/icon-calendar';
 import IconUser from '@/components/icon/icon-user';
-import IconDollarSign from '@/components/icon/icon-dollar-sign';
 import IconCreditCard from '@/components/icon/icon-credit-card';
 import IconFile from '@/components/icon/icon-file';
 import IconNotes from '@/components/icon/icon-notes';
@@ -179,7 +178,7 @@ const ComponentsDashboardDental = () => {
                 <div className="panel h-full">
                     <div className="flex items-center">
                         <div className="shrink-0 bg-warning/10 text-warning rounded-xl w-14 h-14 flex items-center justify-center">
-                            <IconDollarSign className="w-7 h-7" />
+                            <span className="text-2xl font-bold">₹</span>
                         </div>
                         <div className="ltr:ml-4 rtl:mr-4 flex-1">
                             <p className="text-xl font-semibold text-warning">{formatCurrency(stats?.total_revenue || 0)}</p>

@@ -11,7 +11,9 @@ import IconMinus from '@/components/icon/icon-minus';
 import IconMenuUsers from '@/components/icon/menu/icon-menu-users';
 import IconUser from '@/components/icon/icon-user';
 import IconCalendar from '@/components/icon/icon-calendar';
-import IconDollarSign from '@/components/icon/icon-dollar-sign';
+import IconTag from '@/components/icon/icon-tag';
+import IconClipboardText from '@/components/icon/icon-clipboard-text';
+import IconCreditCard from '@/components/icon/icon-credit-card';
 import IconFile from '@/components/icon/icon-file';
 import IconStar from '@/components/icon/icon-star';
 import IconBell from '@/components/icon/icon-bell';
@@ -136,13 +138,13 @@ const SidebarDentist = () => {
                                 <IconFile className="shrink-0 group-hover:!text-primary" />, 'Prescriptions')}
 
                             {can('plans') && menuItem('/management/plans',
-                                <IconDollarSign className="shrink-0 group-hover:!text-primary" />, 'Plans')}
+                                <IconTag className="shrink-0 group-hover:!text-primary" />, 'Plans')}
 
                             {can('provider-fees') && menuItem('/management/provider-fees',
-                                <IconDollarSign className="shrink-0 group-hover:!text-primary" />, 'Treatment Fees')}
+                                <IconClipboardText className="shrink-0 group-hover:!text-primary" />, 'Treatment Fees')}
 
                             {can('payments') && menuItem('/management/payments',
-                                <IconDollarSign className="shrink-0 group-hover:!text-primary" />, 'Orders')}
+                                <IconCreditCard className="shrink-0 group-hover:!text-primary" />, 'Orders')}
 
                             {can('documents') && menuItem('/management/documents',
                                 <IconFile className="shrink-0 group-hover:!text-primary" />, 'Documents')}

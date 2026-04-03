@@ -5,8 +5,8 @@ const PROCEDURE_NAMES_EXPR = `
   (SELECT string_agg(pr.name, ', ' ORDER BY pr.name)
    FROM procedures pr
    WHERE r.diagnosis IS NOT NULL
-     AND r.diagnosis LIKE '{%}'
-     AND pr.id = ANY(r.diagnosis::uuid[]))
+     AND r.diagnosis != ''
+     AND pr.id::text = ANY(string_to_array(trim(r.diagnosis), ',')))
   AS diagnosis_names
 `;
 

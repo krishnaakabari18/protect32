@@ -19,17 +19,16 @@ const TABS = [
     { id: 'equipment', label: 'Equipment' },
     { id: 'specialists', label: 'Specialists' },
     { id: 'bank', label: 'Bank Details' },
-    { id: 'additional', label: 'Additional Info' },
 ];
 
 const FIELD_TAB: Record<string, string> = {
     id: 'provider', date_of_birth: 'provider',
     pincode: 'provider',
     years_of_experience: 'provider', state_dental_council_reg_number: 'provider',
+    procedure_ids: 'provider',
     clinic_0_pan_no: 'clinic', clinic_0_name: 'clinic', clinic_0_contact_number: 'clinic',
     clinic_0_specialty: 'clinic', clinic_0_address: 'clinic', clinic_0_city: 'clinic',
     clinic_0_state: 'clinic', clinic_0_pin_code: 'clinic',
-    specialty: 'additional', clinic_name: 'additional',
 };
 
 const DEFAULT_TIME_SLOTS = [
@@ -169,11 +168,38 @@ const ProvidersCRUD = () => {
     // ─── Validation ──────────────────────────────────────────────────────────
     const validateForm = () => {
         const e: Record<string, string> = {};
+        
+        console.log('=== VALIDATING FORM ===');
+        console.log('Modal Mode:', modalMode);
+        console.log('Form Data:', {
+            id: params.id,
+            date_of_birth: params.date_of_birth,
+            pincode: params.pincode,
+            years_of_experience: params.years_of_experience,
+            state_dental_council_reg_number: params.state_dental_council_reg_number,
+            procedure_ids: params.procedure_ids,
+            procedure_count: params.procedure_ids?.length || 0,
+            clinic_0_pan_no: params.clinics?.[0]?.pan_no,
+            clinic_0_name: params.clinics?.[0]?.name,
+            clinic_0_contact_number: params.clinics?.[0]?.contact_number,
+            clinic_0_specialty: params.clinics?.[0]?.specialty,
+            clinic_0_address: params.clinics?.[0]?.address,
+            clinic_0_city: params.clinics?.[0]?.city,
+            clinic_0_state: params.clinics?.[0]?.state,
+            clinic_0_pin_code: params.clinics?.[0]?.pin_code,
+        });
+        
         if (modalMode === 'create' && !params.id) e.id = 'Please select a user';
         if (!params.date_of_birth) e.date_of_birth = 'Date of birth is required';
         if (!params.pincode) e.pincode = 'Pincode is required';
         if (params.years_of_experience === '' || params.years_of_experience === null || params.years_of_experience === undefined) e.years_of_experience = 'Years of experience is required';
         if (!params.state_dental_council_reg_number) e.state_dental_council_reg_number = 'Registration number is required';
+        
+        // Validate at least one procedure is selected
+        if (!params.procedure_ids || params.procedure_ids.length === 0) {
+            e.procedure_ids = 'At least one procedure must be selected';
+        }
+        
         const c = params.clinics?.[0];
         if (c) {
             if (!c.pan_no) e.clinic_0_pan_no = 'Pan No is required';
@@ -185,8 +211,9 @@ const ProvidersCRUD = () => {
             if (!c.state) e.clinic_0_state = 'State is required';
             if (!c.pin_code) e.clinic_0_pin_code = 'PIN code is required';
         }
-        if (!params.specialty) e.specialty = 'Primary specialty is required';
-        if (!params.clinic_name) e.clinic_name = 'Main clinic name is required';
+
+        console.log('Validation Errors:', e);
+        console.log('Total Errors:', Object.keys(e).length);
 
         const allTouched: Record<string, boolean> = {};
         Object.keys(e).forEach(k => { allTouched[k] = true; });
@@ -195,13 +222,22 @@ const ProvidersCRUD = () => {
         if (Object.keys(e).length > 0) {
             const firstKey = Object.keys(e)[0];
             const targetTab = FIELD_TAB[firstKey] || 'provider';
+            console.log('First Error Field:', firstKey, '→ Tab:', targetTab);
             setActiveTab(targetTab);
             setTimeout(() => {
                 const el = document.querySelector(`[name="${firstKey}"],[id="${firstKey}"]`) as HTMLElement;
-                if (el) { el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+                if (el) { 
+                    console.log('Focusing on field:', firstKey);
+                    el.focus(); 
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' }); 
+                } else {
+                    console.error('Field not found in DOM:', firstKey);
+                }
             }, 60);
             return false;
         }
+        
+        console.log('✓ Validation passed - submitting form');
         return true;
     };
 
@@ -332,7 +368,7 @@ const ProvidersCRUD = () => {
     const hb = (e: any) => {
         const { name } = e.target; const val = params[name];
         setTouched(p => ({ ...p, [name]: true }));
-        const req: Record<string,string> = { date_of_birth:'Date of birth is required', pincode:'Pincode is required', years_of_experience:'Years of experience is required', state_dental_council_reg_number:'Registration number is required', specialty:'Primary specialty is required', clinic_name:'Main clinic name is required' };
+        const req: Record<string,string> = { date_of_birth:'Date of birth is required', pincode:'Pincode is required', years_of_experience:'Years of experience is required', state_dental_council_reg_number:'Registration number is required' };
         const ne = { ...errors };
         if (name === 'id') { if (modalMode === 'create' && !val) ne.id = 'Please select a user'; else delete ne.id; }
         else if (req[name]) { if (!val && val !== 0) ne[name] = req[name]; else delete ne[name]; }
@@ -430,7 +466,18 @@ const ProvidersCRUD = () => {
             <div>
                 <label htmlFor="email">Email ID</label>
                 <input id="email" name="email" type="email" className="form-input" value={params.email} onChange={cv} disabled={isView} placeholder="Saved to user account" />
-            </div>            <div>
+            </div>
+            <div>
+                <label htmlFor="date_of_birth">Date of Birth <span className="text-red-500">*</span></label>
+                <input id="date_of_birth" name="date_of_birth" type="date" className={`form-input ${errCls('date_of_birth')}`} value={params.date_of_birth} onChange={cv} onBlur={hb} disabled={isView} />
+                {errMsg('date_of_birth')}
+            </div>
+            <div>
+                <label htmlFor="pincode">Pincode <span className="text-red-500">*</span></label>
+                <input id="pincode" name="pincode" type="text" className={`form-input ${errCls('pincode')}`} value={params.pincode} onChange={cv} onBlur={hb} disabled={isView} placeholder="Enter pincode" />
+                {errMsg('pincode')}
+            </div>
+            <div>
                 <label htmlFor="years_of_experience">Years of Experience <span className="text-red-500">*</span></label>
                 <input id="years_of_experience" name="years_of_experience" type="number" className={`form-input ${errCls('years_of_experience')}`} value={params.years_of_experience} onChange={cv} onBlur={hb} disabled={isView} />
                 {errMsg('years_of_experience')}
@@ -473,7 +520,7 @@ const ProvidersCRUD = () => {
             {/* Procedures multi-select */}
             <div className="md:col-span-3">
                 <div className="flex items-center justify-between mb-1">
-                    <label>Procedures</label>
+                    <label>Procedures <span className="text-red-500">*</span></label>
                     {!isView && (
                         <button type="button" className="text-primary text-sm hover:underline"
                             onClick={() => { setNewProcedure({ name: '', category: 'Diagnostic & Preventive' }); setAddProcedureModal(true); }}>
@@ -484,7 +531,7 @@ const ProvidersCRUD = () => {
                 <div className="relative procedure-dropdown-container">
                     <button
                         type="button"
-                        className="form-input w-full text-left flex items-center justify-between"
+                        className={`form-input w-full text-left flex items-center justify-between ${errCls('procedure_ids')}`}
                         onClick={() => !isView && setProcedureDropdownOpen(o => !o)}
                         disabled={isView}
                     >
@@ -511,6 +558,14 @@ const ProvidersCRUD = () => {
                                                 ? [...current, proc.id]
                                                 : current.filter((id: string) => id !== proc.id);
                                             setParams({ ...params, procedure_ids: updated });
+                                            // Clear error when procedure is selected
+                                            if (updated.length > 0) {
+                                                setErrors(prev => {
+                                                    const newErrors = { ...prev };
+                                                    delete newErrors.procedure_ids;
+                                                    return newErrors;
+                                                });
+                                            }
                                         }}
                                     />
                                     <span className="text-sm">{proc.name}</span>
@@ -520,6 +575,7 @@ const ProvidersCRUD = () => {
                         </div>
                     )}
                 </div>
+                {errMsg('procedure_ids')}
                 {params.procedure_ids?.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">
                         {procedures.filter(p => params.procedure_ids.includes(p.id)).map(p => (
@@ -598,6 +654,14 @@ const ProvidersCRUD = () => {
                     <div>
                         <label>Clinic Board Photo</label>
                         {!isView && <input type="file" accept="image/*" className="form-input" onChange={e => updateClinic('clinic_board', e.target.files?.[0] || null)} />}
+                    </div>
+                    <div>
+                        <label>Clinic Video URL</label>
+                        <input name="clinic_video_url" type="url" className="form-input" placeholder="https://youtube.com/..." value={params.clinic_video_url} onChange={cv} disabled={isView} />
+                    </div>
+                    <div className="md:col-span-3">
+                        <label>About</label>
+                        <textarea name="about" rows={3} className="form-textarea" placeholder="Enter information about the clinic..." value={params.about} onChange={cv} disabled={isView} />
                     </div>
                 </div>
 
@@ -816,49 +880,11 @@ const ProvidersCRUD = () => {
         </div>
     );
 
-    const renderAdditionalTab = () => (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <label>Primary Specialty <span className="text-red-500">*</span></label>
-                <input name="specialty" type="text" className={`form-input ${errCls('specialty')}`} value={params.specialty} onChange={cv} onBlur={hb} disabled={isView} />
-                {errMsg('specialty')}
-            </div>
-            <div>
-                <label>Main Clinic Name <span className="text-red-500">*</span></label>
-                <input name="clinic_name" type="text" className={`form-input ${errCls('clinic_name')}`} value={params.clinic_name} onChange={cv} onBlur={hb} disabled={isView} />
-                {errMsg('clinic_name')}
-            </div>
-            <div>
-                <label>Location</label>
-                <input name="location" type="text" className="form-input" value={params.location} onChange={cv} disabled={isView} />
-            </div>
-            <div>
-                <label>Contact Number (Legacy)</label>
-                <input name="contact_number" type="text" className="form-input" value={params.contact_number} onChange={cv} disabled={isView} />
-            </div>
-            <div>
-                <label>Availability</label>
-                <select name="availability" className="form-select" value={params.availability} onChange={cv} disabled={isView}>
-                    <option value="">Select</option>
-                    {availabilityOptions.map(o => <option key={o} value={o}>{o}</option>)}
-                </select>
-            </div>
-            <div>
-                <label>Clinic Video URL</label>
-                <input name="clinic_video_url" type="url" className="form-input" placeholder="https://youtube.com/..." value={params.clinic_video_url} onChange={cv} disabled={isView} />
-            </div>
-            <div className="md:col-span-2">
-                <label>About</label>
-                <textarea name="about" rows={3} className="form-textarea" value={params.about} onChange={cv} disabled={isView} />
-            </div>
-        </div>
-    );
-
     // ─── Render ──────────────────────────────────────────────────────────────
     const tabContent: Record<string, () => JSX.Element> = {
         provider: renderProviderTab, clinic: renderClinicTab, hours: renderHoursTab,
         equipment: renderEquipmentTab, specialists: renderSpecialistsTab,
-        bank: renderBankTab, additional: renderAdditionalTab,
+        bank: renderBankTab,
     };
 
     const tabHasError = (tabId: string) => Object.keys(errors).some(k => (FIELD_TAB[k] || 'provider') === tabId);

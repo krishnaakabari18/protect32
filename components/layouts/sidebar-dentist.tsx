@@ -19,6 +19,7 @@ import IconStar from '@/components/icon/icon-star';
 import IconBell from '@/components/icon/icon-bell';
 import IconNotes from '@/components/icon/icon-notes';
 import IconHelp from '@/components/icon/icon-help-circle';
+import IconSettings from '@/components/icon/icon-settings';
 import { usePathname } from 'next/navigation';
 import { getUser } from '@/utils/auth';
 import { MENU_PERMISSIONS } from '@/config/constants';
@@ -157,6 +158,9 @@ const SidebarDentist = () => {
 
                             {can('support-tickets') && menuItem('/management/support-tickets',
                                 <IconHelp className="shrink-0 group-hover:!text-primary" />, 'Support Tickets')}
+
+                            {can('settings') && menuItem('/management/settings',
+                                <IconSettings className="shrink-0 group-hover:!text-primary" />, 'Settings')}
 
                             {can('cms-pages') && menuItem('/management/cms-pages',
                                 <IconFile className="shrink-0 group-hover:!text-primary" />, 'CMS Pages')}

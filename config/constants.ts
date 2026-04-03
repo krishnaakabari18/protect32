@@ -28,12 +28,12 @@ export const MENU_PERMISSIONS: Record<string, string[]> = {
     super_admin: [
         'users', 'patients', 'providers', 'appointments', 'treatment-plans',
         'prescriptions', 'plans', 'provider-fees', 'payments', 'documents',
-        'reviews', 'notifications', 'support-tickets', 'patienteducation', 'cms-pages', 'faqs',
+        'reviews', 'notifications', 'support-tickets', 'patienteducation', 'cms-pages', 'faqs', 'settings',
     ],
     admin: [
         'patients', 'providers', 'appointments', 'treatment-plans',
         'prescriptions', 'plans', 'provider-fees', 'payments', 'documents',
-        'reviews', 'notifications', 'support-tickets', 'patienteducation', 'cms-pages', 'faqs',
+        'reviews', 'notifications', 'support-tickets', 'patienteducation', 'cms-pages', 'faqs', 'settings',
     ],
     support: [
         'patients', 'appointments', 'support-tickets', 'notifications',

@@ -986,6 +986,9 @@ const UsersCrud = () => {
                                                             { key: 'reviews', label: 'Reviews' },
                                                             { key: 'notifications', label: 'Notifications' },
                                                             { key: 'support-tickets', label: 'Support Tickets' },
+                                                            { key: 'settings', label: 'Settings' },
+                                                            { key: 'cms-pages', label: 'CMS Pages' },
+                                                            { key: 'faqs', label: 'FAQs' },
                                                             { key: 'patienteducation', label: 'Patient Education' },
                                                         ].map(menu => (
                                                             <label key={menu.key} className="flex items-center gap-2 cursor-pointer">

@@ -1,9 +1,11 @@
 const pool = require('../config/database');
 
 // diagnosis is stored as a PostgreSQL text[] array literal e.g. {"uuid1","uuid2"}
+// Guard against plain text values with a safe cast
 const DIAG_NAMES = `(SELECT string_agg(pr.name, ', ' ORDER BY pr.name)
    FROM procedures pr
    WHERE tp.diagnosis IS NOT NULL
+     AND tp.diagnosis LIKE '{%}'
      AND pr.id = ANY(tp.diagnosis::uuid[])) AS diagnosis_names`;
 
 class TreatmentPlanModel {

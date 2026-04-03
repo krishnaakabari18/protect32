@@ -4,7 +4,9 @@ const pool = require('../config/database');
 const PROCEDURE_NAMES_EXPR = `
   (SELECT string_agg(pr.name, ', ' ORDER BY pr.name)
    FROM procedures pr
-   WHERE pr.id::text = ANY(string_to_array(r.diagnosis, ',')))
+   WHERE r.diagnosis IS NOT NULL
+     AND r.diagnosis LIKE '{%}'
+     AND pr.id = ANY(r.diagnosis::uuid[]))
   AS diagnosis_names
 `;
 

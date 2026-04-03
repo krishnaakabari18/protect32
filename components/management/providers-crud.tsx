@@ -33,13 +33,34 @@ const FIELD_TAB: Record<string, string> = {
 };
 
 const DEFAULT_TIME_SLOTS = [
-    { day: 'Monday',    is_open: true,  open_time: '09:00', close_time: '18:00' },
-    { day: 'Tuesday',   is_open: true,  open_time: '09:00', close_time: '18:00' },
-    { day: 'Wednesday', is_open: true,  open_time: '09:00', close_time: '18:00' },
-    { day: 'Thursday',  is_open: true,  open_time: '09:00', close_time: '18:00' },
-    { day: 'Friday',    is_open: true,  open_time: '09:00', close_time: '18:00' },
-    { day: 'Saturday',  is_open: true,  open_time: '09:00', close_time: '14:00' },
-    { day: 'Sunday',    is_open: false, open_time: '09:00', close_time: '18:00' },
+    { day: 'Monday',    is_open: true,  open_time: '09:00', close_time: '18:00', slot_duration: 30,
+      morning: { enabled: true,  start: '09:00', end: '12:00' },
+      afternoon: { enabled: true,  start: '12:00', end: '16:00' },
+      evening: { enabled: false, start: '16:00', end: '20:00' } },
+    { day: 'Tuesday',   is_open: true,  open_time: '09:00', close_time: '18:00', slot_duration: 30,
+      morning: { enabled: true,  start: '09:00', end: '12:00' },
+      afternoon: { enabled: true,  start: '12:00', end: '16:00' },
+      evening: { enabled: false, start: '16:00', end: '20:00' } },
+    { day: 'Wednesday', is_open: true,  open_time: '09:00', close_time: '18:00', slot_duration: 30,
+      morning: { enabled: true,  start: '09:00', end: '12:00' },
+      afternoon: { enabled: true,  start: '12:00', end: '16:00' },
+      evening: { enabled: false, start: '16:00', end: '20:00' } },
+    { day: 'Thursday',  is_open: true,  open_time: '09:00', close_time: '18:00', slot_duration: 30,
+      morning: { enabled: true,  start: '09:00', end: '12:00' },
+      afternoon: { enabled: true,  start: '12:00', end: '16:00' },
+      evening: { enabled: false, start: '16:00', end: '20:00' } },
+    { day: 'Friday',    is_open: true,  open_time: '09:00', close_time: '18:00', slot_duration: 30,
+      morning: { enabled: true,  start: '09:00', end: '12:00' },
+      afternoon: { enabled: true,  start: '12:00', end: '16:00' },
+      evening: { enabled: false, start: '16:00', end: '20:00' } },
+    { day: 'Saturday',  is_open: true,  open_time: '09:00', close_time: '14:00', slot_duration: 30,
+      morning: { enabled: true,  start: '09:00', end: '12:00' },
+      afternoon: { enabled: false, start: '12:00', end: '14:00' },
+      evening: { enabled: false, start: '16:00', end: '20:00' } },
+    { day: 'Sunday',    is_open: false, open_time: '09:00', close_time: '18:00', slot_duration: 30,
+      morning: { enabled: false, start: '09:00', end: '12:00' },
+      afternoon: { enabled: false, start: '12:00', end: '16:00' },
+      evening: { enabled: false, start: '16:00', end: '20:00' } },
 ];
 
 const DEFAULT_CLINIC = {
@@ -619,42 +640,92 @@ const ProvidersCRUD = () => {
         );
     };
 
-    const renderHoursTab = () => (
-        <div>
-            <p className="text-sm text-gray-500 mb-4">Set the clinic's weekly operating hours.</p>
-            <div className="space-y-3">
-                {params.time_slots.map((slot: any, i: number) => (
-                    <div key={slot.day} className="flex items-center gap-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
-                        <div className="w-28 font-medium text-sm">{slot.day}</div>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" className="form-checkbox" checked={slot.is_open} onChange={() => { const u=[...params.time_slots]; u[i]={...u[i],is_open:!u[i].is_open}; setParams({...params,time_slots:u}); }} disabled={isView} />
-                            <span className={`text-sm ${slot.is_open ? 'text-green-600 font-semibold' : 'text-gray-400'}`}>{slot.is_open ? 'Open' : 'Closed'}</span>
-                        </label>
-                        {slot.is_open ? (
-                            <>
-                                <div className="flex items-center gap-2">
-                                    <label className="text-xs text-gray-500">From</label>
-                                    <input type="time" className="form-input py-1 text-sm w-32" value={slot.open_time} onChange={e => updateTimeSlot(i,'open_time',e.target.value)} disabled={isView} />
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <label className="text-xs text-gray-500">To</label>
-                                    <input type="time" className="form-input py-1 text-sm w-32" value={slot.close_time} onChange={e => updateTimeSlot(i,'close_time',e.target.value)} disabled={isView} />
-                                </div>
-                                {!isView && (
-                                    <button type="button" className="text-xs text-primary underline ml-auto" onClick={() => {
-                                        const u = params.time_slots.map((s: any) => ({ ...s, open_time: slot.open_time, close_time: slot.close_time, is_open: true }));
-                                        setParams({ ...params, time_slots: u });
-                                    }}>Copy to all</button>
-                                )}
-                            </>
-                        ) : (
-                            <span className="text-sm text-gray-400 italic">Closed all day</span>
-                        )}
+    const renderHoursTab = () => {
+        const updateSession = (i: number, session: 'morning' | 'afternoon' | 'evening', field: string, value: any) => {
+            const u = [...params.time_slots];
+            u[i] = { ...u[i], [session]: { ...u[i][session], [field]: value } };
+            setParams({ ...params, time_slots: u });
+        };
+
+        const slotDuration = params.time_slots[0]?.slot_duration || 30;
+        const setSlotDuration = (val: number) => {
+            const u = params.time_slots.map((s: any) => ({ ...s, slot_duration: val }));
+            setParams({ ...params, time_slots: u });
+        };
+
+        const SESSIONS = [
+            { key: 'morning',   label: 'Morning',   hint: 'Before 12 PM' },
+            { key: 'afternoon', label: 'Afternoon',  hint: '12–4 PM' },
+            { key: 'evening',   label: 'Evening',    hint: 'After 4 PM' },
+        ] as const;
+
+        return (
+            <div className="space-y-4">
+                {/* Slot duration — shared for all days */}
+                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <span className="text-sm font-medium">Appointment Slot Duration</span>
+                    <div className="flex gap-2">
+                        {[10, 15, 30, 45, 60].map(m => (
+                            <button key={m} type="button" disabled={isView}
+                                className={`px-3 py-1 rounded-full text-sm border transition-colors ${slotDuration === m ? 'bg-primary text-white border-primary' : 'border-gray-300 text-gray-600 hover:border-primary hover:text-primary'}`}
+                                onClick={() => setSlotDuration(m)}>
+                                {m} min
+                            </button>
+                        ))}
                     </div>
-                ))}
+                </div>
+
+                {/* Days */}
+                <div className="space-y-2">
+                    {params.time_slots.map((slot: any, i: number) => (
+                        <div key={slot.day} className="border rounded-lg overflow-hidden">
+                            {/* Day header row */}
+                            <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 dark:bg-gray-800">
+                                <div className="w-24 font-medium text-sm">{slot.day}</div>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" className="form-checkbox" checked={slot.is_open} disabled={isView}
+                                        onChange={() => { const u=[...params.time_slots]; u[i]={...u[i],is_open:!u[i].is_open}; setParams({...params,time_slots:u}); }} />
+                                    <span className={`text-sm font-semibold ${slot.is_open ? 'text-green-600' : 'text-gray-400'}`}>
+                                        {slot.is_open ? 'Open' : 'Closed'}
+                                    </span>
+                                </label>
+                            </div>
+
+                            {/* Sessions — only when open */}
+                            {slot.is_open && (
+                                <div className="px-4 py-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    {SESSIONS.map(({ key, label, hint }) => {
+                                        const s = slot[key] || { enabled: false, start: '09:00', end: '12:00' };
+                                        return (
+                                            <div key={key} className={`rounded-lg border p-3 ${s.enabled ? 'border-primary/40 bg-primary/5' : 'border-gray-200 dark:border-gray-700'}`}>
+                                                <label className="flex items-center justify-between cursor-pointer mb-2">
+                                                    <div>
+                                                        <span className={`text-sm font-medium ${s.enabled ? 'text-primary' : 'text-gray-500'}`}>{label}</span>
+                                                        <span className="text-xs text-gray-400 ml-1">({hint})</span>
+                                                    </div>
+                                                    <input type="checkbox" className="form-checkbox" checked={s.enabled} disabled={isView}
+                                                        onChange={e => updateSession(i, key, 'enabled', e.target.checked)} />
+                                                </label>
+                                                {s.enabled && (
+                                                    <div className="flex items-center gap-1 text-xs">
+                                                        <input type="time" className="form-input py-1 text-xs flex-1" value={s.start} disabled={isView}
+                                                            onChange={e => updateSession(i, key, 'start', e.target.value)} />
+                                                        <span className="text-gray-400">–</span>
+                                                        <input type="time" className="form-input py-1 text-xs flex-1" value={s.end} disabled={isView}
+                                                            onChange={e => updateSession(i, key, 'end', e.target.value)} />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     const renderEquipmentTab = () => (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -256,6 +256,21 @@ class ProviderController {
         await ProviderModel.syncProcedures(provider.id, procedureIds);
       } catch (e) { console.error('Error syncing procedures:', e); }
 
+      // Update linked user: full_name → first_name/last_name, email
+      try {
+        const { full_name, email } = req.body;
+        if (full_name || email) {
+          const parts = (full_name || '').trim().split(/\s+/);
+          const firstName = parts[0] || '';
+          const lastName = parts.slice(1).join(' ') || '';
+          const pool = require('../config/database');
+          await pool.query(
+            'UPDATE users SET first_name=$1, last_name=$2, email=COALESCE($3, email) WHERE id=$4',
+            [firstName, lastName, email || null, provider.id]
+          );
+        }
+      } catch (e) { console.error('Error updating user from provider create:', e); }
+
       // Convert relative paths to absolute URLs
       const providerWithUrls = convertProviderUrls(provider);
       
@@ -487,6 +502,21 @@ class ProviderController {
           : [];
         await ProviderModel.syncProcedures(provider.id, procedureIds);
       } catch (e) { console.error('Error syncing procedures:', e); }
+
+      // Update linked user: full_name → first_name/last_name, email
+      try {
+        const { full_name, email } = req.body;
+        if (full_name || email) {
+          const parts = (full_name || '').trim().split(/\s+/);
+          const firstName = parts[0] || '';
+          const lastName = parts.slice(1).join(' ') || '';
+          const pool = require('../config/database');
+          await pool.query(
+            'UPDATE users SET first_name=$1, last_name=$2, email=COALESCE($3, email) WHERE id=$4',
+            [firstName, lastName, email || null, req.params.id]
+          );
+        }
+      } catch (e) { console.error('Error updating user from provider update:', e); }
 
       // Convert relative paths to absolute URLs
       const providerWithUrls = convertProviderUrls(provider);

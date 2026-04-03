@@ -23,8 +23,8 @@ const TABS = [
 ];
 
 const FIELD_TAB: Record<string, string> = {
-    id: 'provider', full_name: 'provider', date_of_birth: 'provider',
-    pincode: 'provider', mobile_number: 'provider', email: 'provider',
+    id: 'provider', date_of_birth: 'provider',
+    pincode: 'provider',
     years_of_experience: 'provider', state_dental_council_reg_number: 'provider',
     clinic_0_pan_no: 'clinic', clinic_0_name: 'clinic', clinic_0_contact_number: 'clinic',
     clinic_0_specialty: 'clinic', clinic_0_address: 'clinic', clinic_0_city: 'clinic',
@@ -49,8 +49,9 @@ const DEFAULT_CLINIC = {
 };
 
 const DEFAULT_VALUES = {
-    id: '', full_name: '', date_of_birth: '', pincode: '',
-    mobile_number: '', whatsapp_number: '', same_as_whatsapp: false,
+    id: '', date_of_birth: '', pincode: '',
+    first_name: '', last_name: '',
+    whatsapp_number: '', same_as_whatsapp: false,
     email: '', years_of_experience: 0, state_dental_council_reg_number: '',
     state_dental_council_reg_photo: null, profile_photo: null,
     dental_chairs: '', iopa_xray_type: 'Digital', has_opg: false,
@@ -148,11 +149,8 @@ const ProvidersCRUD = () => {
     const validateForm = () => {
         const e: Record<string, string> = {};
         if (modalMode === 'create' && !params.id) e.id = 'Please select a user';
-        if (!params.full_name) e.full_name = 'Full name is required';
         if (!params.date_of_birth) e.date_of_birth = 'Date of birth is required';
         if (!params.pincode) e.pincode = 'Pincode is required';
-        if (!params.mobile_number) e.mobile_number = 'Mobile number is required';
-        if (!params.email) e.email = 'Email is required';
         if (params.years_of_experience === '' || params.years_of_experience === null || params.years_of_experience === undefined) e.years_of_experience = 'Years of experience is required';
         if (!params.state_dental_council_reg_number) e.state_dental_council_reg_number = 'Registration number is required';
         const c = params.clinics?.[0];
@@ -234,6 +232,10 @@ const ProvidersCRUD = () => {
         const json = JSON.parse(JSON.stringify(DEFAULT_VALUES));
         if (item) {
             Object.keys(item).forEach(k => { if (k in json) json[k] = item[k]; });
+            // Populate first_name, last_name, email from user join fields
+            json.first_name = item.first_name || '';
+            json.last_name = item.last_name || '';
+            json.email = item.email || item.user_email || '';
             ['specialists_availability','clinics','time_slots','coordinates'].forEach(k => {
                 if (item[k]) json[k] = typeof item[k] === 'string' ? JSON.parse(item[k]) : item[k];
             });
@@ -293,7 +295,15 @@ const ProvidersCRUD = () => {
         let v = type === 'checkbox' ? checked : value;
         if (type === 'number' && ['years_of_experience','dental_chairs','number_of_clinics'].includes(name)) v = value === '' ? 0 : parseInt(value) || 0;
         const np = { ...params, [name]: v };
-        if (name === 'mobile_number' && value && !np.contact_number) np.contact_number = value;
+        // Auto-fill first_name, last_name, email when user is selected
+        if (name === 'id' && value) {
+            const selectedUser = users.find(u => u.id === value);
+            if (selectedUser) {
+                np.first_name = selectedUser.first_name || '';
+                np.last_name = selectedUser.last_name || '';
+                np.email = selectedUser.email || '';
+            }
+        }
         setParams(np);
         if (errors[name]) setErrors(p => { const n = { ...p }; delete n[name]; return n; });
     };
@@ -301,7 +311,7 @@ const ProvidersCRUD = () => {
     const hb = (e: any) => {
         const { name } = e.target; const val = params[name];
         setTouched(p => ({ ...p, [name]: true }));
-        const req: Record<string,string> = { full_name:'Full name is required', date_of_birth:'Date of birth is required', pincode:'Pincode is required', mobile_number:'Mobile number is required', email:'Email is required', years_of_experience:'Years of experience is required', state_dental_council_reg_number:'Registration number is required', specialty:'Primary specialty is required', clinic_name:'Main clinic name is required' };
+        const req: Record<string,string> = { date_of_birth:'Date of birth is required', pincode:'Pincode is required', years_of_experience:'Years of experience is required', state_dental_council_reg_number:'Registration number is required', specialty:'Primary specialty is required', clinic_name:'Main clinic name is required' };
         const ne = { ...errors };
         if (name === 'id') { if (modalMode === 'create' && !val) ne.id = 'Please select a user'; else delete ne.id; }
         else if (req[name]) { if (!val && val !== 0) ne[name] = req[name]; else delete ne[name]; }
@@ -388,33 +398,18 @@ const ProvidersCRUD = () => {
                 </select>
                 {errMsg('id')}
             </div>
-            {/* Full Name */}
             <div>
-                <label htmlFor="full_name">Full Name <span className="text-red-500">*</span></label>
-                <input id="full_name" name="full_name" type="text" className={`form-input ${errCls('full_name')}`} value={params.full_name} onChange={cv} onBlur={hb} disabled={isView} />
-                {errMsg('full_name')}
+                <label htmlFor="first_name">First Name</label>
+                <input id="first_name" name="first_name" type="text" className="form-input" value={params.first_name || ''} onChange={cv} disabled={isView} placeholder="Saved to user account" />
             </div>
             <div>
-                <label htmlFor="date_of_birth">Date of Birth <span className="text-red-500">*</span></label>
-                <input id="date_of_birth" name="date_of_birth" type="date" className={`form-input ${errCls('date_of_birth')}`} value={params.date_of_birth} onChange={cv} onBlur={hb} disabled={isView} />
-                {errMsg('date_of_birth')}
+                <label htmlFor="last_name">Last Name</label>
+                <input id="last_name" name="last_name" type="text" className="form-input" value={params.last_name || ''} onChange={cv} disabled={isView} placeholder="Saved to user account" />
             </div>
             <div>
-                <label htmlFor="pincode">Pincode <span className="text-red-500">*</span></label>
-                <input id="pincode" name="pincode" type="text" className={`form-input ${errCls('pincode')}`} value={params.pincode} onChange={cv} onBlur={hb} disabled={isView} />
-                {errMsg('pincode')}
-            </div>
-            <div>
-                <label htmlFor="mobile_number">Mobile Number <span className="text-red-500">*</span></label>
-                <input id="mobile_number" name="mobile_number" type="text" className={`form-input ${errCls('mobile_number')}`} value={params.mobile_number} onChange={cv} onBlur={hb} disabled={isView} />
-                {errMsg('mobile_number')}
-            </div>
-            <div>
-                <label htmlFor="email">Email ID <span className="text-red-500">*</span></label>
-                <input id="email" name="email" type="email" className={`form-input ${errCls('email')}`} value={params.email} onChange={cv} onBlur={hb} disabled={isView} />
-                {errMsg('email')}
-            </div>
-            <div>
+                <label htmlFor="email">Email ID</label>
+                <input id="email" name="email" type="email" className="form-input" value={params.email} onChange={cv} disabled={isView} placeholder="Saved to user account" />
+            </div>            <div>
                 <label htmlFor="years_of_experience">Years of Experience <span className="text-red-500">*</span></label>
                 <input id="years_of_experience" name="years_of_experience" type="number" className={`form-input ${errCls('years_of_experience')}`} value={params.years_of_experience} onChange={cv} onBlur={hb} disabled={isView} />
                 {errMsg('years_of_experience')}

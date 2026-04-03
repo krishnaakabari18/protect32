@@ -121,8 +121,12 @@ const PatientsCrud = () => {
     const itemsPerPage = 10;
 
     // Form state
-    const [formData, setFormData] = useState<Partial<Patient>>({
+    const [formData, setFormData] = useState<Partial<Patient> & { first_name?: string; last_name?: string; email?: string; mobile_number?: string }>({
         id: '',
+        first_name: '',
+        last_name: '',
+        email: '',
+        mobile_number: '',
         emergency_contact_name: '',
         emergency_contact_number: '',
         insurance_provider: '',
@@ -306,7 +310,8 @@ const PatientsCrud = () => {
 
     const validateForm = (): Record<string, string> => {
         const newErrors: Record<string, string> = {};
-        if (!formData.id) newErrors.id = 'Please select a user';
+        // Only require user selection on create
+        if (!editingPatient && !formData.id) newErrors.id = 'Please select a user';
         Object.keys(requiredFields).forEach(key => {
             if (!formData[key as keyof typeof formData]) newErrors[key] = requiredFields[key];
         });
@@ -339,10 +344,15 @@ const PatientsCrud = () => {
             const token = getAuthToken();
             const submitFormData = new FormData();
 
-            // Add all form fields
+            // Add all form fields — convert empty strings to null for constrained enum fields
+            const enumFields = ['blood_group', 'marital_status', 'preferred_contact_method', 'gender', 'insurance_type', 'preferred_appointment_time'];
             Object.keys(formData).forEach(key => {
                 const value = formData[key as keyof typeof formData];
                 if (value !== undefined && value !== null) {
+                    if (enumFields.includes(key) && value === '') {
+                        // skip — don't send empty string for enum fields (DB constraint)
+                        return;
+                    }
                     if (typeof value === 'object') {
                         submitFormData.append(key, JSON.stringify(value));
                     } else {
@@ -403,12 +413,14 @@ const PatientsCrud = () => {
                     newErrors.marital_status = 'Please select a valid marital status';
                     newTouched.marital_status = true;
                     setActiveTab('basic');
+                } else if (errorMessage.includes('preferred_contact_method')) {
+                    newErrors.preferred_contact_method = 'Please select a valid contact method';
+                    newTouched.preferred_contact_method = true;
+                    setActiveTab('contact');
                 } else {
-                    // Show generic error as popup if we can't parse it
                     Swal.fire('Error', errorMessage, 'error');
                     return;
-                }
-                
+                }                
                 setErrors(newErrors);
                 setTouched(prev => ({ ...prev, ...newTouched }));
                 
@@ -434,6 +446,10 @@ const PatientsCrud = () => {
         setErrors({});
         setFormData({
             id: patient.id,
+            first_name: (patient as any).first_name || '',
+            last_name: (patient as any).last_name || '',
+            email: (patient as any).email || '',
+            mobile_number: (patient as any).mobile_number || '',
             emergency_contact_name: patient.emergency_contact_name || '',
             emergency_contact_number: patient.emergency_contact_number || '',
             insurance_provider: patient.insurance_provider || '',
@@ -525,7 +541,10 @@ const PatientsCrud = () => {
         setErrors({});
         setFormData({
             id: '',
-            emergency_contact_name: '',
+            first_name: '',
+            last_name: '',
+            email: '',
+            mobile_number: '',
             emergency_contact_number: '',
             insurance_provider: '',
             insurance_policy_number: '',
@@ -877,6 +896,22 @@ const PatientsCrud = () => {
                 {touched.id && errors.id && <p className="mt-1 text-xs text-red-500">{errors.id}</p>}
             </div>
 
+            {/* User info fields — editable, saved to users table */}
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                <input type="text" name="first_name" value={(formData as any).first_name || ''} onChange={handleInputChange}
+                    className="form-input" placeholder="First name" />
+            </div>
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                <input type="text" name="last_name" value={(formData as any).last_name || ''} onChange={handleInputChange}
+                    className="form-input" placeholder="Last name" />
+            </div>
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input type="email" name="email" value={(formData as any).email || ''} onChange={handleInputChange}
+                    className="form-input" placeholder="Email address" />
+            </div>
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Profile Photo</label>
                 <input
@@ -1362,7 +1397,6 @@ const PatientsCrud = () => {
                                 <tr>
                                     <th>Profile</th>
                                     <th>Name</th>
-                                    <th>Contact</th>
                                     <th>Gender</th>
                                     <th>Blood Group</th>
                                     <th>City</th>
@@ -1393,14 +1427,6 @@ const PatientsCrud = () => {
                                             <div>
                                                 <div className="font-semibold">{patient.first_name} {patient.last_name}</div>
                                                 <div className="text-xs text-gray-500">{patient.email}</div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div>
-                                                <div>{patient.mobile_number}</div>
-                                                {patient.secondary_phone && (
-                                                    <div className="text-xs text-gray-500">{patient.secondary_phone}</div>
-                                                )}
                                             </div>
                                         </td>
                                         <td>{patient.gender || '-'}</td>

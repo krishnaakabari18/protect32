@@ -175,6 +175,23 @@ class PatientController {
       console.log('Creating patient with data:', patientData);
       const patient = await PatientModel.create(patientData);
       console.log('Patient created successfully:', patient);
+
+      // Also update the linked user's first_name, last_name, email
+      const { first_name, last_name, email, mobile_number } = req.body;
+      if (first_name || last_name || email || mobile_number) {
+        const userFields = [];
+        const userValues = [];
+        let up = 1;
+        if (first_name) { userFields.push(`first_name = $${up++}`); userValues.push(first_name); }
+        if (last_name)  { userFields.push(`last_name = $${up++}`);  userValues.push(last_name); }
+        if (email)      { userFields.push(`email = $${up++}`);      userValues.push(email); }
+        if (mobile_number) { userFields.push(`mobile_number = $${up++}`); userValues.push(mobile_number); }
+        if (userFields.length > 0) {
+          userValues.push(id);
+          const pool = require('../config/database');
+          await pool.query(`UPDATE users SET ${userFields.join(', ')} WHERE id = $${up}`, userValues);
+        }
+      }
       
       // Convert relative paths to absolute URLs
       const patientWithUrls = convertPatientUrls(patient);
@@ -351,6 +368,23 @@ class PatientController {
       const patient = await PatientModel.update(req.params.id, patientData);
       if (!patient) {
         return res.status(404).json({ error: 'Patient not found' });
+      }
+
+      // Also update the linked user's first_name, last_name, email, mobile_number
+      const { first_name, last_name, email, mobile_number } = req.body;
+      if (first_name || last_name || email || mobile_number) {
+        const userFields = [];
+        const userValues = [];
+        let up = 1;
+        if (first_name) { userFields.push(`first_name = $${up++}`); userValues.push(first_name); }
+        if (last_name)  { userFields.push(`last_name = $${up++}`);  userValues.push(last_name); }
+        if (email)      { userFields.push(`email = $${up++}`);      userValues.push(email); }
+        if (mobile_number) { userFields.push(`mobile_number = $${up++}`); userValues.push(mobile_number); }
+        if (userFields.length > 0) {
+          userValues.push(req.params.id);
+          const pool = require('../config/database');
+          await pool.query(`UPDATE users SET ${userFields.join(', ')} WHERE id = $${up}`, userValues);
+        }
       }
       
       // Convert relative paths to absolute URLs

@@ -93,6 +93,9 @@ export const API_ENDPOINTS = {
 
   // FAQs
   faqs: `${API_BASE_URL}/faqs`,
+
+  // States & Cities
+  statesCities: `${API_BASE_URL}/states-cities`,
   
   // Notifications
   notifications: `${API_BASE_URL}/notifications`,

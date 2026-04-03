@@ -78,20 +78,20 @@ class ProviderModel {
     let p = 1;
 
     if (filters.specialty) {
-      query += ` AND p.specialty ILIKE $${p++}`;
-      values.push(`%${filters.specialty}%`);
+      query += ' AND p.specialty ILIKE $' + p++;
+      values.push('%' + filters.specialty + '%');
     }
     if (filters.location) {
-      query += ` AND p.location ILIKE $${p++}`;
-      values.push(`%${filters.location}%`);
+      query += ' AND p.location ILIKE $' + p++;
+      values.push('%' + filters.location + '%');
     }
     if (filters.pincode) {
-      query += ` AND p.pincode = $${p++}`;
+      query += ' AND p.pincode = $' + p++;
       values.push(filters.pincode);
     }
     if (filters.search) {
-      query += ` AND (p.full_name ILIKE $${p} OR p.clinic_name ILIKE $${p} OR p.specialty ILIKE $${p})`;
-      values.push(`%${filters.search}%`);
+      query += ' AND (u.first_name ILIKE $' + p + ' OR u.last_name ILIKE $' + p + ' OR p.full_name ILIKE $' + p + ' OR p.clinic_name ILIKE $' + p + ' OR p.specialty ILIKE $' + p + ')';
+      values.push('%' + filters.search + '%');
       p++;
     }
 
@@ -101,8 +101,8 @@ class ProviderModel {
   }
 
   static async findById(id) {
-    const query = `
-      SELECT
+    const result = await pool.query(
+      `SELECT
         p.*,
         u.first_name, u.last_name,
         u.email as user_email,
@@ -112,20 +112,20 @@ class ProviderModel {
            FROM provider_procedures pp WHERE pp.provider_id = p.id),
           '[]'::json
         ) as procedure_ids
-      FROM providers p
-      LEFT JOIN users u ON p.id = u.id
-      WHERE p.id = $1
-    `;
-    const result = await pool.query(query, [id]);
+       FROM providers p
+       LEFT JOIN users u ON p.id = u.id
+       WHERE p.id = $1`,
+      [id]
+    );
     return result.rows[0];
   }
 
   static async syncProcedures(providerId, procedureIds = []) {
     await pool.query('DELETE FROM provider_procedures WHERE provider_id = $1', [providerId]);
     if (!procedureIds || procedureIds.length === 0) return;
-    const placeholders = procedureIds.map((_, i) => `($1, $${i + 2})`).join(', ');
+    const placeholders = procedureIds.map((_, i) => '($1, $' + (i + 2) + ')').join(', ');
     await pool.query(
-      `INSERT INTO provider_procedures (provider_id, procedure_id) VALUES ${placeholders} ON CONFLICT DO NOTHING`,
+      'INSERT INTO provider_procedures (provider_id, procedure_id) VALUES ' + placeholders + ' ON CONFLICT DO NOTHING',
       [providerId, ...procedureIds]
     );
   }
@@ -154,10 +154,10 @@ class ProviderModel {
     allowedFields.forEach(key => {
       if (providerData[key] !== undefined) {
         if (['time_slots', 'specialists_availability', 'clinics', 'coordinates'].includes(key) && providerData[key]) {
-          fields.push(`${key} = $${p++}`);
+          fields.push(key + ' = $' + p++);
           values.push(JSON.stringify(providerData[key]));
         } else {
-          fields.push(`${key} = $${p++}`);
+          fields.push(key + ' = $' + p++);
           values.push(providerData[key]);
         }
       }
@@ -168,8 +168,10 @@ class ProviderModel {
     fields.push('updated_at = CURRENT_TIMESTAMP');
     values.push(id);
 
-    const query = `UPDATE providers SET ${fields.join(', ')} WHERE id = $${p} RETURNING *`;
-    const result = await pool.query(query, values);
+    const result = await pool.query(
+      'UPDATE providers SET ' + fields.join(', ') + ' WHERE id = $' + p + ' RETURNING *',
+      values
+    );
     return result.rows[0];
   }
 

@@ -815,16 +815,20 @@ const ProvidersCRUD = () => {
                 <div className="panel mt-5 overflow-hidden border-0 p-0">
                     <div className="table-responsive">
                         <table className="table-striped table-hover">
-                            <thead><tr><th>#</th><th>Provider</th><th>Specialty</th><th>Experience</th><th>Clinic</th><th>Contact</th><th>Location</th><th className="!text-center">Actions</th></tr></thead>
+                            <thead><tr><th>#</th><th>Provider</th><th>Specialty</th><th>Experience</th><th>Clinic</th><th>Location</th><th className="!text-center">Actions</th></tr></thead>
                             <tbody>
-                                {items.length === 0 ? <tr><td colSpan={8} className="text-center py-8">No providers found</td></tr> : items.map((item, idx) => (
+                                {items.length === 0 ? <tr><td colSpan={7} className="text-center py-8">No providers found</td></tr> : items.map((item, idx) => (
                                     <tr key={item.id}>
                                         <td>{(pagination.page - 1) * pagination.limit + idx + 1}</td>
-                                        <td><div className="font-semibold">{item.full_name || `${item.first_name||''} ${item.last_name||''}`.trim() || 'N/A'}</div><div className="text-xs text-white-dark">{item.user_email || item.email}</div></td>
+                                        <td>
+                                            <div className="font-semibold">
+                                                {`${item.first_name || ''} ${item.last_name || ''}`.trim() || item.full_name || 'N/A'}
+                                            </div>
+                                            <div className="text-xs text-white-dark">{item.user_email || item.email || '-'}</div>
+                                        </td>
                                         <td>{item.specialty}</td>
                                         <td>{item.years_of_experience || item.experience_years} yrs</td>
                                         <td>{item.clinic_name}</td>
-                                        <td>{item.mobile_number || item.contact_number}</td>
                                         <td>{item.location}</td>
                                         <td><div className="flex gap-2 items-center justify-center">
                                             <button type="button" className="btn btn-sm btn-outline-info" onClick={() => openModal('view', item)}><IconEye /></button>

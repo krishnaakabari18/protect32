@@ -23,6 +23,7 @@ const educationImageRoutes = require('./educationImageRoutes');
 const planFeatureRoutes = require('./planFeatureRoutes');
 const cmsPageRoutes = require('./cmsPageRoutes');
 const faqRoutes = require('./faqRoutes');
+const statesCitiesRoutes = require('./statesCitiesRoutes');
 const settingsRoutes = require('./settingsRoutes');
 const dashboardRoutes = require('./dashboardRoutes');
 
@@ -48,6 +49,7 @@ router.use('/education-images', educationImageRoutes);
 router.use('/plan-features', planFeatureRoutes);
 router.use('/cms-pages', cmsPageRoutes);
 router.use('/faqs', faqRoutes);
+router.use('/states-cities', statesCitiesRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/dashboard', dashboardRoutes);
 

@@ -256,18 +256,19 @@ class ProviderController {
         await ProviderModel.syncProcedures(provider.id, procedureIds);
       } catch (e) { console.error('Error syncing procedures:', e); }
 
-      // Update linked user: full_name → first_name/last_name, email
+      // Update linked user: first_name, last_name, email
       try {
-        const { full_name, email } = req.body;
-        if (full_name || email) {
-          const parts = (full_name || '').trim().split(/\s+/);
-          const firstName = parts[0] || '';
-          const lastName = parts.slice(1).join(' ') || '';
-          const pool = require('../config/database');
-          await pool.query(
-            'UPDATE users SET first_name=$1, last_name=$2, email=COALESCE($3, email) WHERE id=$4',
-            [firstName, lastName, email || null, provider.id]
-          );
+        const { first_name, last_name, email } = req.body;
+        const pool = require('../config/database');
+        const updateFields = [];
+        const updateValues = [];
+        let up = 1;
+        if (first_name !== undefined) { updateFields.push('first_name=$' + up++); updateValues.push(first_name); }
+        if (last_name !== undefined)  { updateFields.push('last_name=$' + up++);  updateValues.push(last_name); }
+        if (email)                    { updateFields.push('email=$' + up++);      updateValues.push(email); }
+        if (updateFields.length > 0) {
+          updateValues.push(provider.id);
+          await pool.query('UPDATE users SET ' + updateFields.join(', ') + ' WHERE id=$' + up, updateValues);
         }
       } catch (e) { console.error('Error updating user from provider create:', e); }
 
@@ -503,18 +504,19 @@ class ProviderController {
         await ProviderModel.syncProcedures(provider.id, procedureIds);
       } catch (e) { console.error('Error syncing procedures:', e); }
 
-      // Update linked user: full_name → first_name/last_name, email
+      // Update linked user: first_name, last_name, email
       try {
-        const { full_name, email } = req.body;
-        if (full_name || email) {
-          const parts = (full_name || '').trim().split(/\s+/);
-          const firstName = parts[0] || '';
-          const lastName = parts.slice(1).join(' ') || '';
-          const pool = require('../config/database');
-          await pool.query(
-            'UPDATE users SET first_name=$1, last_name=$2, email=COALESCE($3, email) WHERE id=$4',
-            [firstName, lastName, email || null, req.params.id]
-          );
+        const { first_name, last_name, email } = req.body;
+        const pool = require('../config/database');
+        const updateFields = [];
+        const updateValues = [];
+        let up = 1;
+        if (first_name !== undefined) { updateFields.push('first_name=$' + up++); updateValues.push(first_name); }
+        if (last_name !== undefined)  { updateFields.push('last_name=$' + up++);  updateValues.push(last_name); }
+        if (email)                    { updateFields.push('email=$' + up++);      updateValues.push(email); }
+        if (updateFields.length > 0) {
+          updateValues.push(req.params.id);
+          await pool.query('UPDATE users SET ' + updateFields.join(', ') + ' WHERE id=$' + up, updateValues);
         }
       } catch (e) { console.error('Error updating user from provider update:', e); }
 

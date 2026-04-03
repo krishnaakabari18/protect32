@@ -1,6 +1,10 @@
 'use client';
 import GenericCRUD from '@/components/management/generic-crud';
-
+const formatLabel = (value: string): string => {
+    return value
+        ?.replace(/_/g, ' ')
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+};
 const PaymentsPage = () => {
     return (
         <GenericCRUD
@@ -21,7 +25,7 @@ const PaymentsPage = () => {
                     render: (value) => value ? `₹${parseFloat(value).toFixed(2)}` : '-'
                 },
                 { key: 'transaction_id', label: 'Transaction ID' },
-                { key: 'payment_method', label: 'Method' },
+                { key: 'payment_method', label: 'Method', render: (value) => value ? formatLabel(value) : '-' },
                 {
                     key: 'payment_status',
                     label: 'Status',

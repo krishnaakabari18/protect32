@@ -32,7 +32,11 @@ const NotificationsPage = () => {
     const token = () => localStorage.getItem('auth_token');
     const headers = () => ({ 'Authorization': `Bearer ${token()}`, 'ngrok-skip-browser-warning': 'true' });
     const jsonHeaders = () => ({ ...headers(), 'Content-Type': 'application/json' });
-
+    const formatLabel = (value: string): string => {
+        return value
+            ?.replace(/_/g, ' ')
+            .replace(/\b\w/g, (c) => c.toUpperCase());
+    };
     const fetchAll = async () => {
         setLoading(true);
         try {
@@ -138,9 +142,10 @@ const NotificationsPage = () => {
                                             <td>{(pagination.page - 1) * pagination.limit + idx + 1}</td>
                                             <td className="font-semibold">{item.title}</td>
                                             <td className="max-w-xs truncate">{item.message}</td>
-                                            <td><span className="badge bg-primary">{item.notification_type}</span></td>
-                                            <td><span className={`badge ${item.target_audience === 'patient' ? 'bg-info' : 'bg-warning'}`}>{item.target_audience}</span></td>
-                                            <td><span className="badge bg-secondary">{item.target_type}</span></td>
+                                            <td><span className="badge bg-primary">{item.notification_type ? formatLabel(item.notification_type) : '-'}</span></td>
+                                            <td><span className={`badge ${item.target_audience === 'patient' ? 'bg-info' : 'bg-warning'}`}>{item.target_audience ? formatLabel(item.target_audience) : '-'}
+                                                </span></td>
+                                            <td><span className="badge bg-secondary">{item.target_type ? formatLabel(item.target_type) : '-'}</span></td>
                                             <td><span className="badge bg-success">{item.sent_count}</span></td>
                                             <td>{fmt(item.sent_at || item.created_at)}</td>
                                             <td><div className="flex gap-2 items-center justify-center">

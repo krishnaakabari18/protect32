@@ -143,14 +143,14 @@ const ComponentsDashboardDental = () => {
                             <h5 className="font-semibold text-sm">Total Appointments</h5>
                         </div>
                     </div>
-                    <div className="mt-4 flex items-center justify-between text-xs">
+                    {/* <div className="mt-4 flex items-center justify-between text-xs">
                         <div>
                             <span className="text-success">Pending: {stats?.pending_appointments || 0}</span>
                         </div>
                         <div>
                             <span className="text-gray-500">Upcoming: {stats?.upcoming_appointments || 0}</span>
                         </div>
-                    </div>
+                    </div> */}
                 </div>
 
                 {/* Total Patients */}
@@ -164,14 +164,14 @@ const ComponentsDashboardDental = () => {
                             <h5 className="font-semibold text-sm">Total Patients</h5>
                         </div>
                     </div>
-                    <div className="mt-4 flex items-center justify-between text-xs">
+                    {/* <div className="mt-4 flex items-center justify-between text-xs">
                         <div>
                             <span className="text-primary">New This Month: {stats?.new_patients_this_month || 0}</span>
                         </div>
                         <div>
                             <span className="text-gray-500">This Week: {stats?.new_patients_this_week || 0}</span>
                         </div>
-                    </div>
+                    </div> */}
                 </div>
 
                 {/* Total Revenue */}
@@ -185,14 +185,14 @@ const ComponentsDashboardDental = () => {
                             <h5 className="font-semibold text-sm">Total Revenue</h5>
                         </div>
                     </div>
-                    <div className="mt-4 flex items-center justify-between text-xs">
+                    {/* <div className="mt-4 flex items-center justify-between text-xs">
                         <div>
                             <span className="text-danger">Pending: {formatCurrency(stats?.pending_revenue || 0)}</span>
                         </div>
                         <div>
                             <span className="text-gray-500">Completed: {stats?.completed_payments || 0}</span>
                         </div>
-                    </div>
+                    </div> */}
                 </div>
 
                 {/* Pending Settlements */}
@@ -206,20 +206,20 @@ const ComponentsDashboardDental = () => {
                             <h5 className="font-semibold text-sm">Pending Settlements</h5>
                         </div>
                     </div>
-                    <div className="mt-4 flex items-center justify-between text-xs">
+                    {/* <div className="mt-4 flex items-center justify-between text-xs">
                         <div>
                             <span className="text-warning">Amount: {formatCurrency(stats?.pending_revenue || 0)}</span>
                         </div>
                         <div>
                             <span className="text-gray-500">Total: {stats?.total_payments || 0}</span>
                         </div>
-                    </div>
+                    </div> */}
                 </div>
             </div>
 
             {/* Additional Statistics */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 mb-6">
-                {/* Treatment Plans */}
+            {/* <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 mb-6">
+               
                 <div className="panel h-full">
                     <div className="flex items-center">
                         <div className="shrink-0 bg-info/10 text-info rounded-xl w-11 h-11 flex items-center justify-center">
@@ -235,7 +235,7 @@ const ComponentsDashboardDental = () => {
                     </div>
                 </div>
 
-                {/* Prescriptions */}
+                
                 <div className="panel h-full">
                     <div className="flex items-center">
                         <div className="shrink-0 bg-secondary/10 text-secondary rounded-xl w-11 h-11 flex items-center justify-center">
@@ -251,7 +251,7 @@ const ComponentsDashboardDental = () => {
                     </div>
                 </div>
 
-                {/* Documents */}
+                
                 <div className="panel h-full">
                     <div className="flex items-center">
                         <div className="shrink-0 bg-primary/10 text-primary rounded-xl w-11 h-11 flex items-center justify-center">
@@ -267,7 +267,7 @@ const ComponentsDashboardDental = () => {
                     </div>
                 </div>
 
-                {/* Reviews */}
+                
                 <div className="panel h-full">
                     <div className="flex items-center">
                         <div className="shrink-0 bg-warning/10 text-warning rounded-xl w-11 h-11 flex items-center justify-center">
@@ -282,7 +282,7 @@ const ComponentsDashboardDental = () => {
                         Avg Rating: {Number(stats?.average_rating || 0).toFixed(1)} ⭐
                     </div>
                 </div>
-            </div>
+            </div> */}
 
             {/* Recent Data */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -348,7 +348,7 @@ const ComponentsDashboardDental = () => {
             </div>
 
             {/* Quick Actions */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+            {/* <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
                 <Link href="/management/appointments" className="panel hover:shadow-lg transition-shadow">
                     <div className="flex items-center">
                         <IconCalendar className="w-8 h-8 text-primary mr-3" />
@@ -388,7 +388,7 @@ const ComponentsDashboardDental = () => {
                         </div>
                     </div>
                 </Link>
-            </div>
+            </div> */}
         </div>
     );
 };

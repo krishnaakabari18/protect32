@@ -682,7 +682,7 @@ const ProviderFeesCRUD = () => {
                                                 </td>
                                                 <td>
                                                     <span className={`badge ${item.status === 'approved' ? 'bg-success' : 'bg-warning'}`}>
-                                                        {item.status}
+                                                        {item.status ? 'Active' : 'Pending'}
                                                     </span>
                                                 </td>
                                                 <td>

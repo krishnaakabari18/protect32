@@ -448,6 +448,11 @@ const UsersCrud = () => {
         };
         return badges[type] || 'badge bg-secondary';
     };
+    const formatUserType = (type: string): string => {
+        return type
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, (c) => c.toUpperCase());
+    };
 
     return (
         <div>
@@ -591,8 +596,8 @@ const UsersCrud = () => {
                                             </td>
                                             <td>{user.email}</td>
                                             <td>
-                                                <span className={getUserTypeBadge(user.user_type)}>
-                                                    {user.user_type}
+                                               <span className={getUserTypeBadge(user.user_type)}>
+                                                    {formatUserType(user.user_type)}
                                                 </span>
                                             </td>
                                             <td className="whitespace-nowrap">{user.mobile_number || '-'}</td>

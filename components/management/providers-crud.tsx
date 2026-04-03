@@ -99,6 +99,8 @@ const ProvidersCRUD = () => {
     const [users, setUsers] = useState<any[]>([]);
     const [procedures, setProcedures] = useState<any[]>([]);
     const [procedureDropdownOpen, setProcedureDropdownOpen] = useState(false);
+    const [statesList, setStatesList] = useState<any[]>([]);
+    const [citiesList, setCitiesList] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 });
@@ -115,7 +117,29 @@ const ProvidersCRUD = () => {
     const cities = ['Mumbai','Delhi','Bangalore','Chennai','Kolkata','Hyderabad','Pune','Ahmedabad'];
     const states = ['Maharashtra','Delhi','Karnataka','Tamil Nadu','West Bengal','Telangana','Gujarat'];
 
-    useEffect(() => { fetchUsers(); fetchItems(); fetchProcedures(); }, [pagination.page, pagination.limit]);
+    useEffect(() => { fetchUsers(); fetchItems(); fetchProcedures(); fetchStates(); }, [pagination.page, pagination.limit]);
+
+    const fetchStates = async () => {
+        try {
+            const token = localStorage.getItem('auth_token');
+            const res = await fetch(`${API_ENDPOINTS.statesCities}/states`, { headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' } });
+            const data = await res.json();
+            if (res.ok) setStatesList(data.data || []);
+        } catch (e) { console.error(e); }
+    };
+
+    const fetchCitiesByState = async (stateName: string) => {
+        if (!stateName) { setCitiesList([]); return; }
+        try {
+            const token = localStorage.getItem('auth_token');
+            // Find state id by name
+            const state = statesList.find(s => s.name === stateName);
+            if (!state) return;
+            const res = await fetch(`${API_ENDPOINTS.statesCities}/states/${state.id}/cities`, { headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' } });
+            const data = await res.json();
+            if (res.ok) setCitiesList(data.data || []);
+        } catch (e) { console.error(e); }
+    };
 
     // Close procedure dropdown on outside click
     useEffect(() => {
@@ -205,7 +229,7 @@ const ProvidersCRUD = () => {
             if (!c.pan_no) e.clinic_0_pan_no = 'Pan No is required';
             if (!c.name) e.clinic_0_name = 'Clinic name is required';
             if (!c.contact_number) e.clinic_0_contact_number = 'Contact number is required';
-            if (!c.specialty) e.clinic_0_specialty = 'Speciality is required';
+            // if (!c.specialty) e.clinic_0_specialty = 'Speciality is required';
             if (!c.address) e.clinic_0_address = 'Address is required';
             if (!c.city) e.clinic_0_city = 'City is required';
             if (!c.state) e.clinic_0_state = 'State is required';
@@ -306,6 +330,8 @@ const ProvidersCRUD = () => {
             // Load procedure_ids
             json.procedure_ids = Array.isArray(item.procedure_ids) ? item.procedure_ids
                 : (typeof item.procedure_ids === 'string' ? JSON.parse(item.procedure_ids) : []);
+            // Fetch cities for existing state
+            if (json.clinics[0]?.state) fetchCitiesByState(json.clinics[0].state);
         }
         setParams(json); setAddModal(true);
     };
@@ -923,9 +949,9 @@ const ProvidersCRUD = () => {
                                             </div>
                                             <div className="text-xs text-white-dark">{item.user_email || item.email || '-'}</div>
                                         </td>
-                                        <td>{item.specialty}</td>
+                                        <td>{(() => { const c = typeof item.clinics === 'string' ? JSON.parse(item.clinics || '[]') : (item.clinics || []); return c[0]?.specialty || item.specialty || '-'; })()}</td>
                                         <td>{item.years_of_experience || item.experience_years} yrs</td>
-                                        <td>{item.clinic_name}</td>
+                                        <td>{(() => { const c = typeof item.clinics === 'string' ? JSON.parse(item.clinics || '[]') : (item.clinics || []); return c[0]?.name || item.clinic_name || '-'; })()}</td>
                                         <td>{item.location}</td>
                                         <td><div className="flex gap-2 items-center justify-center">
                                             <button type="button" className="btn btn-sm btn-outline-info" onClick={() => openModal('view', item)}><IconEye /></button>

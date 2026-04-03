@@ -205,19 +205,19 @@ class ProviderController {
       console.log('Time Slots:', providerData.time_slots);
       
       // Validate required fields
-      if (!providerData.specialty) {
-        return res.status(400).json({ error: 'Specialty is required' });
-      }
-      if (!providerData.clinic_name) {
-        return res.status(400).json({ error: 'Clinic name is required' });
-      }
+      // if (!providerData.specialty) {
+      //   return res.status(400).json({ error: 'Specialty is required' });
+      // }
+      // if (!providerData.clinic_name) {
+      //   return res.status(400).json({ error: 'Clinic name is required' });
+      // }
       // Accept either mobile_number or contact_number
-      if (!providerData.mobile_number && !providerData.contact_number) {
-        return res.status(400).json({ error: 'Mobile number or contact number is required' });
-      }
-      if (!providerData.location) {
-        return res.status(400).json({ error: 'Location is required' });
-      }
+      // if (!providerData.mobile_number && !providerData.contact_number) {
+      //   return res.status(400).json({ error: 'Mobile number or contact number is required' });
+      // }
+      // if (!providerData.location) {
+      //   return res.status(400).json({ error: 'Location is required' });
+      // }
       
       // Add uploaded photo paths
       if (req.files) {

@@ -63,7 +63,9 @@ const TreatmentPlansPage = () => {
                 {
                     key: 'provider_id', label: 'Provider', type: 'api-select', required: true, placeholder: 'Select Provider',
                     apiEndpoint: 'providers', apiValueKey: 'id',
-                    apiLabelFormat: (item: any) => item.full_name || item.clinic_name || item.id
+                    apiLabelFormat: (item: any) => item.first_name && item.last_name 
+                        ? `Dr. ${item.first_name} ${item.last_name} (${item.email})`
+                        : item.email || item.id
                 },
                 {
                     key: 'diagnosis',

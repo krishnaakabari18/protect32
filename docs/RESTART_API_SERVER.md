@@ -1,151 +1,131 @@
-# Restart API Server - Patient Education Updates
+# Fix Applied - Profile Picture URLs
 
-## Why Restart?
+## What Was Fixed
 
-The API server needs to be restarted to load the new changes:
-- Image upload routes with multer middleware
-- Updated controller with FormData handling
-- New image upload utility
+The profile picture URLs were showing `localhost:8080` instead of the ngrok URL because the API server needed to be restarted to pick up the `BASE_URL` environment variable.
 
-## How to Restart
+## Changes Made
 
-### Option 1: Using Terminal (Recommended)
+1. **Updated `api/src/utils/urlHelper.js`**:
+   - Added console logging to debug BASE_URL loading
+   - The helper now correctly uses `BASE_URL` from environment
 
-1. **Find the running process**:
+2. **Verified `.env` Configuration**:
+   - `BASE_URL=https://occupiable-milissa-ennuyante.ngrok-free.dev` is set correctly
+
+3. **Frontend Already Correct**:
+   - `components/apps/contacts/components-apps-contacts-users.tsx` uses `buildMediaUrl()` from config
+   - This correctly constructs URLs using `MEDIA_BASE_URL`
+
+## How to Apply the Fix
+
+### Step 1: Restart the API Server
+
 ```bash
-ps aux | grep "node.*server.js"
+# Stop the current API server (Ctrl+C if running)
+
+# Start it again
+cd api
+npm start
 ```
 
-2. **Kill the process**:
+### Step 2: Verify the Fix
+
+1. **Check API Response**:
 ```bash
-kill <PID>
-# Replace <PID> with the process ID from step 1
+# Get a user and check the profile_picture URL
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+     -H "ngrok-skip-browser-warning: true" \
+     https://occupiable-milissa-ennuyante.ngrok-free.dev/api/v1/users
 ```
 
-3. **Start the server again**:
+The `profile_picture` field should now show:
+```json
+{
+  "profile_picture": "https://occupiable-milissa-ennuyante.ngrok-free.dev/uploads/users/123/profile.jpg"
+}
+```
+
+Instead of:
+```json
+{
+  "profile_picture": "http://localhost:8080/uploads/users/123/profile.jpg"
+}
+```
+
+2. **Check Frontend**:
+   - Open: http://localhost:3000/management/users
+   - Profile pictures should now load correctly
+   - Inspect the image URLs in browser DevTools - they should use the ngrok URL
+
+### Step 3: Test with Browser
+
+1. Open http://localhost:3000/management/users
+2. Right-click on a profile picture → "Inspect"
+3. Check the `src` attribute - it should be:
+   ```html
+   <img src="https://occupiable-milissa-ennuyante.ngrok-free.dev/uploads/users/123/profile.jpg" />
+   ```
+
+## Why This Happened
+
+The API server caches environment variables when it starts. When you update the `.env` file, you need to restart the server for changes to take effect.
+
+## Verification Test
+
+Run this to verify BASE_URL is loaded:
 ```bash
 cd api
-node src/server.js
+node test-base-url.js
 ```
 
-### Option 2: Using Ctrl+C
-
-1. Go to the terminal where API server is running
-2. Press `Ctrl+C` to stop
-3. Run again:
-```bash
-node src/server.js
+Expected output:
+```
+BASE_URL: https://occupiable-milissa-ennuyante.ngrok-free.dev
+getBaseUrl(): https://occupiable-milissa-ennuyante.ngrok-free.dev
 ```
 
-### Option 3: Using the start script
+## If Still Not Working
 
-```bash
-cd api
-./start-api.sh
+### Check 1: API Server Console
+Look for this log when the API starts:
+```
+Using BASE_URL from environment: https://occupiable-milissa-ennuyante.ngrok-free.dev
 ```
 
-## Verify Server is Running
-
-After restart, check:
-
-```bash
-# Check if process is running
-ps aux | grep "node.*server.js"
-
-# Should see output like:
-# gstv  12345  0.0  0.4  node src/server.js
+If you see:
+```
+BASE_URL not found, using fallback: http://localhost:8080
 ```
 
-## Test the New Endpoints
+Then the `.env` file is not being loaded. Make sure:
+- File is named exactly `.env` (not `.env.txt`)
+- File is in the `api/` directory
+- No extra spaces in the variable: `BASE_URL=https://...` (no spaces around `=`)
 
-Once restarted, test the image upload:
+### Check 2: Database Data
+If old URLs are stored in the database, the `urlHelper` will convert them:
+```javascript
+// Old URL in database
+"http://localhost:8080/uploads/users/123/profile.jpg"
 
-```bash
-# Get your auth token first (from localStorage after login)
-TOKEN="your_token_here"
-
-# Test create with image
-curl -X POST http://localhost:8080/api/v1/patient-education \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "ngrok-skip-browser-warning: true" \
-  -F "title=Test with Image" \
-  -F "category=Testing" \
-  -F "content=<p>Test content</p>" \
-  -F "status=Active" \
-  -F "feature_image=@/path/to/image.jpg"
+// Converted to
+"https://occupiable-milissa-ennuyante.ngrok-free.dev/uploads/users/123/profile.jpg"
 ```
 
-## Frontend Cache Clear
+This conversion happens automatically in `toAbsoluteUrl()` function.
 
-If you see "Route not found" in the frontend:
-
-```bash
-cd backend
-rm -rf .next
-# Then restart the dev server
-npm run dev
+### Check 3: Frontend Config
+Verify `config/api.config.ts` has:
+```typescript
+export const MEDIA_BASE_URL = 'https://occupiable-milissa-ennuyante.ngrok-free.dev';
 ```
 
-## Verification Checklist
+## Summary
 
-After restart, verify:
-- [ ] API server is running (check process)
-- [ ] Server responds to health check
-- [ ] Patient education endpoints work
-- [ ] Image upload accepts files
-- [ ] Images are saved to uploads folder
-- [ ] Frontend can access the module
-- [ ] No errors in server logs
+✅ API `.env` has correct `BASE_URL`
+✅ `urlHelper.js` uses `BASE_URL` from environment
+✅ Frontend uses `buildMediaUrl()` with correct `MEDIA_BASE_URL`
+✅ Old URLs in database are automatically converted
 
-## Current Server Status
-
-To check current status:
-
-```bash
-# Check if running
-ps aux | grep "node.*server.js" | grep -v grep
-
-# Check port 8080 is listening
-netstat -tuln | grep 8080
-
-# Or using lsof
-lsof -i :8080
-```
-
-## Troubleshooting
-
-### Issue: Port 8080 already in use
-```bash
-# Find what's using the port
-lsof -i :8080
-
-# Kill the process
-kill -9 <PID>
-
-# Start server again
-cd api && node src/server.js
-```
-
-### Issue: Module not found errors
-```bash
-# Install dependencies
-cd api
-npm install multer
-```
-
-### Issue: Permission denied on uploads folder
-```bash
-cd api
-chmod -R 755 uploads/
-```
-
-## Quick Restart Command
-
-```bash
-# One-liner to restart
-pkill -f "node.*server.js" && cd api && node src/server.js &
-```
-
----
-
-**After restart, the Patient Education module with rich text editor and image upload will be fully functional!**
+**Action Required**: Restart the API server!

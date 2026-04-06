@@ -69,7 +69,22 @@ class ProviderModel {
           (SELECT json_agg(pp.procedure_id::text)
            FROM provider_procedures pp WHERE pp.provider_id = p.id),
           '[]'::json
-        ) as procedure_ids
+        ) as procedure_ids,
+        COALESCE(
+          (SELECT json_agg(
+            json_build_object(
+              'id', pr.id,
+              'patient_id', pr.patient_id,
+              'rating', pr.rating,
+              'comment', pr.comment,
+              'created_at', pr.created_at
+            ) ORDER BY pr.created_at DESC
+          )
+          FROM provider_reviews pr WHERE pr.provider_id = p.id),
+          '[]'::json
+        ) as reviews,
+        (SELECT COUNT(*) FROM provider_reviews pr WHERE pr.provider_id = p.id) as total_reviews,
+        (SELECT COALESCE(ROUND(AVG(pr.rating)::numeric, 1), 0) FROM provider_reviews pr WHERE pr.provider_id = p.id) as average_rating
       FROM providers p
       LEFT JOIN users u ON p.id = u.id
       WHERE 1=1
@@ -111,7 +126,22 @@ class ProviderModel {
           (SELECT json_agg(pp.procedure_id::text)
            FROM provider_procedures pp WHERE pp.provider_id = p.id),
           '[]'::json
-        ) as procedure_ids
+        ) as procedure_ids,
+        COALESCE(
+          (SELECT json_agg(
+            json_build_object(
+              'id', pr.id,
+              'patient_id', pr.patient_id,
+              'rating', pr.rating,
+              'comment', pr.comment,
+              'created_at', pr.created_at
+            ) ORDER BY pr.created_at DESC
+          )
+          FROM provider_reviews pr WHERE pr.provider_id = p.id),
+          '[]'::json
+        ) as reviews,
+        (SELECT COUNT(*) FROM provider_reviews pr WHERE pr.provider_id = p.id) as total_reviews,
+        (SELECT COALESCE(ROUND(AVG(pr.rating)::numeric, 1), 0) FROM provider_reviews pr WHERE pr.provider_id = p.id) as average_rating
        FROM providers p
        LEFT JOIN users u ON p.id = u.id
        WHERE p.id = $1`,

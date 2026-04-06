@@ -17,7 +17,16 @@ const TreatmentPlansPage = () => {
                 {
                     key: 'provider_id',
                     label: 'Provider',
-                    render: (value, row) => row.provider_full_name || value || '-'
+                    render: (value, row) => {
+                        const name = row.provider_full_name || value || '-';
+                        const email = row.provider_email;
+                        return (
+                            <div>
+                                <div className="font-semibold">{name}</div>
+                                {email && <div className="text-xs text-gray-400">{email}</div>}
+                            </div>
+                        );
+                    }
                 },
                 {
                     key: 'diagnosis',
@@ -63,9 +72,12 @@ const TreatmentPlansPage = () => {
                 {
                     key: 'provider_id', label: 'Provider', type: 'api-select', required: true, placeholder: 'Select Provider',
                     apiEndpoint: 'providers', apiValueKey: 'id',
-                    apiLabelFormat: (item: any) => item.first_name && item.last_name 
-                        ? `Dr. ${item.first_name} ${item.last_name} (${item.email})`
-                        : item.email || item.id
+
+                    apiLabelFormat: (item: any) => {
+                        const name = `${item.first_name || ''} ${item.last_name || ''}`.trim() || item.full_name || '';
+                        const email = item.user_email || item.email || '';
+                        return name ? `${name}${email ? ` (${email})` : ''}` : email || item.id;
+                    }
                 },
                 {
                     key: 'diagnosis',

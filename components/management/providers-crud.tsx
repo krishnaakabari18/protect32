@@ -99,6 +99,7 @@ const ProvidersCRUD = () => {
     const [users, setUsers] = useState<any[]>([]);
     const [procedures, setProcedures] = useState<any[]>([]);
     const [procedureDropdownOpen, setProcedureDropdownOpen] = useState(false);
+    const [specialties, setSpecialties] = useState<any[]>([]);
     const [statesList, setStatesList] = useState<any[]>([]);
     const [citiesList, setCitiesList] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -111,13 +112,23 @@ const ProvidersCRUD = () => {
     // drag state for clinic photos
     const dragIndex = useRef<number | null>(null);
 
-    const specialistTypes = ['Endodontist','Periodontist','Prosthodontist','Omfs','Orthodontist','Pedodontist'];
     const availabilityOptions = ['On Call','Regular','Not Available'];
     const accountTypes = ['Savings','Current','Business'];
     const cities = ['Mumbai','Delhi','Bangalore','Chennai','Kolkata','Hyderabad','Pune','Ahmedabad'];
     const states = ['Maharashtra','Delhi','Karnataka','Tamil Nadu','West Bengal','Telangana','Gujarat'];
 
-    useEffect(() => { fetchUsers(); fetchItems(); fetchProcedures(); fetchStates(); }, [pagination.page, pagination.limit]);
+    useEffect(() => { fetchUsers(); fetchItems(); fetchProcedures(); fetchSpecialties(); fetchStates(); }, [pagination.page, pagination.limit]);
+
+    const fetchSpecialties = async () => {
+        try {
+            const token = localStorage.getItem('auth_token');
+            const res = await fetch(`${API_ENDPOINTS.specialties}?limit=1000&is_active=true`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+            });
+            const data = await res.json();
+            if (res.ok) setSpecialties(data.data || []);
+        } catch (e) { console.error(e); }
+    };
 
     const fetchStates = async () => {
         try {
@@ -860,33 +871,76 @@ const ProvidersCRUD = () => {
         </div>
     );
 
-    const renderSpecialistsTab = () => (
-        <div>
-            {!isView && (
-                <button type="button" className="btn btn-sm btn-primary mb-4" onClick={() => setParams({...params, specialists_availability: [...params.specialists_availability, { type: 'Endodontist', availability: 'On Call' }]})}>
-                    + Add Specialist
-                </button>
-            )}
-            {params.specialists_availability.length === 0 && <p className="text-gray-400 text-sm">No specialists added.</p>}
-            {params.specialists_availability.map((sp: any, i: number) => (
-                <div key={i} className="flex items-center gap-4 mb-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <div className="flex-1">
-                        <label className="text-xs text-gray-500">Type</label>
-                        <select className="form-select" value={sp.type} onChange={e => { const u=[...params.specialists_availability]; u[i]={...u[i],type:e.target.value}; setParams({...params,specialists_availability:u}); }} disabled={isView}>
-                            {specialistTypes.map(t => <option key={t} value={t}>{t}</option>)}
-                        </select>
+    const renderSpecialistsTab = () => {
+        // Get list of already selected specialty types
+        const selectedTypes = params.specialists_availability.map((sp: any) => sp.type);
+        
+        // Get first available specialty that hasn't been selected
+        const getFirstAvailableSpecialty = () => {
+            const available = specialties.find(s => !selectedTypes.includes(s.name));
+            return available ? available.name : (specialties[0]?.name || '');
+        };
+
+        return (
+            <div>
+                {!isView && (
+                    <button 
+                        type="button" 
+                        className="btn btn-sm btn-primary mb-4" 
+                        onClick={() => setParams({
+                            ...params, 
+                            specialists_availability: [
+                                ...params.specialists_availability, 
+                                { type: getFirstAvailableSpecialty(), availability: 'On Call' }
+                            ]
+                        })}
+                        disabled={selectedTypes.length >= specialties.length}
+                    >
+                        + Add Specialist
+                    </button>
+                )}
+                {params.specialists_availability.length === 0 && <p className="text-gray-400 text-sm">No specialists added.</p>}
+                {params.specialists_availability.map((sp: any, i: number) => (
+                    <div key={i} className="flex items-center gap-4 mb-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                        <div className="flex-1">
+                            <label className="text-xs text-gray-500">Type</label>
+                            <select 
+                                className="form-select" 
+                                value={sp.type} 
+                                onChange={e => { 
+                                    const u=[...params.specialists_availability]; 
+                                    u[i]={...u[i],type:e.target.value}; 
+                                    setParams({...params,specialists_availability:u}); 
+                                }} 
+                                disabled={isView}
+                            >
+                                {specialties.map(specialty => {
+                                    // Disable if already selected by another row
+                                    const isSelectedElsewhere = selectedTypes.includes(specialty.name) && sp.type !== specialty.name;
+                                    return (
+                                        <option 
+                                            key={specialty.id} 
+                                            value={specialty.name}
+                                            disabled={isSelectedElsewhere}
+                                        >
+                                            {specialty.name}
+                                        </option>
+                                    );
+                                })}
+                            </select>
+                        </div>
+                        <div className="flex-1">
+                            <label className="text-xs text-gray-500">Availability</label>
+                            <select className="form-select" value={sp.availability} onChange={e => { const u=[...params.specialists_availability]; u[i]={...u[i],availability:e.target.value}; setParams({...params,specialists_availability:u}); }} disabled={isView}>
+                                {availabilityOptions.map(o => <option key={o} value={o}>{o}</option>)}
+                            </select>
+                        </div>
+                        {!isView && <button type="button" className="btn btn-sm btn-danger mt-4" onClick={() => setParams({...params, specialists_availability: params.specialists_availability.filter((_:any,j:number)=>j!==i)})}>Remove</button>}
                     </div>
-                    <div className="flex-1">
-                        <label className="text-xs text-gray-500">Availability</label>
-                        <select className="form-select" value={sp.availability} onChange={e => { const u=[...params.specialists_availability]; u[i]={...u[i],availability:e.target.value}; setParams({...params,specialists_availability:u}); }} disabled={isView}>
-                            {availabilityOptions.map(o => <option key={o} value={o}>{o}</option>)}
-                        </select>
-                    </div>
-                    {!isView && <button type="button" className="btn btn-sm btn-danger mt-4" onClick={() => setParams({...params, specialists_availability: params.specialists_availability.filter((_:any,j:number)=>j!==i)})}>Remove</button>}
-                </div>
-            ))}
-        </div>
-    );
+                ))}
+            </div>
+        );
+    };
 
     const renderBankTab = () => (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

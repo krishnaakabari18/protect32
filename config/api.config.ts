@@ -67,6 +67,9 @@ export const API_ENDPOINTS = {
   // Procedures
   procedures: `${API_BASE_URL}/procedures`,
   
+  // Specialties
+  specialties: `${API_BASE_URL}/specialties`,
+  
   // Support Tickets
   supportTickets: `${API_BASE_URL}/support-tickets`,
   

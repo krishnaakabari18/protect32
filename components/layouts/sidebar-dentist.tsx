@@ -129,6 +129,9 @@ const SidebarDentist = () => {
                             {can('providers') && menuItem('/management/providers',
                                 <IconUser className="shrink-0 group-hover:!text-primary" />, 'Providers')}
 
+                            {can('specialties') && menuItem('/management/specialties',
+                                <IconStar className="shrink-0 group-hover:!text-primary" />, 'Specialties')}
+
                             {can('appointments') && menuItem('/management/appointments',
                                 <IconCalendar className="shrink-0 group-hover:!text-primary" />, 'Appointments')}
 

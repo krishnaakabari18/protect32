@@ -70,6 +70,10 @@ export const API_ENDPOINTS = {
   // Specialties
   specialties: `${API_BASE_URL}/specialties`,
   
+  // Menus
+  menus: `${API_BASE_URL}/menus`,
+  myMenus: `${API_BASE_URL}/menus/my-menus`,
+  
   // Support Tickets
   supportTickets: `${API_BASE_URL}/support-tickets`,
   

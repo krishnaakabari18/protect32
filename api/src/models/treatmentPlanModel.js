@@ -1,12 +1,29 @@
 const pool = require('../config/database');
 
-// diagnosis is stored as a PostgreSQL text[] array literal e.g. {"uuid1","uuid2"}
-// Guard against plain text values with a safe cast
-const DIAG_NAMES = `(SELECT string_agg(pr.name, ', ' ORDER BY pr.name)
-   FROM procedures pr
-   WHERE tp.diagnosis IS NOT NULL
-     AND tp.diagnosis LIKE '{%}'
-     AND pr.id = ANY(tp.diagnosis::uuid[])) AS diagnosis_names`;
+// diagnosis stored as JSON string e.g. '["uuid1","uuid2"]' OR PG array '{"uuid1","uuid2"}'
+const DIAG_NAMES = `(
+  SELECT string_agg(pr.name, ', ' ORDER BY pr.name)
+  FROM procedures pr
+  WHERE tp.diagnosis IS NOT NULL
+    AND tp.diagnosis != ''
+    AND pr.id::text = ANY(
+      CASE
+        WHEN tp.diagnosis LIKE '[%]'
+          THEN ARRAY(SELECT jsonb_array_elements_text(tp.diagnosis::jsonb))
+        WHEN tp.diagnosis LIKE '{%}'
+          THEN ARRAY(SELECT unnest(tp.diagnosis::text[]))
+        ELSE ARRAY[]::text[]
+      END
+    )
+) AS diagnosis_names`;
+
+// Provider name from users table (first_name + last_name preferred over full_name)
+const PROVIDER_NAME = `COALESCE(
+  NULLIF(TRIM(COALESCE(pu.first_name,'') || ' ' || COALESCE(pu.last_name,'')), ''),
+  NULLIF(prov.full_name, ''),
+  prov.clinic_name
+) as provider_full_name,
+pu.email as provider_email`;
 
 class TreatmentPlanModel {
   static async create(data) {
@@ -22,11 +39,12 @@ class TreatmentPlanModel {
     let query = `
       SELECT tp.*,
         u.first_name as patient_first_name, u.last_name as patient_last_name,
-        COALESCE(NULLIF(prov.full_name, ''), prov.clinic_name) as provider_full_name,
+        ${PROVIDER_NAME},
         ${DIAG_NAMES}
       FROM treatment_plans tp
       LEFT JOIN users u ON tp.patient_id = u.id
       LEFT JOIN providers prov ON tp.provider_id = prov.id
+      LEFT JOIN users pu ON prov.id = pu.id
       WHERE 1=1
     `;
     const values = [];
@@ -50,11 +68,12 @@ class TreatmentPlanModel {
     const result = await pool.query(`
       SELECT tp.*,
         u.first_name as patient_first_name, u.last_name as patient_last_name,
-        COALESCE(NULLIF(prov.full_name, ''), prov.clinic_name) as provider_full_name,
+        ${PROVIDER_NAME},
         ${DIAG_NAMES}
       FROM treatment_plans tp
       LEFT JOIN users u ON tp.patient_id = u.id
       LEFT JOIN providers prov ON tp.provider_id = prov.id
+      LEFT JOIN users pu ON prov.id = pu.id
       WHERE tp.id = $1`, [id]);
     return result.rows[0];
   }

@@ -2,15 +2,15 @@ const pool = require('../config/database');
 
 class ProcedureModel {
   static async create(data) {
-    const { name, category, description, is_active, display_order } = data;
+    const { name, category, description, is_active } = data;
     
     const query = `
-      INSERT INTO procedures (name, category, description, is_active, display_order)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO procedures (name, category, description, is_active)
+      VALUES ($1, $2, $3, $4)
       RETURNING *
     `;
     
-    const values = [name, category, description || null, is_active !== undefined ? is_active : true, display_order || 0];
+    const values = [name, category, description || null, is_active !== undefined ? is_active : true];
     const result = await pool.query(query, values);
     return result.rows[0];
   }
@@ -36,12 +36,12 @@ class ProcedureModel {
     }
 
     if (filters.search) {
-      query += ` AND name ILIKE $${paramCount}`;
+      query += ` AND (name ILIKE $${paramCount} OR description ILIKE $${paramCount})`;
       values.push(`%${filters.search}%`);
       paramCount++;
     }
 
-    query += ' ORDER BY category, display_order, name';
+    query += ' ORDER BY category, name';
     const result = await pool.query(query, values);
     return result.rows;
   }
@@ -60,9 +60,8 @@ class ProcedureModel {
           json_build_object(
             'id', id,
             'name', name,
-            'description', description,
-            'display_order', display_order
-          ) ORDER BY display_order, name
+            'description', description
+          ) ORDER BY name
         ) as procedures
       FROM procedures
       WHERE is_active = true
@@ -90,7 +89,7 @@ class ProcedureModel {
     const values = [];
     let paramCount = 1;
 
-    const allowedFields = ['name', 'category', 'description', 'is_active', 'display_order'];
+    const allowedFields = ['name', 'category', 'description', 'is_active'];
 
     allowedFields.forEach(key => {
       if (data[key] !== undefined) {

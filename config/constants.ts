@@ -28,7 +28,7 @@ export const MENU_PERMISSIONS: Record<string, string[]> = {
     super_admin: [
         'users', 'patients', 'providers', 'appointments', 'treatment-plans',
         'prescriptions', 'plans', 'provider-fees', 'payments', 'documents',
-        'reviews', 'notifications', 'support-tickets', 'patienteducation', 'cms-pages', 'faqs', 'settings',
+        'reviews', 'notifications', 'support-tickets', 'patienteducation', 'cms-pages', 'faqs', 'settings', 'menus',
     ],
     admin: [
         'patients', 'providers', 'appointments', 'treatment-plans',

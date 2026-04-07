@@ -168,6 +168,9 @@ const SidebarDentist = () => {
                             {can('settings') && menuItem('/management/settings',
                                 <IconSettings className="shrink-0 group-hover:!text-primary" />, 'Settings')}
 
+                            {can('menus') && menuItem('/management/menus',
+                                <IconSettings className="shrink-0 group-hover:!text-primary" />, 'Menus')}
+
                             {can('cms-pages') && menuItem('/management/cms-pages',
                                 <IconFile className="shrink-0 group-hover:!text-primary" />, 'CMS Pages')}
 

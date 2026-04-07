@@ -24,10 +24,10 @@ const planFeatureRoutes = require('./planFeatureRoutes');
 const cmsPageRoutes = require('./cmsPageRoutes');
 const faqRoutes = require('./faqRoutes');
 const statesCitiesRoutes = require('./statesCitiesRoutes');
+const menuRoutes = require('./menuRoutes');
 const settingsRoutes = require('./settingsRoutes');
 const dashboardRoutes = require('./dashboardRoutes');
-const specialtyRoutes = require('./specialtyRoutes');
-const menuRoutes = require('./menuRoutes');
+
 
 // Mount routes
 router.use('/auth', authRoutes);
@@ -52,9 +52,8 @@ router.use('/plan-features', planFeatureRoutes);
 router.use('/cms-pages', cmsPageRoutes);
 router.use('/faqs', faqRoutes);
 router.use('/states-cities', statesCitiesRoutes);
+router.use('/menus', menuRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/dashboard', dashboardRoutes);
-router.use('/specialties', specialtyRoutes);
-router.use('/menus', menuRoutes);
 
 module.exports = router;

@@ -86,6 +86,78 @@ router.get('/categories', AuthMiddleware.authenticate, ProcedureController.getCa
 
 /**
  * @swagger
+ * /procedures/with-price-range:
+ *   get:
+ *     summary: Get all active procedures with min/max price from treatment plans
+ *     tags: [Procedures]
+ *     security:
+ *       - bearerAuth: []
+ *     description: |
+ *       Returns all active procedures with their minimum and maximum estimated cost
+ *       calculated from treatment plans where the procedure appears in the diagnosis field.
+ *       Useful for procedure dropdowns with price range display.
+ *     responses:
+ *       200:
+ *         description: List of active procedures with price range
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                       name:
+ *                         type: string
+ *                         example: Root Canal
+ *                       category:
+ *                         type: string
+ *                       min_price:
+ *                         type: number
+ *                         nullable: true
+ *                         example: 1500
+ *                       max_price:
+ *                         type: number
+ *                         nullable: true
+ *                         example: 5000
+ *                 total:
+ *                   type: integer
+ */
+router.get('/with-price-range', AuthMiddleware.authenticate, async (req, res) => {
+  try {
+    const pool = require('../../config/database');
+    const result = await pool.query(`
+      SELECT
+        p.id, p.name, p.category, p.description,
+        MIN(tp.estimated_cost) AS min_price,
+        MAX(tp.estimated_cost) AS max_price
+      FROM procedures p
+      LEFT JOIN treatment_plans tp
+        ON tp.diagnosis IS NOT NULL AND tp.diagnosis != ''
+        AND p.id::text = ANY(
+          CASE
+            WHEN tp.diagnosis LIKE '[%]' THEN ARRAY(SELECT jsonb_array_elements_text(tp.diagnosis::jsonb))
+            WHEN tp.diagnosis LIKE '{%}' THEN ARRAY(SELECT unnest(tp.diagnosis::text[]))
+            ELSE ARRAY[]::text[]
+          END
+        )
+      WHERE p.is_active = true
+      GROUP BY p.id, p.name, p.category, p.description
+      ORDER BY p.name ASC
+    `);
+    res.json({ data: result.rows, total: result.rows.length });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * @swagger
  * /procedures/{id}:
  *   get:
  *     summary: Get procedure by ID

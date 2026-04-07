@@ -66,6 +66,7 @@ export const API_ENDPOINTS = {
   
   // Procedures
   procedures: `${API_BASE_URL}/procedures`,
+  proceduresWithPrice: `${API_BASE_URL}/procedures/with-price-range`,
   
   // Specialties
   specialties: `${API_BASE_URL}/specialties`,

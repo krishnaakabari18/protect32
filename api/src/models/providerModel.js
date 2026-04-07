@@ -90,24 +90,66 @@ class ProviderModel {
       WHERE 1=1
     `;
     const values = [];
-    let p = 1;
+    let idx = 1;
+
+    // keyword — search by name, clinic, specialty
+    if (filters.keyword) {
+      query += ` AND (
+        u.first_name ILIKE $${idx} OR u.last_name ILIKE $${idx}
+        OR p.full_name ILIKE $${idx} OR p.clinic_name ILIKE $${idx}
+        OR p.specialty ILIKE $${idx}
+      )`;
+      values.push('%' + filters.keyword + '%');
+      idx++;
+    }
 
     if (filters.specialty) {
-      query += ' AND p.specialty ILIKE $' + p++;
+      query += ` AND p.specialty ILIKE $${idx++}`;
       values.push('%' + filters.specialty + '%');
     }
     if (filters.location) {
-      query += ' AND p.location ILIKE $' + p++;
+      query += ` AND p.location ILIKE $${idx++}`;
       values.push('%' + filters.location + '%');
     }
     if (filters.pincode) {
-      query += ' AND p.pincode = $' + p++;
+      query += ` AND p.pincode = $${idx++}`;
       values.push(filters.pincode);
     }
     if (filters.search) {
-      query += ' AND (u.first_name ILIKE $' + p + ' OR u.last_name ILIKE $' + p + ' OR p.full_name ILIKE $' + p + ' OR p.clinic_name ILIKE $' + p + ' OR p.specialty ILIKE $' + p + ')';
+      query += ` AND (u.first_name ILIKE $${idx} OR u.last_name ILIKE $${idx} OR p.full_name ILIKE $${idx} OR p.clinic_name ILIKE $${idx} OR p.specialty ILIKE $${idx})`;
       values.push('%' + filters.search + '%');
-      p++;
+      idx++;
+    }
+
+    // min_experience
+    if (filters.min_experience) {
+      query += ` AND COALESCE(p.years_of_experience, p.experience_years, 0) >= $${idx++}`;
+      values.push(parseInt(filters.min_experience));
+    }
+
+    // min_rating — filter by average rating
+    if (filters.min_rating) {
+      query += ` AND (
+        SELECT COALESCE(ROUND(AVG(pr.rating)::numeric,1),0)
+        FROM provider_reviews pr WHERE pr.provider_id = p.id
+      ) >= $${idx++}`;
+      values.push(parseFloat(filters.min_rating));
+    }
+
+    // daytime — filter by session availability (morning/afternoon/evening)
+    if (filters.daytime) {
+      const session = filters.daytime.toLowerCase(); // morning | afternoon | evening
+      query += ` AND p.time_slots::text ILIKE $${idx++}`;
+      values.push('%"' + session + '"%enabled":true%');
+    }
+
+    // procedure_id — filter providers who have this procedure assigned
+    if (filters.procedure_id) {
+      query += ` AND EXISTS (
+        SELECT 1 FROM provider_procedures pp
+        WHERE pp.provider_id = p.id AND pp.procedure_id = $${idx++}
+      )`;
+      values.push(filters.procedure_id);
     }
 
     query += ' ORDER BY p.created_at DESC';

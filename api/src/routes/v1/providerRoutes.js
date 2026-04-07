@@ -85,21 +85,54 @@ router.post('/', uploadClinicPhotos, ProviderController.createProvider);
 
 /**
  * @swagger
- * /providers:
- *   get:
- *     summary: Get all providers
+ * /providers/list:
+ *   post:
+ *     summary: Get all providers (with optional filters)
  *     tags: [Providers]
- *     parameters:
- *       - in: query
- *         name: specialty
- *         schema:
- *           type: string
- *         description: Filter by specialty
- *       - in: query
- *         name: location
- *         schema:
- *           type: string
- *         description: Filter by location
+ *     description: |
+ *       Returns all providers. Pass filter parameters in the request body to narrow results.
+ *       All filters are optional — omit them to get all providers.
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               keyword:
+ *                 type: string
+ *                 description: Search by provider name, clinic name, or specialty
+ *                 example: "John"
+ *               specialty:
+ *                 type: string
+ *                 example: "Orthodontist"
+ *               location:
+ *                 type: string
+ *                 example: "Mumbai"
+ *               pincode:
+ *                 type: string
+ *                 example: "400001"
+ *               min_experience:
+ *                 type: integer
+ *                 description: Minimum years of experience
+ *                 example: 5
+ *               min_rating:
+ *                 type: number
+ *                 description: Minimum average rating (1-5)
+ *                 example: 4
+ *               daytime:
+ *                 type: string
+ *                 enum: [morning, afternoon, evening]
+ *                 description: Filter by session availability
+ *               procedure_id:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Only providers who offer this procedure
+ *               page:
+ *                 type: integer
+ *                 default: 1
+ *               limit:
+ *                 type: integer
+ *                 default: 10
  *     responses:
  *       200:
  *         description: List of providers
@@ -112,8 +145,19 @@ router.post('/', uploadClinicPhotos, ProviderController.createProvider);
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/Provider'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
  */
-router.get('/', ProviderController.getAllProviders);
+router.post('/list', ProviderController.getAllProviders);
 
 /**
  * @swagger

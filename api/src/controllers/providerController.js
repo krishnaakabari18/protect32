@@ -284,28 +284,37 @@ class ProviderController {
 
   static async getAllProviders(req, res) {
     try {
-      const { specialty, location, page = 1, limit = 10 } = req.query;
+      // Support both GET (query params) and POST (body) for filters
+      const source = req.method === 'POST' ? req.body : req.query;
+      const {
+        specialty, location, pincode, search, keyword,
+        min_experience, min_rating, daytime, procedure_id,
+        page = 1, limit = 10
+      } = source;
+
       const filters = {};
-      if (specialty) filters.specialty = specialty;
-      if (location) filters.location = location;
+      if (keyword)        filters.keyword = keyword;
+      if (specialty)      filters.specialty = specialty;
+      if (location)       filters.location = location;
+      if (pincode)        filters.pincode = pincode;
+      if (search)         filters.search = search;
+      if (min_experience) filters.min_experience = min_experience;
+      if (min_rating)     filters.min_rating = min_rating;
+      if (daytime)        filters.daytime = daytime;
+      if (procedure_id)   filters.procedure_id = procedure_id;
 
       const providers = await ProviderModel.findAll(filters);
-      
-      // Convert relative paths to absolute URLs for all providers
       const providersWithUrls = providers.map(provider => convertProviderUrls(provider));
-      
-      // Pagination
+
       const pageNum = safeParseInt(page, 1);
       const limitNum = safeParseInt(limit, 10);
       const startIndex = (pageNum - 1) * limitNum;
-      const endIndex = startIndex + limitNum;
-      const paginatedData = providersWithUrls.slice(startIndex, endIndex);
-      
-      res.json({ 
+      const paginatedData = providersWithUrls.slice(startIndex, startIndex + limitNum);
+
+      res.json({
         data: paginatedData,
         pagination: {
-          page: pageNum,
-          limit: limitNum,
+          page: pageNum, limit: limitNum,
           total: providersWithUrls.length,
           totalPages: Math.ceil(providersWithUrls.length / limitNum)
         }

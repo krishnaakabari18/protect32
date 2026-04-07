@@ -188,9 +188,12 @@ const ProvidersCRUD = () => {
         setLoading(true);
         try {
             const token = localStorage.getItem('auth_token');
-            const q = new URLSearchParams({ page: pagination.page.toString(), limit: pagination.limit.toString(), search });
-            const res = await fetch(`${API_ENDPOINTS.providers}?${q}`, {
-                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+            const body: any = { page: pagination.page, limit: pagination.limit };
+            if (search) body.keyword = search;
+            const res = await fetch(`${API_ENDPOINTS.providers}/list`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+                body: JSON.stringify(body),
             });
             const data = await res.json();
             if (res.ok) {

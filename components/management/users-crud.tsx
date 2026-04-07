@@ -19,6 +19,7 @@ const UsersCrud = () => {
     const [addContactModal, setAddContactModal] = useState(false);
     const [viewMode, setViewMode] = useState('list');
     const [users, setUsers] = useState<any[]>([]);
+    const [menus, setMenus] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [filterType, setFilterType] = useState('');
@@ -26,6 +27,7 @@ const UsersCrud = () => {
 
     useEffect(() => {
         setSuperAdmin(isSuperAdmin());
+        fetchMenus();
     }, []);
     
     // Pagination state
@@ -60,6 +62,25 @@ const UsersCrud = () => {
     useEffect(() => {
         fetchUsers();
     }, [pagination.page, pagination.limit, filterType]);
+
+    const fetchMenus = async () => {
+        try {
+            const token = localStorage.getItem('auth_token');
+            const response = await fetch(`${API_ENDPOINTS.menus}?is_active=true`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'ngrok-skip-browser-warning': 'true',
+                },
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                setMenus(data.data || []);
+            }
+        } catch (error) {
+            console.error('Error fetching menus:', error);
+        }
+    };
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -973,34 +994,17 @@ const UsersCrud = () => {
                                                         <span className="ml-2 text-xs font-normal text-gray-500">Select which menus this user can access</span>
                                                     </label>
                                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                                        {[
-                                                            { key: 'patients', label: 'Patients' },
-                                                            { key: 'providers', label: 'Providers' },
-                                                            { key: 'appointments', label: 'Appointments' },
-                                                            { key: 'treatment-plans', label: 'Treatment Plans' },
-                                                            { key: 'prescriptions', label: 'Prescriptions' },
-                                                            { key: 'plans', label: 'Plans' },
-                                                            { key: 'provider-fees', label: 'Treatment Fees' },
-                                                            { key: 'payments', label: 'Payments' },
-                                                            { key: 'documents', label: 'Documents' },
-                                                            { key: 'reviews', label: 'Reviews' },
-                                                            { key: 'notifications', label: 'Notifications' },
-                                                            { key: 'support-tickets', label: 'Support Tickets' },
-                                                            { key: 'settings', label: 'Settings' },
-                                                            { key: 'cms-pages', label: 'CMS Pages' },
-                                                            { key: 'faqs', label: 'FAQs' },
-                                                            { key: 'patienteducation', label: 'Patient Education' },
-                                                        ].map(menu => (
-                                                            <label key={menu.key} className="flex items-center gap-2 cursor-pointer">
+                                                        {menus.map(menu => (
+                                                            <label key={menu.name} className="flex items-center gap-2 cursor-pointer">
                                                                 <input
                                                                     type="checkbox"
                                                                     className="form-checkbox"
-                                                                    checked={(params.menu_permissions || []).includes(menu.key)}
+                                                                    checked={(params.menu_permissions || []).includes(menu.name)}
                                                                     onChange={(e) => {
                                                                         const current: string[] = params.menu_permissions || [];
                                                                         const updated = e.target.checked
-                                                                            ? [...current, menu.key]
-                                                                            : current.filter((k: string) => k !== menu.key);
+                                                                            ? [...current, menu.name]
+                                                                            : current.filter((k: string) => k !== menu.name);
                                                                         setParams({ ...params, menu_permissions: updated });
                                                                     }}
                                                                 />
@@ -1008,6 +1012,9 @@ const UsersCrud = () => {
                                                             </label>
                                                         ))}
                                                     </div>
+                                                    {menus.length === 0 && (
+                                                        <p className="text-sm text-gray-500">Loading menus...</p>
+                                                    )}
                                                 </div>
                                             )}
 

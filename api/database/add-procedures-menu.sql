@@ -1,7 +1,7 @@
 -- Add Procedures menu to the menu system
 
 INSERT INTO menus (name, label, path, icon, sort_order, is_active)
-VALUES ('procedures', 'Procedures', '/management/procedures', 'IconClipboardList', 3.5, true)
+VALUES ('procedures', 'Procedures', '/management/procedures', 'IconClipboardText', 3.5, true)
 ON CONFLICT (name) DO UPDATE SET
     label = EXCLUDED.label,
     path = EXCLUDED.path,

@@ -22,25 +22,68 @@ import IconHelp from '@/components/icon/icon-help-circle';
 import IconSettings from '@/components/icon/icon-settings';
 import { usePathname } from 'next/navigation';
 import { getUser } from '@/utils/auth';
-import { MENU_PERMISSIONS } from '@/config/constants';
+import { API_ENDPOINTS } from '@/config/api.config';
+
+// Icon mapping for dynamic menus
+const ICON_MAP: Record<string, React.ComponentType<any>> = {
+    'IconMenuUsers': IconMenuUsers,
+    'IconUser': IconUser,
+    'IconCalendar': IconCalendar,
+    'IconTag': IconTag,
+    'IconClipboardText': IconClipboardText,
+    'IconCreditCard': IconCreditCard,
+    'IconFile': IconFile,
+    'IconStar': IconStar,
+    'IconBell': IconBell,
+    'IconNotes': IconNotes,
+    'IconHelp': IconHelp,
+    'IconSettings': IconSettings,
+};
 
 const SidebarDentist = () => {
     const dispatch = useDispatch();
     const pathname = usePathname();
     const themeConfig = useSelector((state: IRootState) => state.themeConfig);
     const semidark = useSelector((state: IRootState) => state.themeConfig.semidark);
-    const [allowedMenus, setAllowedMenus] = useState<string[]>([]);
+    const [menus, setMenus] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const user = getUser();
-        const userType = user?.user_type || '';
-        // Use per-user menu_permissions if set, otherwise fall back to role defaults
-        if (Array.isArray(user?.menu_permissions) && user.menu_permissions.length > 0) {
-            setAllowedMenus(user.menu_permissions);
-        } else {
-            setAllowedMenus(MENU_PERMISSIONS[userType] || []);
-        }
+        fetchUserMenus();
     }, []);
+
+    const fetchUserMenus = async () => {
+        try {
+            const token = localStorage.getItem('auth_token');
+            if (!token) {
+                console.log('No auth token found');
+                setLoading(false);
+                return;
+            }
+
+            console.log('Fetching user menus from:', API_ENDPOINTS.myMenus);
+            const response = await fetch(API_ENDPOINTS.myMenus, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'ngrok-skip-browser-warning': 'true',
+                },
+            });
+
+            const data = await response.json();
+            console.log('Menu API response:', data);
+            
+            if (response.ok && data.success) {
+                console.log(`Loaded ${data.data?.length || 0} menus for user type: ${data.user_type}`);
+                setMenus(data.data || []);
+            } else {
+                console.error('Failed to fetch menus:', data);
+            }
+        } catch (error) {
+            console.error('Error fetching menus:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
         const selector = document.querySelector('.sidebar ul a[href="' + window.location.pathname + '"]');
@@ -73,14 +116,21 @@ const SidebarDentist = () => {
         selector?.classList.add('active');
     };
 
-    const can = (menu: string) => allowedMenus.includes(menu);
+    const getIconComponent = (iconName: string) => {
+        const IconComponent = ICON_MAP[iconName];
+        if (IconComponent) {
+            return <IconComponent className="shrink-0 group-hover:!text-primary" />;
+        }
+        // Default icon if not found
+        return <IconFile className="shrink-0 group-hover:!text-primary" />;
+    };
 
-    const menuItem = (href: string, icon: React.ReactNode, label: string) => (
-        <li className="nav-item">
-            <Link href={href} className="group">
+    const menuItem = (menu: any) => (
+        <li key={menu.id} className="nav-item">
+            <Link href={menu.path} className="group">
                 <div className="flex items-center">
-                    {icon}
-                    <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">{label}</span>
+                    {getIconComponent(menu.icon)}
+                    <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">{menu.label}</span>
                 </div>
             </Link>
         </li>
@@ -120,65 +170,25 @@ const SidebarDentist = () => {
                                 <span>Management</span>
                             </h2>
 
-                            {can('users') && menuItem('/management/users',
-                                <IconMenuUsers className="shrink-0 group-hover:!text-primary" />, 'Users')}
-
-                            {can('patients') && menuItem('/management/patients',
-                                <IconUser className="shrink-0 group-hover:!text-primary" />, 'Patients')}
-
-                            {can('providers') && menuItem('/management/providers',
-                                <IconUser className="shrink-0 group-hover:!text-primary" />, 'Providers')}
-
-                            {can('specialties') && menuItem('/management/specialties',
-                                <IconStar className="shrink-0 group-hover:!text-primary" />, 'Specialties')}
-
-                            {can('procedures') && menuItem('/management/procedures',
-                                <IconClipboardText className="shrink-0 group-hover:!text-primary" />, 'Procedures')}
-
-                            {can('appointments') && menuItem('/management/appointments',
-                                <IconCalendar className="shrink-0 group-hover:!text-primary" />, 'Appointments')}
-
-                            {can('treatment-plans') && menuItem('/management/treatment-plans',
-                                <IconNotes className="shrink-0 group-hover:!text-primary" />, 'Treatment Plans')}
-
-                            {can('prescriptions') && menuItem('/management/prescriptions',
-                                <IconFile className="shrink-0 group-hover:!text-primary" />, 'Prescriptions')}
-
-                            {can('plans') && menuItem('/management/plans',
-                                <IconTag className="shrink-0 group-hover:!text-primary" />, 'Plans')}
-
-                            {can('provider-fees') && menuItem('/management/provider-fees',
-                                <IconClipboardText className="shrink-0 group-hover:!text-primary" />, 'Treatment Fees')}
-
-                            {can('payments') && menuItem('/management/payments',
-                                <IconCreditCard className="shrink-0 group-hover:!text-primary" />, 'Orders')}
-
-                            {can('documents') && menuItem('/management/documents',
-                                <IconFile className="shrink-0 group-hover:!text-primary" />, 'Documents')}
-
-                            {can('reviews') && menuItem('/management/reviews',
-                                <IconStar className="shrink-0 group-hover:!text-primary" />, 'Reviews')}
-
-                            {can('notifications') && menuItem('/management/notifications',
-                                <IconBell className="shrink-0 group-hover:!text-primary" />, 'Notifications')}
-
-                            {can('support-tickets') && menuItem('/management/support-tickets',
-                                <IconHelp className="shrink-0 group-hover:!text-primary" />, 'Support Tickets')}
-
-                            {can('settings') && menuItem('/management/settings',
-                                <IconSettings className="shrink-0 group-hover:!text-primary" />, 'Settings')}
-
-                            {can('menus') && menuItem('/management/menus',
-                                <IconSettings className="shrink-0 group-hover:!text-primary" />, 'Menus')}
-
-                            {can('cms-pages') && menuItem('/management/cms-pages',
-                                <IconFile className="shrink-0 group-hover:!text-primary" />, 'CMS Pages')}
-
-                            {can('faqs') && menuItem('/management/faqs',
-                                <IconFile className="shrink-0 group-hover:!text-primary" />, 'FAQs')}
-
-                            {can('patienteducation') && menuItem('/management/patienteducation',
-                                <IconNotes className="shrink-0 group-hover:!text-primary" />, 'Patient Education')}
+                            {/* Dynamic menus from database */}
+                            {loading ? (
+                                <li className="nav-item">
+                                    <div className="text-sm text-gray-500 px-4">Loading menus...</div>
+                                </li>
+                            ) : menus.length > 0 ? (
+                                menus.map(menu => {
+                                    // For super_admin, can_view is always true (set by backend)
+                                    // For other users, only show if can_view is true
+                                    if (menu.can_view) {
+                                        return menuItem(menu);
+                                    }
+                                    return null;
+                                })
+                            ) : (
+                                <li className="nav-item">
+                                    <div className="text-sm text-gray-500 px-4">No menus available</div>
+                                </li>
+                            )}
                         </ul>
                     </PerfectScrollbar>
                 </div>

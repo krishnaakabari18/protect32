@@ -10,12 +10,13 @@ import { Transition, Dialog, TransitionChild, DialogPanel } from '@headlessui/re
 import React, { Fragment, useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
 import { API_ENDPOINTS } from '@/config/api.config';
+import ProviderDropdown from '@/components/common/ProviderDropdown';
+import PatientDropdown from '@/components/common/PatientDropdown';
 
 const AppointmentsCRUD = () => {
     const [addModal, setAddModal] = useState(false);
     const [viewMode, setViewMode] = useState('list');
     const [items, setItems] = useState<any[]>([]);
-    const [patients, setPatients] = useState<any[]>([]);
     const [providers, setProviders] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [filterStatus, setFilterStatus] = useState('');
@@ -128,7 +129,6 @@ const AppointmentsCRUD = () => {
     };
 
     useEffect(() => {
-        fetchPatients();
         fetchProviders();
         fetchItems();
     }, [pagination.page, pagination.limit, filterStatus, filterFromDate, filterToDate, filterProvider, searchQuery]);
@@ -168,29 +168,9 @@ const AppointmentsCRUD = () => {
         setParams((prev: any) => ({ ...prev, end_time: endTime }));
     };
 
-    const fetchPatients = async () => {
-        try {
-            const token = localStorage.getItem('auth_token');
-            // Fetch from patients endpoint to ensure they have patient records
-            const response = await fetch(`${API_ENDPOINTS.patients}?limit=1000`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'ngrok-skip-browser-warning': 'true',
-                },
-            });
-            const data = await response.json();
-            if (response.ok) {
-                setPatients(data.data || []);
-            }
-        } catch (error) {
-            console.error('Error fetching patients:', error);
-        }
-    };
-
     const fetchProviders = async () => {
         try {
             const token = localStorage.getItem('auth_token');
-            // Fetch from providers endpoint to ensure they have provider records
             const response = await fetch(`${API_ENDPOINTS.providers}?limit=1000`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -772,43 +752,31 @@ const AppointmentsCRUD = () => {
                                             </div>
                                             <div>
                                                 <label htmlFor="patient_id">Patient <span className="text-red-500">*</span></label>
-                                                <select
+                                                <PatientDropdown
                                                     id="patient_id"
                                                     name="patient_id"
-                                                    className={`form-select ${touched.patient_id && errors.patient_id ? 'border-red-500' : ''}`}
                                                     value={params.patient_id}
                                                     onChange={changeValue}
                                                     onBlur={handleBlur}
                                                     disabled={modalMode === 'view'}
-                                                >
-                                                    <option value="">Select Patient</option>
-                                                    {patients.map((patient) => (
-                                                        <option key={patient.id} value={patient.id}>
-                                                            {patient.first_name} {patient.last_name} ({patient.email})
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                                {touched.patient_id && errors.patient_id && <p className="mt-1 text-xs text-red-500">{errors.patient_id}</p>}
+                                                    error={errors.patient_id}
+                                                    touched={touched.patient_id}
+                                                    showEmail={true}
+                                                />
                                             </div>
                                             <div>
                                                 <label htmlFor="provider_id">Provider <span className="text-red-500">*</span></label>
-                                                <select
+                                                <ProviderDropdown
                                                     id="provider_id"
                                                     name="provider_id"
-                                                    className={`form-select ${touched.provider_id && errors.provider_id ? 'border-red-500' : ''}`}
                                                     value={params.provider_id}
                                                     onChange={changeValue}
                                                     onBlur={handleBlur}
                                                     disabled={modalMode === 'view'}
-                                                >
-                                                    <option value="">Select Provider</option>
-                                                    {providers.map((provider) => (
-                                                        <option key={provider.id} value={provider.id}>
-                                                            Dr. {provider.first_name} {provider.last_name} ({provider.email})
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                                {touched.provider_id && errors.provider_id && <p className="mt-1 text-xs text-red-500">{errors.provider_id}</p>}
+                                                    error={errors.provider_id}
+                                                    touched={touched.provider_id}
+                                                    showEmail={true}
+                                                />
                                             </div>
                                             <div>
                                                 <label htmlFor="appointment_date">Appointment Date <span className="text-red-500">*</span></label>

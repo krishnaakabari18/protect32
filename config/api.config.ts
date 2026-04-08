@@ -104,6 +104,9 @@ export const API_ENDPOINTS = {
 
   // States & Cities
   statesCities: `${API_BASE_URL}/states-cities`,
+
+  // Dropdowns (centralized)
+  dropdowns: `${API_BASE_URL}/dropdowns`,
   
   // Notifications
   notifications: `${API_BASE_URL}/notifications`,

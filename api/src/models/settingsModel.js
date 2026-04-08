@@ -101,6 +101,8 @@ const settingsModel = {
                 seo_meta_description = COALESCE($31, seo_meta_description),
                 seo_meta_keywords = COALESCE($32, seo_meta_keywords),
                 seo_og_image = COALESCE($33, seo_og_image),
+                procedure_default_description = COALESCE($35, procedure_default_description),
+                procedure_price_disclaimer = COALESCE($36, procedure_price_disclaimer),
                 updated_at = CURRENT_TIMESTAMP,
                 updated_by = $34
             WHERE id = '00000000-0000-0000-0000-000000000001'
@@ -141,7 +143,9 @@ const settingsModel = {
             seo_meta_description,
             seo_meta_keywords,
             seo_og_image,
-            userId
+            userId,
+            data.procedure_default_description || null,
+            data.procedure_price_disclaimer || null
         ];
 
         const result = await pool.query(query, values);
@@ -160,12 +164,23 @@ const settingsModel = {
 
     // Test Razorpay connection
     testRazorpayConnection: async (keyId, keySecret) => {
-        // This would use Razorpay SDK to test the connection
-        // For now, return a mock response
-        return {
-            success: true,
-            message: 'Razorpay connection test successful'
-        };
+        try {
+            const Razorpay = require('razorpay');
+            const instance = new Razorpay({ key_id: keyId, key_secret: keySecret });
+            // Fetch orders with limit 1 — lightweight call to verify credentials
+            await instance.orders.all({ count: 1 });
+            return {
+                success: true,
+                message: 'Razorpay connection successful. Credentials are valid.',
+                key_id: keyId,
+            };
+        } catch (error) {
+            const msg = error?.error?.description || error?.message || 'Invalid credentials';
+            return {
+                success: false,
+                message: 'Razorpay connection failed: ' + msg,
+            };
+        }
     },
 
     // Test SMS connection

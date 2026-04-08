@@ -155,8 +155,8 @@ const settingsController = {
             }
 
             const result = await settingsModel.testRazorpayConnection(razorpay_key_id, razorpay_key_secret);
-
-            res.json(result);
+            const status = result.success ? 200 : 400;
+            res.status(status).json(result);
         } catch (error) {
             console.error('Error testing Razorpay:', error);
             res.status(500).json({

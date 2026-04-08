@@ -10,6 +10,7 @@ import React, { Fragment, useEffect, useRef, useState, useCallback } from 'react
 import { flushSync } from 'react-dom';
 import Swal from 'sweetalert2';
 import { API_ENDPOINTS, buildMediaUrl } from '@/config/api.config';
+import SearchableSelect from '@/components/ui/searchable-select';
 
 // ─── Tab definitions ────────────────────────────────────────────────────────
 const TABS = [
@@ -489,10 +490,16 @@ const ProvidersCRUD = () => {
             {/* User select */}
             <div className="md:col-span-3">
                 <label htmlFor="id">Select User <span className="text-red-500">*</span></label>
-                <select id="id" name="id" className={`form-select ${errCls('id')}`} value={params.id} onChange={cv} onBlur={hb} disabled={isView || modalMode === 'edit'}>
-                    <option value="">Select User</option>
-                    {users.map(u => <option key={u.id} value={u.id}>{u.first_name} {u.last_name} ({u.email})</option>)}
-                </select>
+                <SearchableSelect
+                    id="id"
+                    name="id"
+                    options={users.map(u => ({ value: u.id, label: `${u.first_name} ${u.last_name} (${u.email})` }))}
+                    value={params.id}
+                    onChange={val => cv({ target: { name: 'id', value: val, type: 'select', checked: false } })}
+                    placeholder="Select User"
+                    disabled={isView || modalMode === 'edit'}
+                    className={errCls('id')}
+                />
                 {errMsg('id')}
             </div>
             <div>

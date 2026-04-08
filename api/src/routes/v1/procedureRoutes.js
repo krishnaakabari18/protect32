@@ -131,9 +131,21 @@ router.get('/categories', AuthMiddleware.authenticate, ProcedureController.getCa
 router.get('/with-price-range', AuthMiddleware.authenticate, async (req, res) => {
   try {
     const pool = require('../../config/database');
+
+    // Fetch default description and disclaimer from settings
+    const settingsResult = await pool.query(
+      "SELECT procedure_default_description, procedure_price_disclaimer FROM settings WHERE id = '00000000-0000-0000-0000-000000000001' LIMIT 1"
+    );
+    const settings = settingsResult.rows[0] || {};
+    const defaultDescription = settings.procedure_default_description ||
+      'A routine procedure to remove plaque and tartar buildup, followed by polishing to leave teeth smooth and shiny. Recommended every 6 months.';
+    const disclaimer = settings.procedure_price_disclaimer ||
+      "This is an estimated cost range. Actual prices may vary based on the clinic, location, dentist's experience, and the complexity of your specific case. Please consult with the dentist for a final quote.";
+
     const result = await pool.query(`
       SELECT
-        p.id, p.name, p.category, p.description,
+        p.id, p.name, p.category,
+        COALESCE(NULLIF(p.description, ''), $1) AS description,
         MIN(tp.estimated_cost) AS min_price,
         MAX(tp.estimated_cost) AS max_price
       FROM procedures p
@@ -149,8 +161,13 @@ router.get('/with-price-range', AuthMiddleware.authenticate, async (req, res) =>
       WHERE p.is_active = true
       GROUP BY p.id, p.name, p.category, p.description
       ORDER BY p.name ASC
-    `);
-    res.json({ data: result.rows, total: result.rows.length });
+    `, [defaultDescription]);
+
+    res.json({
+      data: result.rows,
+      total: result.rows.length,
+      disclaimer,
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

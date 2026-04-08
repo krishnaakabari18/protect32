@@ -13,6 +13,7 @@ import React, { Fragment, useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 import Swal from 'sweetalert2';
 import { API_BASE_URL } from '@/config/api.config';
+import SearchableSelect from '@/components/ui/searchable-select';
 
 interface Column {
     key: string;
@@ -801,32 +802,33 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
                                                                         disabled={field.disabled}
                                                                     />
                                                                 ) : field.type === 'select' ? (
-                                                                    <select
+                                                                    <SearchableSelect
                                                                         id={field.key}
-                                                                        className={`form-select ${touched[field.key] && errors[field.key] ? 'border-red-500 focus:border-red-500' : ''}`}
+                                                                        name={field.key}
+                                                                        options={field.options?.filter(o => o.value !== '') || []}
                                                                         value={params[field.key] || ''}
-                                                                        onChange={changeValue}
-                                                                        onBlur={handleBlur}
+                                                                        onChange={val => {
+                                                                            const syntheticEvent = { target: { id: field.key, value: val, type: 'select', checked: false } };
+                                                                            changeValue(syntheticEvent);
+                                                                        }}
+                                                                        placeholder={field.options?.find(o => o.value === '')?.label || `Select ${field.label}`}
                                                                         disabled={field.disabled}
-                                                                    >
-                                                                        {field.options?.map(opt => (
-                                                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                                                        ))}
-                                                                    </select>
+                                                                        className={touched[field.key] && errors[field.key] ? 'border-red-500' : ''}
+                                                                    />
                                                                 ) : field.type === 'api-select' ? (
-                                                                    <select
+                                                                    <SearchableSelect
                                                                         id={field.key}
-                                                                        className={`form-select ${touched[field.key] && errors[field.key] ? 'border-red-500 focus:border-red-500' : ''}`}
+                                                                        name={field.key}
+                                                                        options={apiSelectOptions[field.key] || []}
                                                                         value={params[field.key] || ''}
-                                                                        onChange={changeValue}
-                                                                        onBlur={handleBlur}
+                                                                        onChange={val => {
+                                                                            const syntheticEvent = { target: { id: field.key, value: val, type: 'select', checked: false } };
+                                                                            changeValue(syntheticEvent);
+                                                                        }}
+                                                                        placeholder={field.placeholder || `Select ${field.label}`}
                                                                         disabled={field.disabled}
-                                                                    >
-                                                                        <option value="">{field.placeholder || `Select ${field.label}`}</option>
-                                                                        {(apiSelectOptions[field.key] || []).map(opt => (
-                                                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                                                        ))}
-                                                                    </select>
+                                                                        className={touched[field.key] && errors[field.key] ? 'border-red-500' : ''}
+                                                                    />
                                                                 ) : field.type === 'dependent-api-select' ? (
                                                                     <select
                                                                         id={field.key}

@@ -4,6 +4,7 @@ import { useState, Fragment, useEffect } from 'react';
 import { flushSync } from 'react-dom';
 import Swal from 'sweetalert2';
 import { API_ENDPOINTS, buildMediaUrl } from '@/config/api.config';
+import SearchableSelect from '@/components/ui/searchable-select';
 import { getAuthToken } from '@/utils/auth';
 
 interface User {
@@ -878,21 +879,15 @@ const PatientsCrud = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                     Select User <span className="text-red-500">*</span>
                 </label>
-                <select
+                <SearchableSelect
                     name="id"
-                    value={formData.id}
-                    onChange={handleInputChange}
-                    onBlur={handleBlur}
-                    className={`form-select ${touched.id && errors.id ? 'border-red-500' : ''}`}
+                    options={users.map(u => ({ value: u.id, label: `${u.first_name} ${u.last_name} (${u.email || u.mobile_number})` }))}
+                    value={formData.id || ''}
+                    onChange={val => handleInputChange({ target: { name: 'id', value: val, type: 'select' } } as any)}
+                    placeholder="Select a user..."
                     disabled={!!editingPatient}
-                >
-                    <option value="">Select a user...</option>
-                    {users.map((user) => (
-                        <option key={user.id} value={user.id}>
-                            {user.first_name} {user.last_name} ({user.email || user.mobile_number})
-                        </option>
-                    ))}
-                </select>
+                    className={touched.id && errors.id ? 'border-red-500' : ''}
+                />
                 {touched.id && errors.id && <p className="mt-1 text-xs text-red-500">{errors.id}</p>}
             </div>
 

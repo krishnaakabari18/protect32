@@ -65,20 +65,19 @@ app.options('*', cors(corsOptions));
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// Ngrok warning bypass middleware and additional CORS headers
+// Ensure CORS headers are always present on every response
 app.use((req, res, next) => {
-  // Add headers to help with ngrok free tier
   res.setHeader('ngrok-skip-browser-warning', 'true');
-  
-  // Ensure CORS headers are always present
   const origin = req.headers.origin;
+  // Always reflect the request origin back — no blocking in development
   if (origin) {
     res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
   }
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
   res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, ngrok-skip-browser-warning, X-HTTP-Method-Override');
-  
   next();
 });
 

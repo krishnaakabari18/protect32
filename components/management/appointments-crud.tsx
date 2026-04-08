@@ -421,9 +421,9 @@ const AppointmentsCRUD = () => {
             </div>
 
             {/* Filters */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+            <div className="grid grid-cols-1 sm:grid-cols-5 lg:grid-cols-5 gap-3 mb-5">
                 {/* Search box */}
-                <div className="lg:col-span-2">
+                <div>
                     <input
                         type="text"
                         className="form-input w-full"

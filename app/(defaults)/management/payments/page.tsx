@@ -8,7 +8,7 @@ const formatLabel = (value: string): string => {
 const PaymentsPage = () => {
     return (
         <GenericCRUD
-            title="Order"
+            title="Orders"
             endpoint="payments"
             hideDelete={true}
             columns={[

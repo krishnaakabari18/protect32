@@ -12,7 +12,7 @@ const { authenticate } = require('../../middleware/auth');
 
 /**
  * @swagger
- * /api/v1/specialties:
+ * /specialties:
  *   get:
  *     summary: Get all specialties
  *     tags: [Specialties]
@@ -47,7 +47,7 @@ router.get('/', authenticate, SpecialtyController.getAll);
 
 /**
  * @swagger
- * /api/v1/specialties/{id}:
+ * /specialties/{id}:
  *   get:
  *     summary: Get specialty by ID
  *     tags: [Specialties]
@@ -69,7 +69,7 @@ router.get('/:id', authenticate, SpecialtyController.getById);
 
 /**
  * @swagger
- * /api/v1/specialties:
+ * /specialties:
  *   post:
  *     summary: Create a new specialty
  *     tags: [Specialties]
@@ -100,7 +100,7 @@ router.post('/', authenticate, SpecialtyController.create);
 
 /**
  * @swagger
- * /api/v1/specialties/{id}:
+ * /specialties/{id}:
  *   put:
  *     summary: Update specialty
  *     tags: [Specialties]
@@ -135,7 +135,7 @@ router.put('/:id', authenticate, SpecialtyController.update);
 
 /**
  * @swagger
- * /api/v1/specialties/{id}:
+ * /specialties/{id}:
  *   delete:
  *     summary: Delete specialty
  *     tags: [Specialties]

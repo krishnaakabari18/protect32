@@ -3,7 +3,7 @@ const ProcedureModel = require('../models/procedureModel');
 class ProcedureController {
   /**
    * @swagger
-   * /api/v1/procedures:
+   * /procedures:
    *   get:
    *     summary: Get all procedures
    *     tags: [Procedures]
@@ -51,7 +51,7 @@ class ProcedureController {
 
   /**
    * @swagger
-   * /api/v1/procedures/by-category:
+   * /procedures/by-category:
    *   get:
    *     summary: Get procedures grouped by category
    *     tags: [Procedures]
@@ -75,7 +75,7 @@ class ProcedureController {
 
   /**
    * @swagger
-   * /api/v1/procedures/categories:
+   * /procedures/categories:
    *   get:
    *     summary: Get all procedure categories
    *     tags: [Procedures]
@@ -99,7 +99,7 @@ class ProcedureController {
 
   /**
    * @swagger
-   * /api/v1/procedures/{id}:
+   * /procedures/{id}:
    *   get:
    *     summary: Get procedure by ID
    *     tags: [Procedures]
@@ -135,7 +135,7 @@ class ProcedureController {
 
   /**
    * @swagger
-   * /api/v1/procedures:
+   * /procedures:
    *   post:
    *     summary: Create a new procedure
    *     tags: [Procedures]
@@ -180,7 +180,7 @@ class ProcedureController {
 
   /**
    * @swagger
-   * /api/v1/procedures/{id}:
+   * /procedures/{id}:
    *   put:
    *     summary: Update a procedure
    *     tags: [Procedures]
@@ -232,7 +232,7 @@ class ProcedureController {
 
   /**
    * @swagger
-   * /api/v1/procedures/{id}:
+   * /procedures/{id}:
    *   delete:
    *     summary: Delete a procedure
    *     tags: [Procedures]

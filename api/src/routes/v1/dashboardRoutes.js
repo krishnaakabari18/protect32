@@ -12,7 +12,7 @@ const { authenticate } = require('../../middleware/auth');
 
 /**
  * @swagger
- * /api/v1/dashboard:
+ * /dashboard:
  *   get:
  *     summary: Get complete dashboard data
  *     description: Retrieve all dashboard statistics, charts, and recent data
@@ -108,7 +108,7 @@ router.get('/', authenticate, dashboardController.getDashboard);
 
 /**
  * @swagger
- * /api/v1/dashboard/statistics:
+ * /dashboard/statistics:
  *   get:
  *     summary: Get dashboard statistics only
  *     description: Retrieve only the statistics without charts and recent data

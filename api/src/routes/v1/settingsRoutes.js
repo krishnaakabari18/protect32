@@ -163,7 +163,7 @@ const { authenticate } = require('../../middleware/auth');
 
 /**
  * @swagger
- * /api/v1/settings:
+ * /settings:
  *   get:
  *     summary: Get system settings
  *     description: Retrieve all system settings. Sensitive data (passwords, secrets) are masked.
@@ -192,7 +192,7 @@ router.get('/', authenticate, settingsController.getSettings);
 
 /**
  * @swagger
- * /api/v1/settings:
+ * /settings:
  *   put:
  *     summary: Update system settings
  *     description: Update one or more system settings. Only provided fields will be updated.
@@ -296,7 +296,7 @@ router.put('/', authenticate, settingsController.updateSettings);
 
 /**
  * @swagger
- * /api/v1/settings/test-smtp:
+ * /settings/test-smtp:
  *   post:
  *     summary: Test SMTP connection
  *     description: Test SMTP email server connection with provided credentials
@@ -358,7 +358,7 @@ router.post('/test-smtp', authenticate, settingsController.testSMTP);
 
 /**
  * @swagger
- * /api/v1/settings/test-razorpay:
+ * /settings/test-razorpay:
  *   post:
  *     summary: Test Razorpay connection
  *     description: Test Razorpay payment gateway connection with provided credentials
@@ -406,7 +406,7 @@ router.post('/test-razorpay', authenticate, settingsController.testRazorpay);
 
 /**
  * @swagger
- * /api/v1/settings/test-sms:
+ * /settings/test-sms:
  *   post:
  *     summary: Test SMS connection
  *     description: Test SMS provider connection with provided credentials
@@ -459,7 +459,7 @@ router.post('/test-sms', authenticate, settingsController.testSMS);
 
 /**
  * @swagger
- * /api/v1/settings/upload-images:
+ * /settings/upload-images:
  *   post:
  *     summary: Upload Site Logo, Favicon and Open Graph Image
  *     description: Upload one or more branding images. Each is stored in uploads/settings/ and the path is saved to settings.

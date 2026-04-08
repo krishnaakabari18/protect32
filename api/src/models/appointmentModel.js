@@ -1,18 +1,22 @@
 const pool = require('../config/database');
 
-// Generate appointment code: p32-YYYYMMDD-XXX (sequential)
-async function generateAppointmentCode(appointmentDate) {
-  const dateStr = (appointmentDate || '').replace(/-/g, '').substring(0, 8);
+// Generate appointment code: p32-YYYYMMDD-XXX (using TODAY'S date, not appointment date)
+async function generateAppointmentCode() {
+  // Use today's date
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  const dateStr = `${year}${month}${day}`; // YYYYMMDD
   
   try {
-    // Get today's appointments to find the highest sequence number
+    // Get all appointments with today's code prefix
     const result = await pool.query(
       `SELECT appointment_code FROM appointments 
-       WHERE appointment_date = $1 
-       AND appointment_code LIKE $2
+       WHERE appointment_code LIKE $1
        ORDER BY appointment_code DESC
        LIMIT 1`,
-      [appointmentDate, `p32-${dateStr}-%`]
+      [`p32-${dateStr}-%`]
     );
     
     let nextSeq = 1;

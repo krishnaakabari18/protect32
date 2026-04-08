@@ -91,13 +91,25 @@ export function useDropdown({
             if (parentId) params.set('parent_id', parentId);
             if (search) params.set('search', search);
             const url = `${API_ENDPOINTS.dropdowns}/${type}${params.toString() ? '?' + params.toString() : ''}`;
+            
+            console.log(`[useDropdown] Fetching ${type} from:`, url);
+            
             const res = await window.fetch(url, {
                 headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
             });
             const data = await res.json();
-            if (res.ok) setOptions(data.data || []);
-            else setError(data.error || 'Failed to load options');
+            
+            console.log(`[useDropdown] ${type} response:`, data);
+            console.log(`[useDropdown] ${type} count:`, data.data?.length || 0);
+            
+            if (res.ok) {
+                setOptions(data.data || []);
+            } else {
+                console.error(`[useDropdown] ${type} error:`, data.error);
+                setError(data.error || 'Failed to load options');
+            }
         } catch (e: any) {
+            console.error(`[useDropdown] ${type} exception:`, e.message);
             setError(e.message);
         } finally {
             setLoading(false);

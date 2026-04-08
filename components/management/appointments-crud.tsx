@@ -51,17 +51,20 @@ const AppointmentsCRUD = () => {
     const [touched, setTouched] = useState<Record<string, boolean>>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    // Generate appointment code: p32-YYYYMMDD-001 (sequential)
-    const generateCode = async (date: string) => {
-        if (!date) return '';
-        
-        // Format: p32-YYYYMMDD-XXX
-        const dateStr = date.replace(/-/g, ''); // YYYYMMDD
+    // Generate appointment code: p32-YYYYMMDD-001 (using TODAY'S date, not appointment date)
+    const generateCode = async () => {
+        // Use today's date for the code
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        const todayStr = `${year}-${month}-${day}`;
+        const dateStr = `${year}${month}${day}`; // YYYYMMDD
         
         try {
-            // Fetch today's appointments to get the next sequence number
+            // Fetch appointments created today to get the next sequence number
             const token = localStorage.getItem('auth_token');
-            const response = await fetch(`${API_ENDPOINTS.appointments}?appointment_date=${date}&limit=1000`, {
+            const response = await fetch(`${API_ENDPOINTS.appointments}?limit=1000`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'ngrok-skip-browser-warning': 'true',
@@ -70,13 +73,13 @@ const AppointmentsCRUD = () => {
             
             if (response.ok) {
                 const data = await response.json();
-                const todayAppointments = data.data || [];
+                const allAppointments = data.data || [];
                 
-                // Find the highest sequence number for today
+                // Find the highest sequence number for today's codes
                 let maxSequence = 0;
                 const prefix = `p32-${dateStr}-`;
                 
-                todayAppointments.forEach((apt: any) => {
+                allAppointments.forEach((apt: any) => {
                     if (apt.appointment_code && apt.appointment_code.startsWith(prefix)) {
                         const seqStr = apt.appointment_code.split('-')[2];
                         const seq = parseInt(seqStr) || 0;
@@ -96,14 +99,14 @@ const AppointmentsCRUD = () => {
         return `p32-${dateStr}-001`;
     };
 
-    // Auto-generate code when date changes (create mode only)
+    // Auto-generate code when modal opens in create mode
     useEffect(() => {
-        if (modalMode === 'create' && params.appointment_date) {
-            generateCode(params.appointment_date).then(code => {
+        if (modalMode === 'create' && addModal) {
+            generateCode().then(code => {
                 setParams((prev: any) => ({ ...prev, appointment_code: code }));
             });
         }
-    }, [params.appointment_date, modalMode]);
+    }, [modalMode, addModal]);
 
     // Helper function to format date safely
     const formatDate = (dateStr: string) => {        if (!dateStr) return '-';

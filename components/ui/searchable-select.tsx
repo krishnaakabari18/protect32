@@ -35,13 +35,20 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
     const inputRef = useRef<HTMLInputElement>(null);
 
     // Auto-fetch if dropdownType provided
-    const { options: fetchedOptions, loading } = useDropdown({
+    const { options: fetchedOptions, loading, error } = useDropdown({
         type: dropdownType || '',
         parentId,
         enabled: !!dropdownType && !propOptions,
     });
 
     const options = propOptions || fetchedOptions;
+    
+    // Log for debugging
+    useEffect(() => {
+        if (dropdownType && !propOptions) {
+            console.log(`[SearchableSelect] ${dropdownType} - Loading: ${loading}, Options: ${options.length}, Error: ${error || 'none'}`);
+        }
+    }, [dropdownType, loading, options.length, error, propOptions]);
     const selected = options.find(o => o.value === value);
 
     const filtered = search.trim()
@@ -125,8 +132,12 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
                     <ul className="max-h-52 overflow-y-auto py-1">
                         {loading ? (
                             <li className="px-3 py-2 text-sm text-gray-400">Loading...</li>
+                        ) : error ? (
+                            <li className="px-3 py-2 text-sm text-red-500">Error: {error}</li>
                         ) : filtered.length === 0 ? (
-                            <li className="px-3 py-2 text-sm text-gray-400">No results found</li>
+                            <li className="px-3 py-2 text-sm text-gray-400">
+                                {options.length === 0 ? 'No data available' : 'No results found'}
+                            </li>
                         ) : filtered.map(opt => (
                             <li
                                 key={opt.value}

@@ -12,7 +12,7 @@ class AppointmentController {
 
   static async getAllAppointments(req, res) {
     try {
-      const { patient_id, provider_id, status, date, from_date, to_date, page = 1, limit = 10 } = req.query;
+      const { patient_id, provider_id, status, date, from_date, to_date, search, page = 1, limit = 10 } = req.query;
       const filters = {};
       if (patient_id) filters.patient_id = patient_id;
       if (provider_id) filters.provider_id = provider_id;
@@ -20,23 +20,22 @@ class AppointmentController {
       if (date) filters.date = date;
       if (from_date) filters.from_date = from_date;
       if (to_date) filters.to_date = to_date;
+      if (search) filters.search = search;
+      filters.page  = page;
+      filters.limit = limit;
 
-      const appointments = await AppointmentModel.findAll(filters);
-      
-      // Pagination
-      const pageNum = parseInt(page);
+      const { rows, total } = await AppointmentModel.findAll(filters);
+
+      const pageNum  = parseInt(page);
       const limitNum = parseInt(limit);
-      const startIndex = (pageNum - 1) * limitNum;
-      const endIndex = startIndex + limitNum;
-      const paginatedData = appointments.slice(startIndex, endIndex);
-      
-      res.json({ 
-        data: paginatedData,
+
+      res.json({
+        data: rows,
         pagination: {
           page: pageNum,
           limit: limitNum,
-          total: appointments.length,
-          totalPages: Math.ceil(appointments.length / limitNum)
+          total,
+          totalPages: Math.ceil(total / limitNum)
         }
       });
     } catch (error) {

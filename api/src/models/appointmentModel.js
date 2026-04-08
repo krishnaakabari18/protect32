@@ -55,50 +55,65 @@ class AppointmentModel {
   }
 
   static async findAll(filters = {}) {
-    let query = `
-      SELECT a.id, a.patient_id, a.provider_id, a.operatory_id,
-        a.appointment_code,
-        TO_CHAR(a.appointment_date, 'YYYY-MM-DD') as appointment_date,
-        a.start_time, a.end_time, a.service, a.status, a.notes, a.cancellation_reason,
-        a.created_at, a.updated_at,
-        u1.first_name as patient_first_name, u1.last_name as patient_last_name,
-        u2.first_name as provider_first_name, u2.last_name as provider_last_name,
-        pr.clinic_name,
-        EXTRACT(EPOCH FROM (a.end_time - a.start_time))/60 as duration_minutes
-      FROM appointments a
-      JOIN users u1 ON a.patient_id = u1.id
-      JOIN users u2 ON a.provider_id = u2.id
-      JOIN providers pr ON a.provider_id = pr.id
-      WHERE 1=1
-    `;
-    const values = [];
-    let p = 1;
+      let query = `
+        SELECT a.id, a.patient_id, a.provider_id, a.operatory_id,
+          a.appointment_code,
+          TO_CHAR(a.appointment_date, 'YYYY-MM-DD') as appointment_date,
+          a.start_time, a.end_time, a.service, a.status, a.notes, a.cancellation_reason,
+          a.created_at, a.updated_at,
+          u1.first_name as patient_first_name, u1.last_name as patient_last_name,
+          u2.first_name as provider_first_name, u2.last_name as provider_last_name,
+          pr.clinic_name,
+          EXTRACT(EPOCH FROM (a.end_time - a.start_time))/60 as duration_minutes
+        FROM appointments a
+        JOIN users u1 ON a.patient_id = u1.id
+        JOIN users u2 ON a.provider_id = u2.id
+        JOIN providers pr ON a.provider_id = pr.id
+        WHERE 1=1
+      `;
+      const values = [];
+      let p = 1;
 
-    if (filters.patient_id)  { query += ` AND a.patient_id = $${p++}`;          values.push(filters.patient_id); }
-    if (filters.provider_id) { query += ` AND a.provider_id = $${p++}`;         values.push(filters.provider_id); }
-    if (filters.status)      { query += ` AND a.status = $${p++}`;              values.push(filters.status); }
-    if (filters.date)        { query += ` AND a.appointment_date = $${p++}`;    values.push(filters.date); }
-    if (filters.from_date)   { query += ` AND a.appointment_date >= $${p++}`;   values.push(filters.from_date); }
-    if (filters.to_date)     { query += ` AND a.appointment_date <= $${p++}`;   values.push(filters.to_date); }
-    
-    // Search functionality
-    if (filters.search) {
-      query += ` AND (
-        u1.first_name ILIKE $${p} OR 
-        u1.last_name ILIKE $${p} OR 
-        u2.first_name ILIKE $${p} OR 
-        u2.last_name ILIKE $${p} OR 
-        a.appointment_code ILIKE $${p} OR 
-        a.service ILIKE $${p}
-      )`;
-      values.push(`%${filters.search}%`);
-      p++;
+      if (filters.patient_id)  { query += ` AND a.patient_id = $${p}`;         values.push(filters.patient_id);  p++; }
+      if (filters.provider_id) { query += ` AND a.provider_id = $${p}`;        values.push(filters.provider_id); p++; }
+      if (filters.status)      { query += ` AND a.status = $${p}`;             values.push(filters.status);      p++; }
+      if (filters.date)        { query += ` AND a.appointment_date = $${p}`;   values.push(filters.date);        p++; }
+      if (filters.from_date)   { query += ` AND a.appointment_date >= $${p}`;  values.push(filters.from_date);   p++; }
+      if (filters.to_date)     { query += ` AND a.appointment_date <= $${p}`;  values.push(filters.to_date);     p++; }
+
+      if (filters.search) {
+        query += ` AND (
+          u1.first_name ILIKE $${p} OR
+          u1.last_name ILIKE $${p} OR
+          CONCAT(u1.first_name, ' ', u1.last_name) ILIKE $${p} OR
+          u2.first_name ILIKE $${p} OR
+          u2.last_name ILIKE $${p} OR
+          CONCAT(u2.first_name, ' ', u2.last_name) ILIKE $${p} OR
+          a.appointment_code ILIKE $${p} OR
+          a.service ILIKE $${p}
+        )`;
+        values.push(`%${filters.search}%`);
+        p++;
+      }
+
+      // Count total matching rows for pagination
+      const countResult = await pool.query(
+        `SELECT COUNT(*) FROM (${query}) AS sub`,
+        values
+      );
+      const total = parseInt(countResult.rows[0].count);
+
+      // SQL-level pagination
+      const page  = parseInt(filters.page)  || 1;
+      const limit = parseInt(filters.limit) || 10;
+      const offset = (page - 1) * limit;
+
+      query += ` ORDER BY a.appointment_date DESC, a.start_time DESC LIMIT $${p} OFFSET $${p + 1}`;
+      values.push(limit, offset);
+
+      const result = await pool.query(query, values);
+      return { rows: result.rows, total };
     }
-
-    query += ' ORDER BY a.appointment_date DESC, a.start_time DESC';
-    const result = await pool.query(query, values);
-    return result.rows;
-  }
 
   static async findById(id) {
     const result = await pool.query(

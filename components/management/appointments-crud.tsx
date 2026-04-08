@@ -7,7 +7,7 @@ import IconPencil from '@/components/icon/icon-pencil';
 import IconTrash from '@/components/icon/icon-trash';
 import IconEye from '@/components/icon/icon-eye';
 import { Transition, Dialog, TransitionChild, DialogPanel } from '@headlessui/react';
-import React, { Fragment, useEffect, useState } from 'react';
+import React, { Fragment, useEffect, useState, useCallback, useRef } from 'react';
 import Swal from 'sweetalert2';
 import { API_ENDPOINTS } from '@/config/api.config';
 import SearchableSelect from '@/components/ui/searchable-select';
@@ -22,6 +22,8 @@ const AppointmentsCRUD = () => {
     const [filterToDate, setFilterToDate] = useState('');
     const [filterProvider, setFilterProvider] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
+    const [searchInput, setSearchInput] = useState('');
+    const debounceRef = useRef<NodeJS.Timeout | null>(null);
     
     const [pagination, setPagination] = useState({
         page: 1,
@@ -168,18 +170,18 @@ const AppointmentsCRUD = () => {
         setParams((prev: any) => ({ ...prev, end_time: endTime }));
     };
 
-    const fetchItems = async () => {
+    const fetchItems = useCallback(async () => {
         setLoading(true);
         try {
             const token = localStorage.getItem('auth_token');
             const queryParams = new URLSearchParams({
                 page: pagination.page.toString(),
                 limit: pagination.limit.toString(),
-                ...(filterStatus && { status: filterStatus }),
-                ...(filterFromDate && { from_date: filterFromDate }),
-                ...(filterToDate && { to_date: filterToDate }),
+                ...(filterStatus   && { status:      filterStatus }),
+                ...(filterFromDate && { from_date:   filterFromDate }),
+                ...(filterToDate   && { to_date:     filterToDate }),
                 ...(filterProvider && { provider_id: filterProvider }),
-                ...(searchQuery && { search: searchQuery }),
+                ...(searchQuery    && { search:      searchQuery }),
             });
 
             const response = await fetch(`${API_ENDPOINTS.appointments}?${queryParams}`, {
@@ -206,7 +208,9 @@ const AppointmentsCRUD = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [pagination.page, pagination.limit, filterStatus, filterFromDate, filterToDate, filterProvider, searchQuery]);
+
+    useEffect(() => { fetchItems(); }, [fetchItems]);
 
     const validateForm = () => {
         const newErrors: Record<string, string> = {};
@@ -423,10 +427,15 @@ const AppointmentsCRUD = () => {
                         type="text"
                         className="form-input"
                         placeholder="Search by patient, provider, code, or service..."
-                        value={searchQuery}
+                        value={searchInput}
                         onChange={(e) => {
-                            setSearchQuery(e.target.value);
-                            setPagination(prev => ({ ...prev, page: 1 }));
+                            const val = e.target.value;
+                            setSearchInput(val);
+                            if (debounceRef.current) clearTimeout(debounceRef.current);
+                            debounceRef.current = setTimeout(() => {
+                                setSearchQuery(val);
+                                setPagination(prev => ({ ...prev, page: 1 }));
+                            }, 400);
                         }}
                     />
                 </div>
@@ -486,6 +495,7 @@ const AppointmentsCRUD = () => {
                             type="button"
                             className="btn btn-outline-danger"
                             onClick={() => {
+                                setSearchInput('');
                                 setSearchQuery('');
                                 setFilterFromDate('');
                                 setFilterToDate('');

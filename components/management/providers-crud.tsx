@@ -89,6 +89,7 @@ const DEFAULT_VALUES = {
     clinic_photos: [],
     clinic_video_url: '',
     procedure_ids: [] as string[],
+    procedure_fees: [] as { procedure_id: string; price: string }[],
 };
 
 const ProvidersCRUD = () => {
@@ -235,7 +236,7 @@ const ProvidersCRUD = () => {
         if (!params.state_dental_council_reg_number) e.state_dental_council_reg_number = 'Registration number is required';
         
         // Validate at least one procedure is selected
-        if (!params.procedure_ids || params.procedure_ids.length === 0) {
+        if (!params.procedure_fees || params.procedure_fees.filter((f: any) => f.procedure_id).length === 0) {
             e.procedure_ids = 'At least one procedure must be selected';
         }
         
@@ -292,7 +293,13 @@ const ProvidersCRUD = () => {
                 if (['specialists_availability','clinics','time_slots','coordinates'].includes(key)) {
                     fd.append(key, JSON.stringify(params[key]));
                 } else if (key === 'procedure_ids') {
-                    fd.append('procedure_ids', JSON.stringify(params[key] || []));
+                    // derive procedure_ids from procedure_fees for backward compat
+                    const fees = params.procedure_fees || [];
+                    fd.append('procedure_ids', JSON.stringify(fees.map((f: any) => f.procedure_id).filter(Boolean)));
+                    fd.append('procedure_fees', JSON.stringify(fees.filter((f: any) => f.procedure_id)));
+                } else if (key === 'procedure_fees') {
+                    // already handled above
+                    return;
                 } else if (['state_dental_council_reg_photo','profile_photo'].includes(key)) {
                     if (params[key] instanceof File) fd.append(key, params[key]);
                 } else if (key === 'clinic_photos') {
@@ -342,9 +349,18 @@ const ProvidersCRUD = () => {
             // Always ensure exactly 1 clinic
             if (!json.clinics || json.clinics.length === 0) json.clinics = [{ ...DEFAULT_CLINIC }];
             else json.clinics = [json.clinics[0]];
-            // Load procedure_ids
-            json.procedure_ids = Array.isArray(item.procedure_ids) ? item.procedure_ids
-                : (typeof item.procedure_ids === 'string' ? JSON.parse(item.procedure_ids) : []);
+            // Load procedure_fees (new format) or fall back to procedure_ids (old format)
+            if (Array.isArray(item.procedure_fees) && item.procedure_fees.length > 0) {
+                json.procedure_fees = item.procedure_fees.map((f: any) => ({
+                    procedure_id: f.procedure_id || f,
+                    price: f.price != null ? String(f.price) : '',
+                }));
+            } else {
+                const ids = Array.isArray(item.procedure_ids) ? item.procedure_ids
+                    : (typeof item.procedure_ids === 'string' ? JSON.parse(item.procedure_ids) : []);
+                json.procedure_fees = ids.map((id: string) => ({ procedure_id: id, price: '' }));
+            }
+            json.procedure_ids = json.procedure_fees.map((f: any) => f.procedure_id);
             // Fetch cities for existing state
             if (json.clinics[0]?.state) fetchCitiesByState(json.clinics[0].state);
         }
@@ -564,75 +580,84 @@ const ProvidersCRUD = () => {
                     </div>
                 )}
             </div>
-            {/* Procedures multi-select */}
+            {/* Procedures — row-based with price */}
             <div className="md:col-span-3">
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-between mb-2">
                     <label>Procedures <span className="text-red-500">*</span></label>
                     {!isView && (
-                        <button type="button" className="text-primary text-sm hover:underline"
-                            onClick={() => { setNewProcedure({ name: '', category: 'Diagnostic & Preventive' }); setAddProcedureModal(true); }}>
-                            + Add New Procedure
+                        <button type="button" className="btn btn-sm btn-outline-primary"
+                            onClick={() => setParams((p: any) => ({
+                                ...p,
+                                procedure_fees: [...(p.procedure_fees || []), { procedure_id: '', price: '' }]
+                            }))}>
+                            + Add Procedure
                         </button>
                     )}
                 </div>
-                <div className="relative procedure-dropdown-container">
-                    <button
-                        type="button"
-                        className={`form-input w-full text-left flex items-center justify-between ${errCls('procedure_ids')}`}
-                        onClick={() => !isView && setProcedureDropdownOpen(o => !o)}
-                        disabled={isView}
-                    >
-                        <span className="truncate">
-                            {params.procedure_ids?.length > 0
-                                ? procedures.filter(p => params.procedure_ids.includes(p.id)).map(p => p.name).join(', ')
-                                : 'Select Procedures'}
-                        </span>
-                        <span className="ml-2 text-gray-400">▾</span>
-                    </button>
-                    {procedureDropdownOpen && !isView && (
-                        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                            {procedures.length === 0 ? (
-                                <div className="px-4 py-3 text-sm text-gray-400">No procedures available</div>
-                            ) : procedures.map(proc => (
-                                <label key={proc.id} className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
+
+                <div className="space-y-2">
+                    {(params.procedure_fees || []).map((row: any, i: number) => {
+                        const selectedIds = (params.procedure_fees || [])
+                            .map((r: any, ri: number) => ri !== i ? r.procedure_id : null)
+                            .filter(Boolean);
+                        const availableOptions = procedures
+                            .filter(p => !selectedIds.includes(p.id))
+                            .map(p => ({ value: p.id, label: p.name, meta: { category: p.category } }));
+                        // Also include the currently selected one so it shows
+                        if (row.procedure_id) {
+                            const current = procedures.find(p => p.id === row.procedure_id);
+                            if (current && !availableOptions.find(o => o.value === current.id)) {
+                                availableOptions.unshift({ value: current.id, label: current.name, meta: { category: current.category } });
+                            }
+                        }
+                        return (
+                            <div key={i} className="flex items-center gap-2">
+                                <div className="flex-1">
+                                    <SearchableSelect
+                                        options={availableOptions}
+                                        value={row.procedure_id}
+                                        onChange={(val) => {
+                                            const updated = [...(params.procedure_fees || [])];
+                                            updated[i] = { ...updated[i], procedure_id: val };
+                                            setParams((p: any) => ({ ...p, procedure_fees: updated }));
+                                            if (val) setErrors((prev: any) => { const n = { ...prev }; delete n.procedure_ids; return n; });
+                                        }}
+                                        placeholder="Select Procedure"
+                                        disabled={isView}
+                                    />
+                                </div>
+                                <div className="w-36">
                                     <input
-                                        type="checkbox"
-                                        className="form-checkbox"
-                                        checked={params.procedure_ids?.includes(proc.id) || false}
+                                        type="number"
+                                        className="form-input"
+                                        placeholder="Price (₹)"
+                                        value={row.price}
+                                        min="0"
+                                        disabled={isView}
                                         onChange={e => {
-                                            const current: string[] = params.procedure_ids || [];
-                                            const updated = e.target.checked
-                                                ? [...current, proc.id]
-                                                : current.filter((id: string) => id !== proc.id);
-                                            setParams({ ...params, procedure_ids: updated });
-                                            // Clear error when procedure is selected
-                                            if (updated.length > 0) {
-                                                setErrors(prev => {
-                                                    const newErrors = { ...prev };
-                                                    delete newErrors.procedure_ids;
-                                                    return newErrors;
-                                                });
-                                            }
+                                            const updated = [...(params.procedure_fees || [])];
+                                            updated[i] = { ...updated[i], price: e.target.value };
+                                            setParams((p: any) => ({ ...p, procedure_fees: updated }));
                                         }}
                                     />
-                                    <span className="text-sm">{proc.name}</span>
-                                    {proc.category && <span className="ml-auto text-xs text-gray-400">{proc.category}</span>}
-                                </label>
-                            ))}
-                        </div>
+                                </div>
+                                {!isView && (
+                                    <button type="button" className="btn btn-sm btn-outline-danger px-2"
+                                        onClick={() => {
+                                            const updated = (params.procedure_fees || []).filter((_: any, ri: number) => ri !== i);
+                                            setParams((p: any) => ({ ...p, procedure_fees: updated }));
+                                        }}>
+                                        ✕
+                                    </button>
+                                )}
+                            </div>
+                        );
+                    })}
+                    {(!params.procedure_fees || params.procedure_fees.length === 0) && !isView && (
+                        <p className="text-sm text-gray-400">No procedures added yet. Click "+ Add Procedure" to start.</p>
                     )}
                 </div>
                 {errMsg('procedure_ids')}
-                {params.procedure_ids?.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                        {procedures.filter(p => params.procedure_ids.includes(p.id)).map(p => (
-                            <span key={p.id} className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary rounded px-2 py-0.5">
-                                {p.name}
-                                {!isView && <button type="button" onClick={() => setParams({ ...params, procedure_ids: params.procedure_ids.filter((id: string) => id !== p.id) })}>×</button>}
-                            </span>
-                        ))}
-                    </div>
-                )}
             </div>
         </div>
     );

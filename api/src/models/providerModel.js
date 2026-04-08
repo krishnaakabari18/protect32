@@ -66,6 +66,13 @@ class ProviderModel {
         u.email as user_email,
         u.profile_picture as user_profile_picture,
         COALESCE(
+          (SELECT json_agg(
+            json_build_object('procedure_id', pp.procedure_id::text, 'price', pp.price)
+            ORDER BY pp.procedure_id
+          ) FROM provider_procedures pp WHERE pp.provider_id = p.id),
+          '[]'::json
+        ) as procedure_fees,
+        COALESCE(
           (SELECT json_agg(pp.procedure_id::text)
            FROM provider_procedures pp WHERE pp.provider_id = p.id),
           '[]'::json
@@ -165,6 +172,13 @@ class ProviderModel {
         u.email as user_email,
         u.profile_picture as user_profile_picture,
         COALESCE(
+          (SELECT json_agg(
+            json_build_object('procedure_id', pp.procedure_id::text, 'price', pp.price)
+            ORDER BY pp.procedure_id
+          ) FROM provider_procedures pp WHERE pp.provider_id = p.id),
+          '[]'::json
+        ) as procedure_fees,
+        COALESCE(
           (SELECT json_agg(pp.procedure_id::text)
            FROM provider_procedures pp WHERE pp.provider_id = p.id),
           '[]'::json
@@ -192,14 +206,21 @@ class ProviderModel {
     return result.rows[0];
   }
 
-  static async syncProcedures(providerId, procedureIds = []) {
+  static async syncProcedures(providerId, procedureFees = []) {
     await pool.query('DELETE FROM provider_procedures WHERE provider_id = $1', [providerId]);
-    if (!procedureIds || procedureIds.length === 0) return;
-    const placeholders = procedureIds.map((_, i) => '($1, $' + (i + 2) + ')').join(', ');
-    await pool.query(
-      'INSERT INTO provider_procedures (provider_id, procedure_id) VALUES ' + placeholders + ' ON CONFLICT DO NOTHING',
-      [providerId, ...procedureIds]
-    );
+    if (!procedureFees || procedureFees.length === 0) return;
+    // Add price column if not exists (safe migration)
+    await pool.query(`
+      ALTER TABLE provider_procedures ADD COLUMN IF NOT EXISTS price NUMERIC(10,2) DEFAULT NULL
+    `).catch(() => {});
+    for (const item of procedureFees) {
+      const procedureId = typeof item === 'string' ? item : item.procedure_id;
+      const price = typeof item === 'object' ? (item.price || null) : null;
+      await pool.query(
+        'INSERT INTO provider_procedures (provider_id, procedure_id, price) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+        [providerId, procedureId, price]
+      );
+    }
   }
 
   static async update(id, providerData) {

@@ -250,10 +250,10 @@ class ProviderController {
 
       // Sync procedures
       try {
-        const procedureIds = req.body.procedure_ids
-          ? (typeof req.body.procedure_ids === 'string' ? JSON.parse(req.body.procedure_ids) : req.body.procedure_ids)
-          : [];
-        await ProviderModel.syncProcedures(provider.id, procedureIds);
+        const procedureFees = req.body.procedure_fees
+          ? (typeof req.body.procedure_fees === 'string' ? JSON.parse(req.body.procedure_fees) : req.body.procedure_fees)
+          : (req.body.procedure_ids ? (typeof req.body.procedure_ids === 'string' ? JSON.parse(req.body.procedure_ids) : req.body.procedure_ids) : []);
+        await ProviderModel.syncProcedures(provider.id, procedureFees);
       } catch (e) { console.error('Error syncing procedures:', e); }
 
       // Update linked user: first_name, last_name, email
@@ -507,10 +507,10 @@ class ProviderController {
 
       // Sync procedures
       try {
-        const procedureIds = req.body.procedure_ids
-          ? (typeof req.body.procedure_ids === 'string' ? JSON.parse(req.body.procedure_ids) : req.body.procedure_ids)
-          : [];
-        await ProviderModel.syncProcedures(provider.id, procedureIds);
+        const procedureFees = req.body.procedure_fees
+          ? (typeof req.body.procedure_fees === 'string' ? JSON.parse(req.body.procedure_fees) : req.body.procedure_fees)
+          : (req.body.procedure_ids ? (typeof req.body.procedure_ids === 'string' ? JSON.parse(req.body.procedure_ids) : req.body.procedure_ids) : []);
+        await ProviderModel.syncProcedures(provider.id, procedureFees);
       } catch (e) { console.error('Error syncing procedures:', e); }
 
       // Update linked user: first_name, last_name, email

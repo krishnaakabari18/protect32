@@ -22,6 +22,7 @@ const AppointmentsCRUD = () => {
     const [filterFromDate, setFilterFromDate] = useState('');
     const [filterToDate, setFilterToDate] = useState('');
     const [filterProvider, setFilterProvider] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
     
     const [pagination, setPagination] = useState({
         page: 1,
@@ -51,20 +52,59 @@ const AppointmentsCRUD = () => {
     const [touched, setTouched] = useState<Record<string, boolean>>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    // Generate appointment code: P32-YYYYMMDD-HHmmss
-    const generateCode = (date: string, time: string) => {
-        if (!date || !time) return '';
-        const d = date.replace(/-/g, '').substring(0, 8);
-        const t = time.replace(/:/g, '').substring(0, 6).padEnd(6, '0');
-        return `P32-${d}-${t}`;
+    // Generate appointment code: p32-YYYYMMDD-001 (sequential)
+    const generateCode = async (date: string) => {
+        if (!date) return '';
+        
+        // Format: p32-YYYYMMDD-XXX
+        const dateStr = date.replace(/-/g, ''); // YYYYMMDD
+        
+        try {
+            // Fetch today's appointments to get the next sequence number
+            const token = localStorage.getItem('auth_token');
+            const response = await fetch(`${API_ENDPOINTS.appointments}?appointment_date=${date}&limit=1000`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'ngrok-skip-browser-warning': 'true',
+                },
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                const todayAppointments = data.data || [];
+                
+                // Find the highest sequence number for today
+                let maxSequence = 0;
+                const prefix = `p32-${dateStr}-`;
+                
+                todayAppointments.forEach((apt: any) => {
+                    if (apt.appointment_code && apt.appointment_code.startsWith(prefix)) {
+                        const seqStr = apt.appointment_code.split('-')[2];
+                        const seq = parseInt(seqStr) || 0;
+                        if (seq > maxSequence) maxSequence = seq;
+                    }
+                });
+                
+                // Next sequence number
+                const nextSeq = (maxSequence + 1).toString().padStart(3, '0');
+                return `p32-${dateStr}-${nextSeq}`;
+            }
+        } catch (error) {
+            console.error('Error generating code:', error);
+        }
+        
+        // Fallback: use 001
+        return `p32-${dateStr}-001`;
     };
 
-    // Auto-generate code when date/time changes (create mode only)
+    // Auto-generate code when date changes (create mode only)
     useEffect(() => {
-        if (modalMode === 'create' && params.appointment_date && params.start_time) {
-            setParams((prev: any) => ({ ...prev, appointment_code: generateCode(params.appointment_date, params.start_time) }));
+        if (modalMode === 'create' && params.appointment_date) {
+            generateCode(params.appointment_date).then(code => {
+                setParams((prev: any) => ({ ...prev, appointment_code: code }));
+            });
         }
-    }, [params.appointment_date, params.start_time, modalMode]);
+    }, [params.appointment_date, modalMode]);
 
     // Helper function to format date safely
     const formatDate = (dateStr: string) => {        if (!dateStr) return '-';
@@ -91,7 +131,7 @@ const AppointmentsCRUD = () => {
         fetchPatients();
         fetchProviders();
         fetchItems();
-    }, [pagination.page, pagination.limit, filterStatus, filterFromDate, filterToDate, filterProvider]);
+    }, [pagination.page, pagination.limit, filterStatus, filterFromDate, filterToDate, filterProvider, searchQuery]);
 
     useEffect(() => {
         generateTimeSlots();
@@ -177,6 +217,7 @@ const AppointmentsCRUD = () => {
                 ...(filterFromDate && { from_date: filterFromDate }),
                 ...(filterToDate && { to_date: filterToDate }),
                 ...(filterProvider && { provider_id: filterProvider }),
+                ...(searchQuery && { search: searchQuery }),
             });
 
             const response = await fetch(`${API_ENDPOINTS.appointments}?${queryParams}`, {
@@ -415,6 +456,18 @@ const AppointmentsCRUD = () => {
 
             {/* Filters */}
             <div className="flex flex-wrap gap-3 mb-5">
+                <div className="flex-1 min-w-[200px]">
+                    <input
+                        type="text"
+                        className="form-input"
+                        placeholder="Search by patient, provider, code, or service..."
+                        value={searchQuery}
+                        onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            setPagination(prev => ({ ...prev, page: 1 }));
+                        }}
+                    />
+                </div>
                 <div>
                     <input
                         type="date"
@@ -471,12 +524,13 @@ const AppointmentsCRUD = () => {
                         <option value="Cancelled">Cancelled</option>
                     </select>
                 </div>
-                {(filterFromDate || filterToDate || filterProvider || filterStatus) && (
+                {(searchQuery || filterFromDate || filterToDate || filterProvider || filterStatus) && (
                     <div>
                         <button
                             type="button"
                             className="btn btn-outline-danger"
                             onClick={() => {
+                                setSearchQuery('');
                                 setFilterFromDate('');
                                 setFilterToDate('');
                                 setFilterProvider('');
@@ -710,11 +764,11 @@ const AppointmentsCRUD = () => {
                                                     id="appointment_code"
                                                     type="text"
                                                     className="form-input bg-gray-100 font-mono text-sm"
-                                                    value={params.appointment_code || (modalMode === 'create' ? 'Auto-generated after selecting patient, date & time' : '-')}
+                                                    value={params.appointment_code || (modalMode === 'create' ? 'Auto-generated after selecting date' : '-')}
                                                     disabled
                                                     readOnly
                                                 />
-                                                {modalMode === 'create' && <p className="text-xs text-gray-400 mt-0.5">Format: P32-DATE-TIME</p>}
+                                                {modalMode === 'create' && <p className="text-xs text-gray-400 mt-0.5">Format: p32-YYYYMMDD-001 (sequential)</p>}
                                             </div>
                                             <div>
                                                 <label htmlFor="patient_id">Patient <span className="text-red-500">*</span></label>

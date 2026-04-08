@@ -1,10 +1,32 @@
 const pool = require('../config/database');
 
-// Generate appointment code: P32-YYYYMMDD-HHmmss
-function generateAppointmentCode(appointmentDate, startTime) {
-  const date = (appointmentDate || '').replace(/-/g, '').substring(0, 8);
-  const time = (startTime || '').replace(/:/g, '').substring(0, 6);
-  return `P32-${date}-${time}`;
+// Generate appointment code: p32-YYYYMMDD-XXX (sequential)
+async function generateAppointmentCode(appointmentDate) {
+  const dateStr = (appointmentDate || '').replace(/-/g, '').substring(0, 8);
+  
+  try {
+    // Get today's appointments to find the highest sequence number
+    const result = await pool.query(
+      `SELECT appointment_code FROM appointments 
+       WHERE appointment_date = $1 
+       AND appointment_code LIKE $2
+       ORDER BY appointment_code DESC
+       LIMIT 1`,
+      [appointmentDate, `p32-${dateStr}-%`]
+    );
+    
+    let nextSeq = 1;
+    if (result.rows.length > 0) {
+      const lastCode = result.rows[0].appointment_code;
+      const lastSeq = parseInt(lastCode.split('-')[2]) || 0;
+      nextSeq = lastSeq + 1;
+    }
+    
+    return `p32-${dateStr}-${nextSeq.toString().padStart(3, '0')}`;
+  } catch (error) {
+    console.error('Error generating appointment code:', error);
+    return `p32-${dateStr}-001`;
+  }
 }
 
 class AppointmentModel {
@@ -14,7 +36,7 @@ class AppointmentModel {
       start_time, end_time, service, notes, status, cancellation_reason
     } = appointmentData;
 
-    const appointment_code = generateAppointmentCode(appointment_date, start_time);
+    const appointment_code = await generateAppointmentCode(appointment_date);
 
     const result = await pool.query(
       `INSERT INTO appointments
@@ -54,6 +76,20 @@ class AppointmentModel {
     if (filters.date)        { query += ` AND a.appointment_date = $${p++}`;    values.push(filters.date); }
     if (filters.from_date)   { query += ` AND a.appointment_date >= $${p++}`;   values.push(filters.from_date); }
     if (filters.to_date)     { query += ` AND a.appointment_date <= $${p++}`;   values.push(filters.to_date); }
+    
+    // Search functionality
+    if (filters.search) {
+      query += ` AND (
+        u1.first_name ILIKE $${p} OR 
+        u1.last_name ILIKE $${p} OR 
+        u2.first_name ILIKE $${p} OR 
+        u2.last_name ILIKE $${p} OR 
+        a.appointment_code ILIKE $${p} OR 
+        a.service ILIKE $${p}
+      )`;
+      values.push(`%${filters.search}%`);
+      p++;
+    }
 
     query += ' ORDER BY a.appointment_date DESC, a.start_time DESC';
     const result = await pool.query(query, values);

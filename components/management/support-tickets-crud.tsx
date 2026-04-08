@@ -10,13 +10,12 @@ import { Transition, Dialog, TransitionChild, DialogPanel } from '@headlessui/re
 import React, { Fragment, useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
 import { API_ENDPOINTS } from '@/config/api.config';
+import SearchableSelect from '@/components/ui/searchable-select';
 
 const SupportTicketsCRUD = () => {
     const [addModal, setAddModal] = useState(false);
     const [viewMode, setViewMode] = useState('list');
     const [items, setItems] = useState<any[]>([]);
-    const [patients, setPatients] = useState<any[]>([]);
-    const [providers, setProviders] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [filterStatus, setFilterStatus] = useState('');
     const [filterFromDate, setFilterFromDate] = useState('');
@@ -70,55 +69,16 @@ const SupportTicketsCRUD = () => {
     };
 
     useEffect(() => {
-        fetchPatients();
-        fetchProviders();
         fetchItems();
     }, [pagination.page, pagination.limit, filterStatus, filterFromDate, filterToDate, filterProvider]);
 
     useEffect(() => {
         if (params.patient_id) {
-            const patient = patients.find(p => p.id === params.patient_id);
-            setSelectedPatient(patient);
+            setSelectedPatient({ id: params.patient_id });
         } else {
             setSelectedPatient(null);
         }
-    }, [params.patient_id, patients]);
-
-    const fetchPatients = async () => {
-        try {
-            const token = localStorage.getItem('auth_token');
-            const response = await fetch(`${API_ENDPOINTS.patients}?limit=1000`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'ngrok-skip-browser-warning': 'true',
-                },
-            });
-            const data = await response.json();
-            if (response.ok) {
-                setPatients(data.data || []);
-            }
-        } catch (error) {
-            console.error('Error fetching patients:', error);
-        }
-    };
-
-    const fetchProviders = async () => {
-        try {
-            const token = localStorage.getItem('auth_token');
-            const response = await fetch(`${API_ENDPOINTS.providers}?limit=1000`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'ngrok-skip-browser-warning': 'true',
-                },
-            });
-            const data = await response.json();
-            if (response.ok) {
-                setProviders(data.data || []);
-            }
-        } catch (error) {
-            console.error('Error fetching providers:', error);
-        }
-    };
+    }, [params.patient_id]);
 
     const fetchItems = async () => {
         setLoading(true);
@@ -434,22 +394,16 @@ const SupportTicketsCRUD = () => {
                         }}
                     />
                 </div>
-                <div>
-                    <select
-                        className="form-select"
+                <div className="min-w-[200px]">
+                    <SearchableSelect
+                        dropdownType="providers"
                         value={filterProvider}
-                        onChange={(e) => {
-                            setFilterProvider(e.target.value);
+                        onChange={(val) => {
+                            setFilterProvider(val);
                             setPagination(prev => ({ ...prev, page: 1 }));
                         }}
-                    >
-                        <option value="">All Providers</option>
-                        {providers.map((provider) => (
-                            <option key={provider.id} value={provider.id}>
-                                Dr. {provider.first_name} {provider.last_name}
-                            </option>
-                        ))}
-                    </select>
+                        placeholder="All Providers"
+                    />
                 </div>
                 <div>
                     <select
@@ -701,22 +655,19 @@ const SupportTicketsCRUD = () => {
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
                                                 <label htmlFor="patient_id">Patient <span className="text-red-500">*</span></label>
-                                                <select
+                                                <SearchableSelect
                                                     id="patient_id"
-                                                    name="patient_id"
-                                                    className={`form-select ${touched.patient_id && errors.patient_id ? 'border-red-500' : ''}`}
+                                                    dropdownType="patients"
                                                     value={params.patient_id}
-                                                    onChange={changeValue}
-                                                    onBlur={handleBlur}
+                                                    onChange={(val, opt) => {
+                                                        setParams((prev: any) => ({ ...prev, patient_id: val }));
+                                                        setSelectedPatient(opt?.meta ? { mobile_number: opt.meta.phone } : null);
+                                                        if (errors.patient_id) setErrors(prev => { const n = { ...prev }; delete n.patient_id; return n; });
+                                                    }}
+                                                    placeholder="Select Patient"
                                                     disabled={modalMode === 'view'}
-                                                >
-                                                    <option value="">Select Patient</option>
-                                                    {patients.map((patient) => (
-                                                        <option key={patient.id} value={patient.id}>
-                                                            {patient.first_name} {patient.last_name}
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                                    className={touched.patient_id && errors.patient_id ? 'border-red-500' : ''}
+                                                />
                                                 {touched.patient_id && errors.patient_id && <p className="mt-1 text-xs text-red-500">{errors.patient_id}</p>}
                                             </div>
                                             <div>
@@ -732,21 +683,14 @@ const SupportTicketsCRUD = () => {
                                             </div>
                                             <div className="col-span-2">
                                                 <label htmlFor="provider_id">Provider</label>
-                                                <select
+                                                <SearchableSelect
                                                     id="provider_id"
-                                                    name="provider_id"
-                                                    className="form-select"
+                                                    dropdownType="providers"
                                                     value={params.provider_id}
-                                                    onChange={changeValue}
+                                                    onChange={(val) => setParams((prev: any) => ({ ...prev, provider_id: val }))}
+                                                    placeholder="Select Provider (Optional)"
                                                     disabled={modalMode === 'view'}
-                                                >
-                                                    <option value="">Select Provider (Optional)</option>
-                                                    {providers.map((provider) => (
-                                                        <option key={provider.id} value={provider.id}>
-                                                            Dr. {provider.first_name} {provider.last_name}
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                                />
                                             </div>
                                             <div>
                                                 <label htmlFor="ticket_type">Ticket Type <span className="text-red-500">*</span></label>

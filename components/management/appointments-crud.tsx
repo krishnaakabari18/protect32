@@ -10,14 +10,12 @@ import { Transition, Dialog, TransitionChild, DialogPanel } from '@headlessui/re
 import React, { Fragment, useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
 import { API_ENDPOINTS } from '@/config/api.config';
-import ProviderDropdown from '@/components/common/ProviderDropdown';
-import PatientDropdown from '@/components/common/PatientDropdown';
+import SearchableSelect from '@/components/ui/searchable-select';
 
 const AppointmentsCRUD = () => {
     const [addModal, setAddModal] = useState(false);
     const [viewMode, setViewMode] = useState('list');
     const [items, setItems] = useState<any[]>([]);
-    const [providers, setProviders] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [filterStatus, setFilterStatus] = useState('');
     const [filterFromDate, setFilterFromDate] = useState('');
@@ -129,7 +127,6 @@ const AppointmentsCRUD = () => {
     };
 
     useEffect(() => {
-        fetchProviders();
         fetchItems();
     }, [pagination.page, pagination.limit, filterStatus, filterFromDate, filterToDate, filterProvider, searchQuery]);
 
@@ -166,24 +163,6 @@ const AppointmentsCRUD = () => {
         
         const endTime = `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
         setParams((prev: any) => ({ ...prev, end_time: endTime }));
-    };
-
-    const fetchProviders = async () => {
-        try {
-            const token = localStorage.getItem('auth_token');
-            const response = await fetch(`${API_ENDPOINTS.providers}?limit=1000`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'ngrok-skip-browser-warning': 'true',
-                },
-            });
-            const data = await response.json();
-            if (response.ok) {
-                setProviders(data.data || []);
-            }
-        } catch (error) {
-            console.error('Error fetching providers:', error);
-        }
     };
 
     const fetchItems = async () => {
@@ -472,22 +451,16 @@ const AppointmentsCRUD = () => {
                         }}
                     />
                 </div>
-                <div>
-                    <select
-                        className="form-select"
+                <div className="min-w-[200px]">
+                    <SearchableSelect
+                        dropdownType="providers"
                         value={filterProvider}
-                        onChange={(e) => {
-                            setFilterProvider(e.target.value);
+                        onChange={(val) => {
+                            setFilterProvider(val);
                             setPagination(prev => ({ ...prev, page: 1 }));
                         }}
-                    >
-                        <option value="">All Providers</option>
-                        {providers.map((provider) => (
-                            <option key={provider.id} value={provider.id}>
-                                Dr. {provider.first_name} {provider.last_name}
-                            </option>
-                        ))}
-                    </select>
+                        placeholder="All Providers"
+                    />
                 </div>
                 <div>
                     <select
@@ -752,31 +725,35 @@ const AppointmentsCRUD = () => {
                                             </div>
                                             <div>
                                                 <label htmlFor="patient_id">Patient <span className="text-red-500">*</span></label>
-                                                <PatientDropdown
+                                                <SearchableSelect
                                                     id="patient_id"
-                                                    name="patient_id"
+                                                    dropdownType="patients"
                                                     value={params.patient_id}
-                                                    onChange={changeValue}
-                                                    onBlur={handleBlur}
+                                                    onChange={(val) => {
+                                                        setParams((prev: any) => ({ ...prev, patient_id: val }));
+                                                        if (errors.patient_id) setErrors(prev => { const n = { ...prev }; delete n.patient_id; return n; });
+                                                    }}
+                                                    placeholder="Select Patient"
                                                     disabled={modalMode === 'view'}
-                                                    error={errors.patient_id}
-                                                    touched={touched.patient_id}
-                                                    showEmail={true}
+                                                    className={touched.patient_id && errors.patient_id ? 'border-red-500' : ''}
                                                 />
+                                                {touched.patient_id && errors.patient_id && <p className="mt-1 text-xs text-red-500">{errors.patient_id}</p>}
                                             </div>
                                             <div>
                                                 <label htmlFor="provider_id">Provider <span className="text-red-500">*</span></label>
-                                                <ProviderDropdown
+                                                <SearchableSelect
                                                     id="provider_id"
-                                                    name="provider_id"
+                                                    dropdownType="providers"
                                                     value={params.provider_id}
-                                                    onChange={changeValue}
-                                                    onBlur={handleBlur}
+                                                    onChange={(val) => {
+                                                        setParams((prev: any) => ({ ...prev, provider_id: val }));
+                                                        if (errors.provider_id) setErrors(prev => { const n = { ...prev }; delete n.provider_id; return n; });
+                                                    }}
+                                                    placeholder="Select Provider"
                                                     disabled={modalMode === 'view'}
-                                                    error={errors.provider_id}
-                                                    touched={touched.provider_id}
-                                                    showEmail={true}
+                                                    className={touched.provider_id && errors.provider_id ? 'border-red-500' : ''}
                                                 />
+                                                {touched.provider_id && errors.provider_id && <p className="mt-1 text-xs text-red-500">{errors.provider_id}</p>}
                                             </div>
                                             <div>
                                                 <label htmlFor="appointment_date">Appointment Date <span className="text-red-500">*</span></label>

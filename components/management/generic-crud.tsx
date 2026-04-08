@@ -12,7 +12,7 @@ import { Transition, Dialog, TransitionChild, DialogPanel } from '@headlessui/re
 import React, { Fragment, useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 import Swal from 'sweetalert2';
-import { API_BASE_URL } from '@/config/api.config';
+import { API_BASE_URL, API_ENDPOINTS } from '@/config/api.config';
 import SearchableSelect from '@/components/ui/searchable-select';
 
 interface Column {
@@ -98,9 +98,22 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
     useEffect(() => {
         const apiSelectFields = formFields.filter(f => f.type === 'api-select' && f.apiEndpoint);
         apiSelectFields.forEach(async (field) => {
+            // Use centralized dropdown endpoint for patients and providers
+            const dropdownTypes: Record<string, string> = {
+                patients: 'patients',
+                providers: 'providers',
+                procedures: 'procedures',
+                plans: 'plans',
+                specialties: 'specialties',
+            };
+            const dropdownType = dropdownTypes[field.apiEndpoint!];
+            const url = dropdownType
+                ? `${API_ENDPOINTS.dropdowns}/${dropdownType}`
+                : `${API_BASE_URL}/${field.apiEndpoint}?limit=200`;
+
             try {
                 const token = localStorage.getItem('auth_token');
-                const response = await fetch(`${API_BASE_URL}/${field.apiEndpoint}?limit=200`, {
+                const response = await fetch(url, {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'ngrok-skip-browser-warning': 'true',
@@ -108,15 +121,20 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
                 });
                 const data = await response.json();
                 if (response.ok) {
-                    const items = data.data || [];
-                    const valueKey = field.apiValueKey || 'id';
-                    const options = items.map((item: any) => ({
-                        value: String(item[valueKey]),
-                        label: field.apiLabelFormat
-                            ? field.apiLabelFormat(item)
-                            : item[field.apiLabelKey || 'name'] || String(item[valueKey]),
-                    }));
-                    setApiSelectOptions(prev => ({ ...prev, [field.key]: options }));
+                    // Dropdown endpoint returns {value, label} directly
+                    if (dropdownType) {
+                        setApiSelectOptions(prev => ({ ...prev, [field.key]: data.data || [] }));
+                    } else {
+                        const items = data.data || [];
+                        const valueKey = field.apiValueKey || 'id';
+                        const options = items.map((item: any) => ({
+                            value: String(item[valueKey]),
+                            label: field.apiLabelFormat
+                                ? field.apiLabelFormat(item)
+                                : item[field.apiLabelKey || 'name'] || String(item[valueKey]),
+                        }));
+                        setApiSelectOptions(prev => ({ ...prev, [field.key]: options }));
+                    }
                 }
             } catch (e) {
                 console.error(`Failed to fetch options for ${field.key}`, e);

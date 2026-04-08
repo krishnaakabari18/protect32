@@ -11,37 +11,39 @@ const app = express();
 // CORS Configuration
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    // List of allowed origins
+    // Allow all origins in development, or if no origin (curl, mobile, etc.)
+    if (!origin || process.env.NODE_ENV === 'development') {
+      return callback(null, true);
+    }
+
     const allowedOrigins = [
       'http://localhost:3000',
-      'http://localhost:3001', 
+      'http://localhost:3001',
       'http://localhost:3002',
       'http://localhost:8080',
       'http://localhost:3050',
-      'https://occupiable-milissa-ennuyante.ngrok-free.dev',
-      'https://occupiable-milissa-ennuyante.ngrok-free.dev', // Legacy support
       'https://app.protect32.in',
       'http://app.protect32.in',
-      // Add your production domain here
       process.env.FRONTEND_URL
-    ].filter(Boolean); // Remove undefined values
-    
-    // Check if origin is allowed
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    ].filter(Boolean);
+
+    // Also allow any ngrok subdomain
+    if (/https?:\/\/.*\.ngrok(-free)?\.app/.test(origin) || /https?:\/\/.*\.ngrok-free\.dev/.test(origin)) {
+      return callback(null, true);
+    }
+
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       console.log('CORS blocked origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true, // Allow cookies and authorization headers
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: [
     'Origin',
-    'X-Requested-With', 
+    'X-Requested-With',
     'Content-Type',
     'Accept',
     'Authorization',
@@ -49,7 +51,7 @@ const corsOptions = {
     'X-HTTP-Method-Override'
   ],
   exposedHeaders: ['Content-Length', 'X-Foo', 'X-Bar'],
-  maxAge: 86400 // 24 hours
+  maxAge: 86400
 };
 
 // Apply CORS middleware
@@ -58,14 +60,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Handle preflight requests for all routes
-app.options('*', (req, res) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, ngrok-skip-browser-warning, X-HTTP-Method-Override');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Max-Age', '86400');
-  res.sendStatus(200);
-});
+app.options('*', cors(corsOptions));
 
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

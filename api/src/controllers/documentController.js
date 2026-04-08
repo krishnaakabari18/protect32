@@ -46,17 +46,17 @@ class DocumentController {
 
   static async getAll(req, res) {
     try {
-      const { page = 1, limit = 10, patient_id, document_type } = req.query;
-      const filters = {};
-      if (patient_id) filters.patient_id = patient_id;
-      if (document_type) filters.document_type = document_type;
+      const { page = 1, limit = 10, patient_id, document_type, search } = req.query;
+      const filters = { page, limit };
+      if (patient_id)     filters.patient_id     = patient_id;
+      if (document_type)  filters.document_type  = document_type;
+      if (search)         filters.search         = search;
 
-      const data = await DocumentModel.findAll(filters);
+      const { rows, total } = await DocumentModel.findAll(filters);
       const pageNum = parseInt(page), limitNum = parseInt(limit);
-      const start = (pageNum - 1) * limitNum;
       res.json({
-        data: data.slice(start, start + limitNum),
-        pagination: { page: pageNum, limit: limitNum, total: data.length, totalPages: Math.ceil(data.length / limitNum) }
+        data: rows,
+        pagination: { page: pageNum, limit: limitNum, total, totalPages: Math.ceil(total / limitNum) }
       });
     } catch (error) { res.status(500).json({ error: error.message }); }
   }

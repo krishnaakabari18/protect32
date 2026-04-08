@@ -7,9 +7,10 @@ import IconEye from '@/components/icon/icon-eye';
 import IconDownload from '@/components/icon/icon-download';
 import IconPlus from '@/components/icon/icon-plus';
 import { Transition, Dialog, TransitionChild, DialogPanel } from '@headlessui/react';
-import React, { Fragment, useEffect, useState } from 'react';
+import React, { Fragment, useEffect, useState, useCallback, useRef } from 'react';
 import Swal from 'sweetalert2';
 import { API_ENDPOINTS } from '@/config/api.config';
+import SearchableSelect from '@/components/ui/searchable-select';
 
 const DOCUMENT_TYPES = [
     'Medical Record', 'X-Ray', 'Lab Report', 'Prescription',
@@ -35,11 +36,11 @@ const formatSize = (b: number) => {
 const fileIcon = (mime: string) => mime?.includes('pdf') ? '📄' : mime?.includes('image') ? '🖼️' : '📎';
 
 interface DocItem {
-    id?: string;           // existing item id (edit mode)
+    id?: string;
     name: string;
     document_type: string;
     upload_date: string;
-    file: File | null;     // new file chosen
+    file: File | null;
     existingFile?: { path: string; file_originalname: string; file_mimetype: string; file_size: number } | null;
     nameError: string;
     typeError: string;
@@ -54,46 +55,43 @@ const DocumentsCRUD = () => {
     const [addModal, setAddModal] = useState(false);
     const [modalMode, setModalMode] = useState<'create' | 'edit' | 'view'>('create');
     const [items, setItems] = useState<any[]>([]);
-    const [patients, setPatients] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [filterType, setFilterType] = useState('');
     const [filterPatient, setFilterPatient] = useState('');
+    const [searchInput, setSearchInput] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
+    const debounceRef = useRef<NodeJS.Timeout | null>(null);
     const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 });
 
     const [patientId, setPatientId] = useState('');
     const [patientError, setPatientError] = useState('');
     const [docItems, setDocItems] = useState<DocItem[]>([emptyItem()]);
-
     const [editId, setEditId] = useState('');
 
-    useEffect(() => { fetchPatients(); fetchItems(); }, [pagination.page, pagination.limit, filterType, filterPatient]);
-
-    const fetchPatients = async () => {
-        try {
-            const token = localStorage.getItem('auth_token');
-            const res = await fetch(`${API_ENDPOINTS.patients}?limit=1000`, { headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' } });
-            const data = await res.json();
-            if (res.ok) setPatients(data.data || []);
-        } catch (e) { console.error(e); }
-    };
-
-    const fetchItems = async () => {
+    const fetchItems = useCallback(async () => {
         setLoading(true);
         try {
             const token = localStorage.getItem('auth_token');
             const q = new URLSearchParams({
-                page: pagination.page.toString(), limit: pagination.limit.toString(),
-                ...(filterType && { document_type: filterType }),
-                ...(filterPatient && { patient_id: filterPatient }),
+                page: pagination.page.toString(),
+                limit: pagination.limit.toString(),
+                ...(filterType    && { document_type: filterType }),
+                ...(filterPatient && { patient_id:    filterPatient }),
+                ...(searchQuery   && { search:        searchQuery }),
             });
-            const res = await fetch(`${API_ENDPOINTS.documents}?${q}`, { headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' } });
+            const res = await fetch(`${API_ENDPOINTS.documents}?${q}`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+            });
             const data = await res.json();
             if (res.ok) {
                 setItems(data.data || []);
                 if (data.pagination) setPagination(p => ({ ...p, total: data.pagination.total, totalPages: data.pagination.totalPages }));
             }
-        } catch (e) { console.error(e); } finally { setLoading(false); }
-    };
+        } catch (e) { console.error(e); }
+        finally { setLoading(false); }
+    }, [pagination.page, pagination.limit, filterType, filterPatient, searchQuery]);
+
+    useEffect(() => { fetchItems(); }, [fetchItems]);
 
     const updateItem = (i: number, field: keyof DocItem, value: any) => {
         setDocItems(prev => {
@@ -163,7 +161,6 @@ const DocumentsCRUD = () => {
             fd.append('patient_id', patientId);
             const meta = validated.map(it => ({ id: it.id, name: it.name, document_type: it.document_type, upload_date: it.upload_date }));
             fd.append('items', JSON.stringify(meta));
-            // Append files in order — null slot means keep existing (backend handles by index)
             validated.forEach(it => { fd.append('files', it.file || new Blob([])); });
             const res = await fetch(`${API_ENDPOINTS.documents}/${editId}`, {
                 method: 'PUT',
@@ -251,7 +248,14 @@ const DocumentsCRUD = () => {
         window.open(`${base}/${filePath}`, '_blank');
     };
 
+    const clearFilters = () => {
+        setSearchInput(''); setSearchQuery('');
+        setFilterPatient(''); setFilterType('');
+        setPagination(p => ({ ...p, page: 1 }));
+    };
+
     const isView = modalMode === 'view';
+    const hasFilters = searchQuery || filterPatient || filterType;
 
     return (
         <div>
@@ -262,17 +266,49 @@ const DocumentsCRUD = () => {
                 </button>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 mb-5">
-                <select className="form-select w-auto" value={filterPatient} onChange={e => { setFilterPatient(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}>
-                    <option value="">All Patients</option>
-                    {patients.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
-                </select>
-                <select className="form-select w-auto" value={filterType} onChange={e => { setFilterType(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}>
-                    <option value="">All Types</option>
-                    {DOCUMENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-                {(filterPatient || filterType) && (
-                    <button type="button" className="btn btn-outline-danger" onClick={() => { setFilterPatient(''); setFilterType(''); setPagination(p => ({ ...p, page: 1 })); }}>Clear</button>
+            {/* Filters */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+                {/* Search box */}
+                <div className="lg:col-span-2">
+                    <input
+                        type="text"
+                        className="form-input w-full"
+                        placeholder="Search by document name, patient, type..."
+                        value={searchInput}
+                        onChange={e => {
+                            const val = e.target.value;
+                            setSearchInput(val);
+                            if (debounceRef.current) clearTimeout(debounceRef.current);
+                            debounceRef.current = setTimeout(() => {
+                                setSearchQuery(val);
+                                setPagination(p => ({ ...p, page: 1 }));
+                            }, 400);
+                        }}
+                    />
+                </div>
+
+                {/* Patient searchable dropdown */}
+                <div>
+                    <SearchableSelect
+                        dropdownType="patients"
+                        value={filterPatient}
+                        onChange={val => { setFilterPatient(val); setPagination(p => ({ ...p, page: 1 })); }}
+                        placeholder="All Patients"
+                    />
+                </div>
+
+                {/* Document type filter */}
+                <div>
+                    <select className="form-select w-full" value={filterType} onChange={e => { setFilterType(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}>
+                        <option value="">All Types</option>
+                        {DOCUMENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                </div>
+
+                {hasFilters && (
+                    <div>
+                        <button type="button" className="btn btn-outline-danger w-full" onClick={clearFilters}>Clear Filters</button>
+                    </div>
                 )}
             </div>
 
@@ -284,7 +320,9 @@ const DocumentsCRUD = () => {
                         <table className="table-striped table-hover">
                             <thead><tr><th>#</th><th>Documents</th><th>Patient</th><th>Types</th><th>Items</th><th>Upload Date</th><th className="!text-center">Actions</th></tr></thead>
                             <tbody>
-                                {items.length === 0 ? <tr><td colSpan={7} className="text-center py-8">No documents found</td></tr> : items.map((item, idx) => (
+                                {items.length === 0 ? (
+                                    <tr><td colSpan={7} className="text-center py-8 text-gray-400">No documents found</td></tr>
+                                ) : items.map((item, idx) => (
                                     <tr key={item.id}>
                                         <td>{(pagination.page - 1) * pagination.limit + idx + 1}</td>
                                         <td className="font-semibold max-w-xs truncate">{item.document_names || '-'}</td>
@@ -334,14 +372,17 @@ const DocumentsCRUD = () => {
                                     </div>
                                     <div className="p-5 max-h-[80vh] overflow-y-auto">
 
-                                        {/* Patient */}
+                                        {/* Patient — SearchableSelect */}
                                         <div className="mb-5">
                                             <label>Patient <span className="text-red-500">*</span></label>
-                                            <select className={`form-select ${patientError ? 'border-red-500' : ''}`} value={patientId}
-                                                onChange={e => { setPatientId(e.target.value); setPatientError(''); }} disabled={isView}>
-                                                <option value="">Select Patient</option>
-                                                {patients.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
-                                            </select>
+                                            <SearchableSelect
+                                                dropdownType="patients"
+                                                value={patientId}
+                                                onChange={val => { setPatientId(val); setPatientError(''); }}
+                                                placeholder="Select Patient"
+                                                disabled={isView}
+                                                className={patientError ? 'border-red-500' : ''}
+                                            />
                                             {patientError && <p className="mt-1 text-xs text-red-500">{patientError}</p>}
                                         </div>
 
@@ -378,7 +419,6 @@ const DocumentsCRUD = () => {
                                                         </div>
                                                         <div className="sm:col-span-3">
                                                             <label className="text-sm">File (PDF / Image, max 10MB)</label>
-                                                            {/* Existing file */}
                                                             {item.existingFile && !item.file && (
                                                                 <div className="flex items-center gap-2 mb-1 p-2 bg-gray-100 dark:bg-gray-700 rounded text-sm">
                                                                     {fileIcon(item.existingFile.file_mimetype)} {item.existingFile.file_originalname}
@@ -387,7 +427,6 @@ const DocumentsCRUD = () => {
                                                                     <button type="button" className="btn btn-sm btn-outline-primary ml-auto" onClick={() => downloadFile(item.existingFile!.path)}><IconDownload className="w-4 h-4" /></button>
                                                                 </div>
                                                             )}
-                                                            {/* New file chosen */}
                                                             {item.file && (
                                                                 <div className="flex items-center gap-2 mb-1 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-sm border border-blue-200 dark:border-blue-700">
                                                                     {fileIcon(item.file.type)} {item.file.name} <span className="text-xs text-gray-400">({formatSize(item.file.size)})</span>

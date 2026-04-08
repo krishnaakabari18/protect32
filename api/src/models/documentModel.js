@@ -29,23 +29,55 @@ class DocumentModel {
   }
 
   static async findAll(filters = {}) {
-    let query = 'SELECT d.id, d.patient_id, d.provider_id, d.upload_date,' +
-      ' p.first_name as patient_first_name, p.last_name as patient_last_name,' +
-      ' (SELECT string_agg(di.name, \', \' ORDER BY di.created_at) FROM document_items di WHERE di.document_id = d.id) AS document_names,' +
-      ' (SELECT string_agg(DISTINCT di.document_type, \', \' ORDER BY di.document_type) FROM document_items di WHERE di.document_id = d.id) AS document_types,' +
-      ' (SELECT COUNT(*) FROM document_items di WHERE di.document_id = d.id) AS items_count' +
-      ' FROM documents d' +
-      ' LEFT JOIN patients pat ON d.patient_id = pat.id' +
-      ' LEFT JOIN users p ON pat.id = p.id' +
-      ' WHERE 1=1';
-    const values = [];
-    let p = 1;
-    if (filters.patient_id) { query += ' AND d.patient_id = $' + p++; values.push(filters.patient_id); }
-    if (filters.document_type) { query += ' AND EXISTS (SELECT 1 FROM document_items di WHERE di.document_id = d.id AND di.document_type = $' + p++ + ')'; values.push(filters.document_type); }
-    query += ' ORDER BY d.upload_date DESC';
-    const result = await pool.query(query, values);
-    return result.rows;
-  }
+      let query =
+        'SELECT d.id, d.patient_id, d.provider_id, d.upload_date,' +
+        ' p.first_name as patient_first_name, p.last_name as patient_last_name,' +
+        ' (SELECT string_agg(di.name, \', \' ORDER BY di.created_at) FROM document_items di WHERE di.document_id = d.id) AS document_names,' +
+        ' (SELECT string_agg(DISTINCT di.document_type, \', \' ORDER BY di.document_type) FROM document_items di WHERE di.document_id = d.id) AS document_types,' +
+        ' (SELECT COUNT(*) FROM document_items di WHERE di.document_id = d.id) AS items_count' +
+        ' FROM documents d' +
+        ' LEFT JOIN patients pat ON d.patient_id = pat.id' +
+        ' LEFT JOIN users p ON pat.id = p.id' +
+        ' WHERE 1=1';
+
+      const values = [];
+      let idx = 1;
+
+      if (filters.patient_id) {
+        query += ` AND d.patient_id = $${idx}`;
+        values.push(filters.patient_id);
+        idx++;
+      }
+      if (filters.document_type) {
+        query += ` AND EXISTS (SELECT 1 FROM document_items di WHERE di.document_id = d.id AND di.document_type = $${idx})`;
+        values.push(filters.document_type);
+        idx++;
+      }
+      if (filters.search) {
+        query += ` AND (
+          p.first_name ILIKE $${idx} OR
+          p.last_name ILIKE $${idx} OR
+          CONCAT(p.first_name, ' ', p.last_name) ILIKE $${idx} OR
+          EXISTS (SELECT 1 FROM document_items di WHERE di.document_id = d.id AND (di.name ILIKE $${idx} OR di.document_type ILIKE $${idx}))
+        )`;
+        values.push(`%${filters.search}%`);
+        idx++;
+      }
+
+      // Count for pagination
+      const countResult = await pool.query(`SELECT COUNT(*) FROM (${query}) AS sub`, values);
+      const total = parseInt(countResult.rows[0].count);
+
+      const page  = parseInt(filters.page)  || 1;
+      const limit = parseInt(filters.limit) || 10;
+      const offset = (page - 1) * limit;
+
+      query += ` ORDER BY d.upload_date DESC LIMIT $${idx} OFFSET $${idx + 1}`;
+      values.push(limit, offset);
+
+      const result = await pool.query(query, values);
+      return { rows: result.rows, total };
+    }
 
   static async findById(id) {
     const doc = await pool.query(

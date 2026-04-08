@@ -421,11 +421,12 @@ const AppointmentsCRUD = () => {
             </div>
 
             {/* Filters */}
-            <div className="flex flex-wrap gap-3 mb-5">
-                <div className="flex-1 min-w-[200px]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+                {/* Search box */}
+                <div className="lg:col-span-2">
                     <input
                         type="text"
-                        className="form-input"
+                        className="form-input w-full"
                         placeholder="Search by patient, provider, code, or service..."
                         value={searchInput}
                         onChange={(e) => {
@@ -442,8 +443,7 @@ const AppointmentsCRUD = () => {
                 <div>
                     <input
                         type="date"
-                        className="form-input"
-                        placeholder="From Date"
+                        className="form-input w-full"
                         value={filterFromDate}
                         onChange={(e) => {
                             setFilterFromDate(e.target.value);
@@ -454,8 +454,7 @@ const AppointmentsCRUD = () => {
                 <div>
                     <input
                         type="date"
-                        className="form-input"
-                        placeholder="To Date"
+                        className="form-input w-full"
                         value={filterToDate}
                         onChange={(e) => {
                             setFilterToDate(e.target.value);
@@ -463,7 +462,7 @@ const AppointmentsCRUD = () => {
                         }}
                     />
                 </div>
-                <div className="min-w-[200px]">
+                <div>
                     <SearchableSelect
                         dropdownType="providers"
                         value={filterProvider}
@@ -476,7 +475,7 @@ const AppointmentsCRUD = () => {
                 </div>
                 <div>
                     <select
-                        className="form-select"
+                        className="form-select w-full"
                         value={filterStatus}
                         onChange={(e) => {
                             setFilterStatus(e.target.value);
@@ -493,7 +492,7 @@ const AppointmentsCRUD = () => {
                     <div>
                         <button
                             type="button"
-                            className="btn btn-outline-danger"
+                            className="btn btn-outline-danger w-full"
                             onClick={() => {
                                 setSearchInput('');
                                 setSearchQuery('');

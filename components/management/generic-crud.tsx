@@ -143,6 +143,11 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
     }, []);
 
     // Fetch dependent options when parent field value changes
+    const dependentParentValues = formFields
+        .filter(f => (f.type === 'dependent-api-select' || f.type === 'multi-checkbox-select') && f.dependsOn)
+        .map(f => `${f.key}:${params[f.dependsOn!] || ''}`)
+        .join('|');
+
     useEffect(() => {
         const dependentFields = formFields.filter(
             f => (f.type === 'dependent-api-select' || f.type === 'multi-checkbox-select') && f.dependsOn && f.dependentApiEndpoint
@@ -163,19 +168,24 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
                 if (response.ok) {
                     const items = data.data || [];
                     const valueKey = field.apiValueKey || 'id';
-                    const options = items.map((item: any) => ({
-                        value: String(item[valueKey]),
-                        label: field.apiLabelFormat
-                            ? field.apiLabelFormat(item)
-                            : item[field.apiLabelKey || 'name'] || String(item[valueKey]),
-                    }));
+                    // If items already have {value, label} shape (dropdown endpoint), use directly
+                    const options = items.length > 0 && items[0]?.value !== undefined
+                        ? items
+                        : items.map((item: any) => ({
+                            value: String(item[valueKey]),
+                            label: field.apiLabelFormat
+                                ? field.apiLabelFormat(item)
+                                : item[field.apiLabelKey || 'name'] || String(item[valueKey]),
+                            meta: item.meta,
+                        }));
                     setDependentOptions(prev => ({ ...prev, [field.key]: options }));
                 }
             } catch (e) {
                 console.error(`Failed to fetch dependent options for ${field.key}`, e);
             }
         });
-    }, [formFields.filter(f => f.dependsOn).map(f => params[f.dependsOn!]).join(','), addModal]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [dependentParentValues, addModal]);
 
     // Close multi-select dropdowns on outside click
     useEffect(() => {
@@ -848,19 +858,20 @@ const GenericCRUD: React.FC<GenericCRUDProps> = ({
                                                                         className={touched[field.key] && errors[field.key] ? 'border-red-500' : ''}
                                                                     />
                                                                 ) : field.type === 'dependent-api-select' ? (
-                                                                    <select
+                                                                    <SearchableSelect
                                                                         id={field.key}
-                                                                        className={`form-select ${touched[field.key] && errors[field.key] ? 'border-red-500 focus:border-red-500' : ''}`}
+                                                                        options={dependentOptions[field.key] || []}
                                                                         value={params[field.key] || ''}
-                                                                        onChange={changeValue}
-                                                                        onBlur={handleBlur}
+                                                                        onChange={val => {
+                                                                            const syntheticEvent = { target: { id: field.key, value: val, type: 'select', checked: false } };
+                                                                            changeValue(syntheticEvent);
+                                                                        }}
+                                                                        placeholder={!params[field.dependsOn!]
+                                                                            ? `Select ${formFields.find(f => f.key === field.dependsOn)?.label || 'parent'} first`
+                                                                            : (field.placeholder || `Select ${field.label}`)}
                                                                         disabled={field.disabled || !params[field.dependsOn!]}
-                                                                    >
-                                                                        <option value="">{!params[field.dependsOn!] ? `Select ${formFields.find(f => f.key === field.dependsOn)?.label || 'parent'} first` : (field.placeholder || `Select ${field.label}`)}</option>
-                                                                        {(dependentOptions[field.key] || []).map(opt => (
-                                                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                                                        ))}
-                                                                    </select>
+                                                                        className={touched[field.key] && errors[field.key] ? 'border-red-500' : ''}
+                                                                    />
                                                                 ) : field.type === 'multi-checkbox-select' ? (() => {
                                                                     const opts = dependentOptions[field.key] || [];
                                                                     const selected: string[] = Array.isArray(params[field.key]) ? params[field.key] : [];

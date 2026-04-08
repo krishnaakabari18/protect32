@@ -61,7 +61,14 @@ const PaymentsPage = () => {
                     apiEndpoint: 'patients', apiValueKey: 'id',
                     apiLabelFormat: (item: any) => `${item.first_name || ''} ${item.last_name || ''}`.trim() || item.email || item.id
                 },
-                { key: 'appointment_id', label: 'Appointment ID', type: 'text', placeholder: 'Enter appointment ID' },
+                {
+                    key: 'appointment_id', label: 'Appointment Code', type: 'dependent-api-select',
+                    placeholder: 'Select appointment code',
+                    dependsOn: 'patient_id',
+                    dependentApiEndpoint: (patientId: string) => `dropdowns/patient-appointments?parent_id=${patientId}`,
+                    apiValueKey: 'value',
+                    apiLabelFormat: (item: any) => item.label || item.appointment_code || item.value,
+                },
                 { key: 'amount', label: 'Amount (₹)', type: 'number', required: true, placeholder: 'Enter amount' },
                 {
                     key: 'payment_method',

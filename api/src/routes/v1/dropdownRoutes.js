@@ -66,6 +66,30 @@ router.get('/:type', authenticate, async (req, res) => {
     let data = [];
 
     switch (type) {
+      case 'patient-appointments': {
+        if (!parent_id) { data = []; break; }
+        const q = searchLike
+          ? `SELECT a.id as value, a.appointment_code as label,
+               TO_CHAR(a.appointment_date,'DD/MM/YYYY') as meta_date,
+               a.service as meta_service, a.status as meta_status
+             FROM appointments a
+             WHERE a.patient_id = $1 AND (a.appointment_code ILIKE $2 OR a.service ILIKE $2)
+             ORDER BY a.appointment_date DESC LIMIT 200`
+          : `SELECT a.id as value, a.appointment_code as label,
+               TO_CHAR(a.appointment_date,'DD/MM/YYYY') as meta_date,
+               a.service as meta_service, a.status as meta_status
+             FROM appointments a
+             WHERE a.patient_id = $1
+             ORDER BY a.appointment_date DESC LIMIT 200`;
+        const r = await pool.query(q, searchLike ? [parent_id, searchLike] : [parent_id]);
+        data = r.rows.map(row => ({
+          value: row.value,
+          label: row.label,
+          meta: { date: row.meta_date, service: row.meta_service, status: row.meta_status }
+        }));
+        break;
+      }
+
       case 'patients': {
         const q = searchLike
           ? `SELECT p.id as value, CONCAT(u.first_name,' ',u.last_name) as label, u.email as meta_email, u.mobile_number as meta_phone

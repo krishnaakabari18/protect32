@@ -1331,6 +1331,15 @@ const PatientsCrud = () => {
                         />
                     </div>
                     <div>
+                        <input
+                            type="text"
+                            placeholder="Filter by city..."
+                            value={filterCity}
+                            onChange={(e) => setFilterCity(e.target.value)}
+                            className="form-input"
+                        />
+                    </div>
+                    <div>
                         <select
                             value={filterGender}
                             onChange={(e) => setFilterGender(e.target.value)}
@@ -1342,36 +1351,10 @@ const PatientsCrud = () => {
                             <option value="Other">Other</option>
                         </select>
                     </div>
-                    <div>
-                        <select
-                            value={filterBloodGroup}
-                            onChange={(e) => setFilterBloodGroup(e.target.value)}
-                            className="form-select"
-                        >
-                            <option value="">All Blood Groups</option>
-                            <option value="A+">A+</option>
-                            <option value="A-">A-</option>
-                            <option value="B+">B+</option>
-                            <option value="B-">B-</option>
-                            <option value="AB+">AB+</option>
-                            <option value="AB-">AB-</option>
-                            <option value="O+">O+</option>
-                            <option value="O-">O-</option>
-                        </select>
-                    </div>
-                    <div>
-                        <input
-                            type="text"
-                            placeholder="Filter by city..."
-                            value={filterCity}
-                            onChange={(e) => setFilterCity(e.target.value)}
-                            className="form-input"
-                        />
-                    </div>
+                    
+                    
                     <div className="flex gap-2">
-                        <button type="submit" className="btn btn-primary">
-                            Search
-                        </button>
+                       
                         <button type="button" onClick={clearFilters} className="btn btn-outline-primary">
                             Clear
                         </button>

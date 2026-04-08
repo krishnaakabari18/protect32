@@ -213,7 +213,7 @@ const PlansCRUD = () => {
                 <div className="panel mt-5 overflow-hidden border-0 p-0">
                     <div className="table-responsive">
                         <table className="table-striped table-hover">
-                            <thead><tr><th>#</th><th>Title</th><th>Price (₹)</th><th>Discount</th><th>Features</th><th>Popular</th><th>Status</th><th className="!text-center">Actions</th></tr></thead>
+                            <thead><tr><th>#</th><th>Title</th><th>Price (₹)</th><th>Savings</th><th>Features</th><th>Popular</th><th>Status</th><th className="!text-center">Actions</th></tr></thead>
                             <tbody>
                                 {items.length === 0 ? <tr><td colSpan={8} className="text-center py-8">No plans found</td></tr> : items.map((item, idx) => (
                                     <tr key={item.id}>
@@ -300,7 +300,7 @@ const PlansCRUD = () => {
 
                                             {/* Discount */}
                                             <div>
-                                                <label htmlFor="discount_percent">Discount (%)</label>
+                                                <label htmlFor="discount_percent">Savings (%)</label>
                                                 <input id="discount_percent" name="discount_percent" type="number" min="0" max="100"
                                                     className="form-input" value={params.discount_percent} onChange={cv} disabled={isView} />
                                             </div>

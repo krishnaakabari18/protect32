@@ -632,7 +632,7 @@ const ProviderFeesCRUD = () => {
                                             <th>Procedure</th>
                                             <th>Provider</th>
                                             <th>Your Fee (₹)</th>
-                                            <th>Discount (%)</th>
+                                            <th>Savings (%)</th>
                                             <th>Final Price (₹)</th>
                                             <th>Status</th>
                                             <th className="!text-center">Actions</th>
@@ -912,7 +912,7 @@ const ProviderFeesCRUD = () => {
                                                 {touched.fee && errors.fee && <p className="mt-1 text-xs text-red-500">{errors.fee}</p>}
                                             </div>
                                             <div>
-                                                <label htmlFor="discount_percent">Discount Percent (%)</label>
+                                                <label htmlFor="discount_percent">Savings (%)</label>
                                                 <input
                                                     id="discount_percent"
                                                     type="text"

@@ -11,6 +11,7 @@ import { Transition, Dialog, TransitionChild, DialogPanel } from '@headlessui/re
 import React, { Fragment, useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
 import { API_ENDPOINTS } from '@/config/api.config';
+import SearchableSelect from '@/components/ui/searchable-select';
 
 const PROCEDURE_CATEGORIES = [
     {
@@ -138,7 +139,6 @@ const ProviderFeesCRUD = () => {
     const [addProcedureModal, setAddProcedureModal] = useState(false);
     const [viewMode, setViewMode] = useState('list');
     const [items, setItems] = useState<any[]>([]);
-    const [providers, setProviders] = useState<any[]>([]);
     const [procedures, setProcedures] = useState<any[]>([]);
     const [procedureCategories, setProcedureCategories] = useState<any[]>([]);
     const [providerProcedures, setProviderProcedures] = useState<any[]>([]);
@@ -174,28 +174,9 @@ const ProviderFeesCRUD = () => {
     });
 
     useEffect(() => {
-        fetchProviders();
         fetchProceduresByCategory();
         fetchItems();
     }, [pagination.page, pagination.limit, selectedProvider]);
-
-    const fetchProviders = async () => {
-        try {
-            const token = localStorage.getItem('auth_token');
-            const response = await fetch(`${API_ENDPOINTS.users}?user_type=provider&limit=1000`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'ngrok-skip-browser-warning': 'true',
-                },
-            });
-            const data = await response.json();
-            if (response.ok) {
-                setProviders(data.data || []);
-            }
-        } catch (error) {
-            console.error('Error fetching providers:', error);
-        }
-    };
 
     const fetchProcedures = async () => {
         try {
@@ -604,22 +585,16 @@ const ProviderFeesCRUD = () => {
                             </button>
                         </div> */}
                     </div>
-                    <div>
-                        <select
-                            className="form-select"
+                    <div className="min-w-[200px]">
+                        <SearchableSelect
+                            dropdownType="providers"
                             value={selectedProvider}
-                            onChange={(e) => {
-                                setSelectedProvider(e.target.value);
+                            onChange={(val) => {
+                                setSelectedProvider(val);
                                 setPagination(prev => ({ ...prev, page: 1 }));
                             }}
-                        >
-                            <option value="">All Providers</option>
-                            {providers.map((provider) => (
-                                <option key={provider.id} value={provider.id}>
-                                    {provider.first_name} {provider.last_name}
-                                </option>
-                            ))}
-                        </select>
+                            placeholder="All Providers"
+                        />
                     </div>
                     <div className="relative">
                         <input
@@ -839,22 +814,18 @@ const ProviderFeesCRUD = () => {
                                         <div className="grid grid-cols-1 gap-4">
                                             <div>
                                                 <label htmlFor="provider_id">Provider <span className="text-red-500">*</span></label>
-                                                <select
+                                                <SearchableSelect
                                                     id="provider_id"
-                                                    name="provider_id"
-                                                    className={`form-select ${touched.provider_id && errors.provider_id ? 'border-red-500' : ''}`}
+                                                    dropdownType="providers"
                                                     value={params.provider_id}
-                                                    onChange={changeValue}
-                                                    onBlur={handleBlur}
+                                                    onChange={(val) => {
+                                                        setParams((prev: any) => ({ ...prev, provider_id: val }));
+                                                        if (errors.provider_id) setErrors(prev => { const n = { ...prev }; delete n.provider_id; return n; });
+                                                    }}
+                                                    placeholder="Select Provider"
                                                     disabled={modalMode === 'view' || modalMode === 'edit'}
-                                                >
-                                                    <option value="">Select Provider</option>
-                                                    {providers.map((provider) => (
-                                                        <option key={provider.id} value={provider.id}>
-                                                            {provider.first_name} {provider.last_name} ({provider.email})
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                                    className={touched.provider_id && errors.provider_id ? 'border-red-500' : ''}
+                                                />
                                                 {touched.provider_id && errors.provider_id && <p className="mt-1 text-xs text-red-500">{errors.provider_id}</p>}
                                             </div>
 

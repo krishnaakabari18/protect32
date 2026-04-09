@@ -66,6 +66,27 @@ router.get('/:type', authenticate, async (req, res) => {
     let data = [];
 
     switch (type) {
+      case 'provider-procedures': {
+        // Returns procedures assigned to a provider with their fee from provider_procedures
+        if (!parent_id) { data = []; break; }
+        const r = await pool.query(
+          `SELECT pr.id as value, pr.name as label,
+             pp.price as meta_price,
+             pr.category as meta_category
+           FROM provider_procedures pp
+           JOIN procedures pr ON pp.procedure_id = pr.id
+           WHERE pp.provider_id = $1 AND pr.is_active = true
+           ORDER BY pr.name`,
+          [parent_id]
+        );
+        data = r.rows.map(row => ({
+          value: row.value,
+          label: row.label,
+          meta: { price: row.meta_price, category: row.meta_category }
+        }));
+        break;
+      }
+
       case 'patient-appointments': {
         if (!parent_id) { data = []; break; }
         const q = searchLike

@@ -27,6 +27,8 @@ pu.email as provider_email`;
 
 class TreatmentPlanModel {
   static async create(data) {
+    // Ensure procedure_items column exists
+    await pool.query(`ALTER TABLE treatment_plans ADD COLUMN IF NOT EXISTS procedure_items JSONB`).catch(() => {});
     const keys = Object.keys(data);
     const placeholders = keys.map((_, i) => '$' + (i + 1)).join(', ');
     const values = Object.values(data);

@@ -141,14 +141,13 @@ const ProvidersCRUD = () => {
         } catch (e) { console.error(e); }
     };
 
-    const fetchCitiesByState = async (stateName: string) => {
-        if (!stateName) { setCitiesList([]); return; }
+    const fetchCitiesByState = async (stateId: string | number) => {
+        if (!stateId) { setCitiesList([]); return; }
         try {
             const token = localStorage.getItem('auth_token');
-            // Find state id by name
-            const state = statesList.find(s => s.name === stateName);
-            if (!state) return;
-            const res = await fetch(`${API_ENDPOINTS.statesCities}/states/${state.id}/cities`, { headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' } });
+            const res = await fetch(`${API_ENDPOINTS.statesCities}/states/${stateId}/cities`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+            });
             const data = await res.json();
             if (res.ok) setCitiesList(data.data || []);
         } catch (e) { console.error(e); }
@@ -330,7 +329,7 @@ const ProvidersCRUD = () => {
     };
 
     // ─── Open / Delete ───────────────────────────────────────────────────────
-    const openModal = (mode: 'create' | 'edit' | 'view', item: any = null) => {
+    const openModal = async (mode: 'create' | 'edit' | 'view', item: any = null) => {
         setModalMode(mode); setTouched({}); setErrors({}); setActiveTab('provider');
         const json = JSON.parse(JSON.stringify(DEFAULT_VALUES));
         if (item) {
@@ -361,8 +360,22 @@ const ProvidersCRUD = () => {
                 json.procedure_fees = ids.map((id: string) => ({ procedure_id: id, price: '' }));
             }
             json.procedure_ids = json.procedure_fees.map((f: any) => f.procedure_id);
-            // Fetch cities for existing state
-            if (json.clinics[0]?.state) fetchCitiesByState(json.clinics[0].state);
+            // Fetch cities for existing state — look up state ID from statesList
+            if (json.clinics[0]?.state) {
+                const stateObj = statesList.find((s: any) => s.name === json.clinics[0].state);
+                if (stateObj) {
+                    fetchCitiesByState(stateObj.id);
+                } else {
+                    // statesList may not be loaded yet — fetch states first then get cities
+                    const token = localStorage.getItem('auth_token');
+                    const res = await fetch(`${API_ENDPOINTS.statesCities}/states`, { headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' } });
+                    const data = await res.json();
+                    const freshList = data.data || [];
+                    setStatesList(freshList);
+                    const found = freshList.find((s: any) => s.name === json.clinics[0].state);
+                    if (found) fetchCitiesByState(found.id);
+                }
+            }
         }
         setParams(json); setAddModal(true);
     };
@@ -695,20 +708,37 @@ const ProvidersCRUD = () => {
                         {em('address')}
                     </div>
                     <div>
-                        <label>City <span className="text-red-500">*</span></label>
-                        <select name="clinic_0_city" className={`form-select ${ef('city')}`} value={clinic.city} onChange={e => updateClinic('city', e.target.value)} onBlur={e => hcb(0,'city',e.target.value)} disabled={isView}>
-                            <option value="">Select City</option>
-                            {cities.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                        {em('city')}
+                        <label>State <span className="text-red-500">*</span></label>
+                        <SearchableSelect
+                            options={statesList.map(s => ({ value: String(s.id), label: s.name }))}
+                            value={statesList.find(s => s.name === clinic.state) ? String(statesList.find(s => s.name === clinic.state)!.id) : ''}
+                            onChange={(val, opt) => {
+                                const stateName = opt?.label || '';
+                                updateClinic('state', stateName);
+                                updateClinic('city', '');
+                                fetchCitiesByState(val);
+                                hcb(0, 'state', stateName);
+                            }}
+                            placeholder={statesList.length === 0 ? 'Loading states...' : 'Select State'}
+                            disabled={isView}
+                            className={ef('state')}
+                        />
+                        {em('state')}
                     </div>
                     <div>
-                        <label>State <span className="text-red-500">*</span></label>
-                        <select name="clinic_0_state" className={`form-select ${ef('state')}`} value={clinic.state} onChange={e => updateClinic('state', e.target.value)} onBlur={e => hcb(0,'state',e.target.value)} disabled={isView}>
-                            <option value="">Select State</option>
-                            {states.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                        {em('state')}
+                        <label>City <span className="text-red-500">*</span></label>
+                        <SearchableSelect
+                            options={citiesList.map(c => ({ value: c.name, label: c.name }))}
+                            value={clinic.city}
+                            onChange={(val) => {
+                                updateClinic('city', val);
+                                hcb(0, 'city', val);
+                            }}
+                            placeholder={!clinic.state ? 'Select State first' : citiesList.length === 0 ? 'Loading cities...' : 'Select City'}
+                            disabled={isView || !clinic.state}
+                            className={ef('city')}
+                        />
+                        {em('city')}
                     </div>
                     <div>
                         <label>PIN Code <span className="text-red-500">*</span></label>

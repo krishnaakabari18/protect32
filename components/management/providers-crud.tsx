@@ -699,7 +699,17 @@ const ProvidersCRUD = () => {
                     </div>
                     <div>
                         <label>Speciality <span className="text-red-500">*</span></label>
-                        <input type="text" name="clinic_0_specialty" className={`form-input ${ef('specialty')}`} value={clinic.specialty} onChange={e => updateClinic('specialty', e.target.value)} onBlur={e => hcb(0,'specialty',e.target.value)} disabled={isView} />
+                        <SearchableSelect
+                            options={specialties.map(s => ({ value: s.name, label: s.name }))}
+                            value={clinic.specialty}
+                            onChange={(val) => {
+                                updateClinic('specialty', val);
+                                hcb(0, 'specialty', val);
+                            }}
+                            placeholder={specialties.length === 0 ? 'Loading...' : 'Select Speciality'}
+                            disabled={isView}
+                            className={ef('specialty')}
+                        />
                         {em('specialty')}
                     </div>
                     <div className="md:col-span-2">

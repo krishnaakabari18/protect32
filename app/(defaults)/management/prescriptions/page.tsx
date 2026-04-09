@@ -1,7 +1,7 @@
-import PrescriptionsCRUD from '@/components/management/prescriptions-crud';
+import PrescriptionsCRUDWithAI from '@/components/management/prescriptions-crud-with-ai';
 
 const PrescriptionsPage = () => {
-    return <PrescriptionsCRUD />;
+    return <PrescriptionsCRUDWithAI />;
 };
 
 export default PrescriptionsPage;

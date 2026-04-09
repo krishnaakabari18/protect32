@@ -119,6 +119,9 @@ export const API_ENDPOINTS = {
   
   // Dashboard
   dashboard: `${API_BASE_URL}/dashboard`,
+  
+  // Medication AI
+  medicationAI: `${API_BASE_URL}/medication-ai`,
 };
 
 // Helper function to build endpoint with ID

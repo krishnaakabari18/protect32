@@ -42,13 +42,6 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
     });
 
     const options = propOptions || fetchedOptions;
-    
-    // Log for debugging
-    useEffect(() => {
-        if (dropdownType && !propOptions) {
-            console.log(`[SearchableSelect] ${dropdownType} - Loading: ${loading}, Options: ${options.length}, Error: ${error || 'none'}`);
-        }
-    }, [dropdownType, loading, options.length, error, propOptions]);
     const selected = options.find(o => o.value === value);
 
     const filtered = search.trim()
@@ -114,7 +107,10 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
 
             {/* Dropdown panel */}
             {open && (
-                <div className="absolute z-[200] mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl">
+                <div className="absolute z-[9999] mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl"
+                    style={{ minWidth: '100%' }}
+                    onMouseDown={e => e.stopPropagation()}
+                >
                     {/* Search input */}
                     <div className="p-2 border-b border-gray-100 dark:border-gray-700">
                         <input
@@ -142,7 +138,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
                             <li
                                 key={opt.value}
                                 className={`px-3 py-2 text-sm cursor-pointer hover:bg-primary/10 hover:text-primary transition-colors ${opt.value === value ? 'bg-primary/10 text-primary font-medium' : ''}`}
-                                onClick={() => handleSelect(opt)}
+                                onMouseDown={e => { e.preventDefault(); handleSelect(opt); }}
                             >
                                 <div>{opt.label}</div>
                                 {opt.meta?.email && (

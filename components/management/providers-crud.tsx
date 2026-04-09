@@ -27,7 +27,7 @@ const FIELD_TAB: Record<string, string> = {
     pincode: 'provider',
     years_of_experience: 'provider', state_dental_council_reg_number: 'provider',
     procedure_ids: 'provider',
-    clinic_0_pan_no: 'clinic', clinic_0_name: 'clinic', clinic_0_contact_number: 'clinic',
+    clinic_0_pan_no: 'clinic', clinic_0_gst_number: 'clinic', clinic_0_name: 'clinic', clinic_0_contact_number: 'clinic',
     clinic_0_specialty: 'clinic', clinic_0_address: 'clinic', clinic_0_city: 'clinic',
     clinic_0_state: 'clinic', clinic_0_pin_code: 'clinic',
 };
@@ -64,7 +64,7 @@ const DEFAULT_TIME_SLOTS = [
 ];
 
 const DEFAULT_CLINIC = {
-    pan_no: '', name: '', contact_number: '', specialty: '',
+    pan_no: '', gst_number: '', name: '', contact_number: '', specialty: '',
     address: '', city: '', state: '', pin_code: '',
     google_map_url: '', working_hours: '', dental_chairs: 2, clinic_board: null,
 };
@@ -448,15 +448,20 @@ const ProvidersCRUD = () => {
     const hcb = (idx: number, field: string, value: any) => {
         const key = `clinic_0_${field}`;
         setTouched(p => ({ ...p, [key]: true }));
-        const req: Record<string,string> = { pan_no:'Pan No is required', name:'Clinic name is required', contact_number:'Contact number is required', specialty:'Speciality is required', address:'Address is required', city:'City is required', state:'State is required', pin_code:'PIN code is required' };
+        const req: Record<string,string> = { pan_no:'Pan No is required', gst_number:'GST Number is required', name:'Clinic name is required', contact_number:'Contact number is required', specialty:'Speciality is required', address:'Address is required', city:'City is required', state:'State is required', pin_code:'PIN code is required' };
         const ne = { ...errors };
         if (req[field]) { if (!value) ne[key] = req[field]; else delete ne[key]; }
         setErrors(ne);
     };
 
-    const updateClinic = (field: string, value: any) => {
-        const updated = [{ ...params.clinics[0], [field]: field === 'dental_chairs' ? (value === '' ? 2 : parseInt(value) || 2) : value }];
-        setParams({ ...params, clinics: updated });
+    const updateClinic = (field: string, value: any, extraFields?: Record<string, any>) => {
+        const current = params.clinics?.[0] || DEFAULT_CLINIC;
+        const updated = [{
+            ...current,
+            [field]: field === 'dental_chairs' ? (value === '' ? 2 : parseInt(value) || 2) : value,
+            ...extraFields,
+        }];
+        setParams((prev: any) => ({ ...prev, clinics: updated }));
     };
 
     const updateTimeSlot = (i: number, field: string, value: any) => {
@@ -684,8 +689,13 @@ const ProvidersCRUD = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <div>
                         <label>Pan No <span className="text-red-500">*</span></label>
-                        <input type="text" name="clinic_0_pan_no" className={`form-input ${ef('pan_no')}`} value={clinic.pan_no} onChange={e => updateClinic('pan_no', e.target.value)} onBlur={e => hcb(0,'pan_no',e.target.value)} disabled={isView} />
+                        <input type="text" name="clinic_0_pan_no" className={`form-input ${ef('pan_no')}`} value={clinic.pan_no} onChange={e => updateClinic('pan_no', e.target.value)} onBlur={e => hcb(0,'pan_no',e.target.value)} disabled={isView} placeholder="e.g. ABCDE1234F" />
                         {em('pan_no')}
+                    </div>
+                    <div>
+                        <label>GST Number</label>
+                        <input type="text" name="clinic_0_gst_number" className={`form-input ${ef('gst_number')}`} value={clinic.gst_number || ''} onChange={e => updateClinic('gst_number', e.target.value)} onBlur={e => hcb(0,'gst_number',e.target.value)} disabled={isView} placeholder="e.g. 22ABCDE1234F1Z5" />
+                        {em('gst_number')}
                     </div>
                     <div>
                         <label>Clinic Name <span className="text-red-500">*</span></label>
@@ -724,8 +734,7 @@ const ProvidersCRUD = () => {
                             value={statesList.find(s => s.name === clinic.state) ? String(statesList.find(s => s.name === clinic.state)!.id) : ''}
                             onChange={(val, opt) => {
                                 const stateName = opt?.label || '';
-                                updateClinic('state', stateName);
-                                updateClinic('city', '');
+                                updateClinic('state', stateName, { city: '' });
                                 fetchCitiesByState(val);
                                 hcb(0, 'state', stateName);
                             }}

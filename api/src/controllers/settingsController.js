@@ -40,39 +40,14 @@ const settingsController = {
     getSettings: async (req, res) => {
         try {
             const settings = await settingsModel.getSettings();
-            
-            // Hide sensitive data in response
             if (settings) {
-                const sanitizedSettings = { ...settings };
-                if (sanitizedSettings.razorpay_key_secret) {
-                    sanitizedSettings.razorpay_key_secret = '***********';
-                }
-                if (sanitizedSettings.smtp_password) {
-                    sanitizedSettings.smtp_password = '***********';
-                }
-                if (sanitizedSettings.sms_api_secret) {
-                    sanitizedSettings.sms_api_secret = '***********';
-                }
-                if (sanitizedSettings.whatsapp_api_secret) {
-                    sanitizedSettings.whatsapp_api_secret = '***********';
-                }
-                
-                res.json({
-                    success: true,
-                    data: sanitizedSettings
-                });
+                res.json({ success: true, data: settings });
             } else {
-                res.status(404).json({
-                    success: false,
-                    error: 'Settings not found'
-                });
+                res.status(404).json({ success: false, error: 'Settings not found' });
             }
         } catch (error) {
             console.error('Error fetching settings:', error);
-            res.status(500).json({
-                success: false,
-                error: 'Failed to fetch settings'
-            });
+            res.status(500).json({ success: false, error: 'Failed to fetch settings' });
         }
     },
 
@@ -81,26 +56,10 @@ const settingsController = {
         try {
             const userId = req.user.id;
             const settings = await settingsModel.updateSettings(req.body, userId);
-            
-            // Hide sensitive data in response
-            const sanitizedSettings = { ...settings };
-            if (sanitizedSettings.razorpay_key_secret) {
-                sanitizedSettings.razorpay_key_secret = '***********';
-            }
-            if (sanitizedSettings.smtp_password) {
-                sanitizedSettings.smtp_password = '***********';
-            }
-            if (sanitizedSettings.sms_api_secret) {
-                sanitizedSettings.sms_api_secret = '***********';
-            }
-            if (sanitizedSettings.whatsapp_api_secret) {
-                sanitizedSettings.whatsapp_api_secret = '***********';
-            }
-            
             res.json({
                 success: true,
                 message: 'Settings updated successfully',
-                data: sanitizedSettings
+                data: settings
             });
         } catch (error) {
             console.error('Error updating settings:', error);
@@ -145,12 +104,19 @@ const settingsController = {
     // Test Razorpay connection
     testRazorpay: async (req, res) => {
         try {
-            const { razorpay_key_id, razorpay_key_secret } = req.body;
-            
+            let { razorpay_key_id, razorpay_key_secret } = req.body;
+
+            // If secret is masked (frontend sends '***'), fetch real value from DB
+            if (!razorpay_key_secret || razorpay_key_secret.includes('*')) {
+                const dbSettings = await settingsModel.getSettings();
+                razorpay_key_secret = dbSettings?.razorpay_key_secret || '';
+                if (!razorpay_key_id) razorpay_key_id = dbSettings?.razorpay_key_id || '';
+            }
+
             if (!razorpay_key_id || !razorpay_key_secret) {
                 return res.status(400).json({
                     success: false,
-                    error: 'Missing Razorpay credentials'
+                    error: 'Razorpay credentials not configured. Please save your keys first.'
                 });
             }
 

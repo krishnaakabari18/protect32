@@ -5,22 +5,22 @@ const { authenticate } = require('../../middleware/auth');
 const pool = require('../../config/database');
 const Razorpay = require('razorpay');
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 const getRazorpay = async () => {
   const r = await pool.query('SELECT razorpay_key_id, razorpay_key_secret FROM settings LIMIT 1');
   const s = r.rows[0];
   if (!s?.razorpay_key_id || !s?.razorpay_key_secret)
     throw new Error('Razorpay keys not configured in Settings');
   return {
-    instance: new Razorpay({ key_id: s.razorpay_key_id, key_secret: s.razorpay_key_secret }),
+    rz: new Razorpay({ key_id: s.razorpay_key_id, key_secret: s.razorpay_key_secret }),
     key_id: s.razorpay_key_id,
-    key_secret: s.razorpay_key_secret,
   };
 };
 
-const computeExpiry = (period, prevExpiry) => {
-  const now = new Date();
-  const base = prevExpiry && new Date(prevExpiry) > now ? new Date(prevExpiry) : now;
-  const d = new Date(base);
+// Add period duration to a date
+const addPeriod = (date, period) => {
+  const d = new Date(date);
   if      (period === 'monthly') d.setMonth(d.getMonth() + 1);
   else if (period === 'yearly')  d.setFullYear(d.getFullYear() + 1);
   else if (period === 'weekly')  d.setDate(d.getDate() + 7);
@@ -29,6 +29,37 @@ const computeExpiry = (period, prevExpiry) => {
   return d;
 };
 
+// Get or create Razorpay customer — handles "already exists" gracefully
+const getOrCreateCustomer = async (rz, user, userId) => {
+  const contact = (user.mobile_number || '').replace(/\D/g, '').slice(-10);
+  const name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'User';
+
+  // 1. Try creating
+  try {
+    return await rz.customers.create({ name, email: user.email, contact: contact || undefined, fail_existing: 0 });
+  } catch (e) {
+    // "already exists" — fall through to fetch
+  }
+
+  // 2. Check our DB for stored customer_id
+  const dbRow = await pool.query(
+    'SELECT razorpay_customer_id FROM subscriptions WHERE patient_id = $1 AND razorpay_customer_id IS NOT NULL ORDER BY created_at DESC LIMIT 1',
+    [userId]
+  );
+  if (dbRow.rows[0]?.razorpay_customer_id) {
+    return { id: dbRow.rows[0].razorpay_customer_id };
+  }
+
+  // 3. Search Razorpay by email
+  const list = await rz.customers.all({ count: 100 });
+  const found = (list.items || []).find(c => c.email === user.email);
+  if (found) return found;
+
+  throw new Error('Could not create or retrieve Razorpay customer');
+};
+
+// ── Swagger ───────────────────────────────────────────────────────────────────
+
 /**
  * @swagger
  * tags:
@@ -36,11 +67,13 @@ const computeExpiry = (period, prevExpiry) => {
  *   description: Razorpay subscription management
  */
 
+// ── POST /subscriptions/create ────────────────────────────────────────────────
+
 /**
  * @swagger
  * /subscriptions/create:
  *   post:
- *     summary: Create a Razorpay subscription — only plan_id needed, user from JWT token
+ *     summary: Create a Razorpay subscription — only plan_id needed, user from JWT
  *     tags: [Subscriptions]
  *     security:
  *       - bearerAuth: []
@@ -72,59 +105,44 @@ const computeExpiry = (period, prevExpiry) => {
 router.post('/create', authenticate, async (req, res) => {
   try {
     const { plan_id } = req.body;
-
-    // User comes from JWT token — no patient_id needed in body
     const user_id = req.user?.id;
 
-    if (!plan_id) {
-      return res.status(400).json({ success: false, error: 'plan_id is required' });
+    if (!plan_id) return res.status(400).json({ success: false, error: 'plan_id is required' });
+
+    // 1. Get user from JWT
+    const userRow = await pool.query(
+      'SELECT id, first_name, last_name, email, mobile_number FROM users WHERE id = $1', [user_id]
+    );
+    if (!userRow.rows[0]) return res.status(404).json({ success: false, error: 'User not found' });
+    const user = userRow.rows[0];
+
+    // 2. Razorpay instance + fetch plan
+    const { rz, key_id } = await getRazorpay();
+    let rzPlan;
+    try { rzPlan = await rz.plans.fetch(plan_id); }
+    catch (e) {
+      return res.status(400).json({ success: false, error: 'Invalid plan_id: ' + (e?.error?.description || e?.message || String(e)) });
     }
 
-    // 1. Get user details from token
-    const userResult = await pool.query(
-      'SELECT id, first_name, last_name, email, mobile_number FROM users WHERE id = $1',
+    // 3. Compute start_date and expiry_date
+    //    start = day after latest future expiry across ALL plans, or today
+    const prevRow = await pool.query(
+      `SELECT MAX(expiry_date) AS last_expiry FROM subscriptions WHERE patient_id = $1 AND expiry_date > NOW()`,
       [user_id]
     );
-    if (!userResult.rows[0]) {
-      return res.status(404).json({ success: false, error: 'User not found' });
-    }
-    const user = userResult.rows[0];
+    const lastExpiry = prevRow.rows[0]?.last_expiry || null;
+    const startDate  = lastExpiry ? new Date(new Date(lastExpiry).getTime() + 24 * 60 * 60 * 1000) : new Date();
+    const expiryDate = addPeriod(startDate, rzPlan.period);
 
-    // 2. Razorpay instance
-    const { instance: razorpay, key_id } = await getRazorpay();
+    // 4. Get or create Razorpay customer
+    const customer = await getOrCreateCustomer(rz, user, user_id);
 
-    // 3. Fetch plan from Razorpay
-    let rzPlan;
-    try {
-      rzPlan = await razorpay.plans.fetch(plan_id);
-    } catch (e) {
-      const msg = e?.error?.description || e?.message || JSON.stringify(e);
-      return res.status(400).json({ success: false, error: 'Invalid plan_id: ' + msg });
-    }
-
-    // 4. Check previous subscription for same plan (expiry extension)
-    const prevResult = await pool.query(
-      'SELECT expiry_date FROM subscriptions WHERE patient_id = $1 AND razorpay_plan_id = $2 ORDER BY created_at DESC LIMIT 1',
-      [user_id, plan_id]
-    );
-    const prevExpiry = prevResult.rows[0]?.expiry_date || null;
-    const newExpiry  = computeExpiry(rzPlan.period, prevExpiry);
-
-    // 5. Create Razorpay customer — sanitize contact (digits only, max 10)
-    const contact = (user.mobile_number || '').replace(/\D/g, '').slice(-10);
-    const customer = await razorpay.customers.create({
-      name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'User',
-      email: user.email || '',
-      contact: contact || undefined,
-      fail_existing: 0,
-    });
-
-    // 6. total_count based on period
+    // 5. total_count based on period
     const periodCount = { daily: 365, weekly: 52, monthly: 12, yearly: 1 };
     const total_count = periodCount[rzPlan.period] || 12;
 
-    // 7. Create Razorpay subscription
-    const rzSub = await razorpay.subscriptions.create({
+    // 6. Create Razorpay subscription
+    const rzSub = await rz.subscriptions.create({
       plan_id,
       customer_notify: 1,
       quantity: 1,
@@ -133,8 +151,8 @@ router.post('/create', authenticate, async (req, res) => {
       notes: { user_id, user_email: user.email },
     });
 
-    // 8. Store in DB
-    const dbResult = await pool.query(
+    // 7. Store in DB
+    const dbRow = await pool.query(
       `INSERT INTO subscriptions
          (patient_id, razorpay_plan_id, razorpay_subscription_id, razorpay_customer_id,
           status, short_url, start_date, expiry_date, is_active,
@@ -146,11 +164,11 @@ router.post('/create', authenticate, async (req, res) => {
       [
         user_id, plan_id, rzSub.id, customer.id,
         rzSub.status, rzSub.short_url,
-        new Date(), newExpiry, false,
+        startDate, expiryDate, false,
         rzPlan.item?.name || '',
         rzPlan.item?.amount ? rzPlan.item.amount / 100 : null,
         total_count, total_count,
-        JSON.stringify({ user_email: user.email, extended_from: prevExpiry }),
+        JSON.stringify({ user_email: user.email, extended_from: lastExpiry }),
       ]
     );
 
@@ -160,19 +178,22 @@ router.post('/create', authenticate, async (req, res) => {
       razorpay_key: key_id,
       subscription: {
         ...rzSub,
-        db_id: dbResult.rows[0].id,
+        db_id: dbRow.rows[0].id,
         payment_link: rzSub.short_url,
-        expiry_date: newExpiry,
-        extended_from: prevExpiry,
+        start_date: startDate,
+        expiry_date: expiryDate,
+        extended_from: lastExpiry,
       },
     });
 
   } catch (e) {
-    console.error('Subscription create error:', JSON.stringify(e));
-    const msg = e?.error?.description || e?.error?.reason || e?.message || JSON.stringify(e);
+    console.error('Subscription create error:', JSON.stringify(e?.error || e?.message || e));
+    const msg = e?.error?.description || e?.message || JSON.stringify(e);
     res.status(500).json({ success: false, error: msg });
   }
 });
+
+// ── GET /subscriptions ────────────────────────────────────────────────────────
 
 /**
  * @swagger
@@ -192,6 +213,12 @@ router.post('/create', authenticate, async (req, res) => {
  *       - in: query
  *         name: is_active
  *         schema: { type: boolean }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10 }
  *     responses:
  *       200: { description: List of subscriptions }
  */
@@ -220,27 +247,31 @@ router.get('/', authenticate, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── POST /subscriptions/webhook ───────────────────────────────────────────────
+
 /**
  * @swagger
  * /subscriptions/webhook:
  *   post:
- *     summary: Razorpay webhook — configure in Razorpay Dashboard
+ *     summary: Razorpay webhook — configure URL in Razorpay Dashboard
  *     tags: [Subscriptions]
  *     description: |
  *       Events: subscription.activated, subscription.charged,
- *       subscription.cancelled, subscription.completed, payment.captured, payment.failed
+ *       subscription.cancelled, subscription.completed,
+ *       payment.captured, payment.failed
  *     responses:
  *       200: { description: Webhook processed }
  */
 router.post('/webhook', async (req, res) => {
   try {
+    // Verify signature if provided
     const signature = req.headers['x-razorpay-signature'];
     if (signature) {
-      const settingsR = await pool.query('SELECT razorpay_key_secret FROM settings LIMIT 1');
-      const secret = settingsR.rows[0]?.razorpay_key_secret;
+      const sr = await pool.query('SELECT razorpay_key_secret FROM settings LIMIT 1');
+      const secret = sr.rows[0]?.razorpay_key_secret;
       if (secret) {
-        const rawBody = req.rawBody || JSON.stringify(req.body);
-        const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+        const body = req.rawBody || JSON.stringify(req.body);
+        const expected = crypto.createHmac('sha256', secret).update(body).digest('hex');
         if (expected !== signature) return res.status(400).json({ error: 'Invalid signature' });
       }
     }
@@ -249,12 +280,12 @@ router.post('/webhook', async (req, res) => {
     const sub     = payload?.subscription?.entity;
     const payment = payload?.payment?.entity;
 
-    const updateSub = async (razorpay_subscription_id, fields) => {
-      if (!razorpay_subscription_id || !Object.keys(fields).length) return;
+    const updateSub = async (rzSubId, fields) => {
+      if (!rzSubId || !Object.keys(fields).length) return;
       const sets = Object.keys(fields).map((k, i) => `${k} = $${i + 2}`).join(', ');
       await pool.query(
         `UPDATE subscriptions SET ${sets}, updated_at = CURRENT_TIMESTAMP WHERE razorpay_subscription_id = $1`,
-        [razorpay_subscription_id, ...Object.values(fields)]
+        [rzSubId, ...Object.values(fields)]
       ).catch(() => {});
     };
 
@@ -262,19 +293,19 @@ router.post('/webhook', async (req, res) => {
       case 'subscription.activated':
         await updateSub(sub?.id, {
           status: 'active', is_active: true,
-          start_date: sub?.start_at ? new Date(sub.start_at * 1000) : new Date(),
-          end_date:   sub?.end_at   ? new Date(sub.end_at   * 1000) : null,
-          charge_at:  sub?.charge_at ? new Date(sub.charge_at * 1000) : null,
+          start_date:      sub?.start_at  ? new Date(sub.start_at  * 1000) : new Date(),
+          end_date:        sub?.end_at    ? new Date(sub.end_at    * 1000) : null,
+          charge_at:       sub?.charge_at ? new Date(sub.charge_at * 1000) : null,
+          paid_count:      sub?.paid_count      ?? null,
           remaining_count: sub?.remaining_count ?? null,
-          paid_count: sub?.paid_count ?? null,
         });
         break;
       case 'subscription.charged':
         await updateSub(sub?.id, {
           status: 'active', is_active: true,
-          paid_count: sub?.paid_count ?? null,
+          paid_count:      sub?.paid_count      ?? null,
           remaining_count: sub?.remaining_count ?? null,
-          charge_at: sub?.charge_at ? new Date(sub.charge_at * 1000) : null,
+          charge_at:       sub?.charge_at ? new Date(sub.charge_at * 1000) : null,
         });
         break;
       case 'subscription.cancelled':

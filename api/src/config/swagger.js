@@ -72,7 +72,9 @@ const options = {
       { name: 'Patient Education', description: 'Patient education content management with rich text editor' },
       { name: 'Support Tickets', description: 'Support ticket management with replies' },
       { name: 'Provider Fees', description: 'Provider fee management' },
-      { name: 'Procedures', description: 'Procedure master management' }
+      { name: 'Procedures', description: 'Procedure master management' },
+      { name: 'Subscriptions', description: 'Razorpay subscription management' },
+      { name: 'Inquiries', description: 'Inquiry management' },
     ]
   },
   apis: ['./src/routes/v1/*.js']

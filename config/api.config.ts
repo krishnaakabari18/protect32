@@ -114,8 +114,8 @@ export const API_ENDPOINTS = {
   // Chat
   chat: `${API_BASE_URL}/chat`,
   
-  // Settings
-  settings: `${API_BASE_URL}/settings`,
+  // Inquiries
+  inquiries: `${API_BASE_URL}/inquiries`,
   
   // Dashboard
   dashboard: `${API_BASE_URL}/dashboard`,

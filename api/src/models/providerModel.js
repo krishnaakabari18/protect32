@@ -65,6 +65,7 @@ class ProviderModel {
         u.first_name, u.last_name,
         u.email as user_email,
         u.profile_picture as user_profile_picture,
+        sp.name as specialty_name,
         COALESCE(
           (SELECT json_agg(
             json_build_object('procedure_id', pp.procedure_id::text, 'price', pp.price)
@@ -94,6 +95,7 @@ class ProviderModel {
         (SELECT COALESCE(ROUND(AVG(pr.rating)::numeric, 1), 0) FROM provider_reviews pr WHERE pr.provider_id = p.id) as average_rating
       FROM providers p
       LEFT JOIN users u ON p.id = u.id
+      LEFT JOIN specialties sp ON p.specialty = sp.id::text
       WHERE 1=1
     `;
     const values = [];
@@ -111,8 +113,9 @@ class ProviderModel {
     }
 
     if (filters.specialty) {
-      query += ` AND p.specialty ILIKE $${idx++}`;
-      values.push('%' + filters.specialty + '%');
+      query += ` AND (p.specialty = $${idx} OR sp.name ILIKE $${idx + 1})`;
+      values.push(filters.specialty, '%' + filters.specialty + '%');
+      idx += 2;
     }
     if (filters.location) {
       query += ` AND p.location ILIKE $${idx++}`;
@@ -197,9 +200,11 @@ class ProviderModel {
           '[]'::json
         ) as reviews,
         (SELECT COUNT(*) FROM provider_reviews pr WHERE pr.provider_id = p.id) as total_reviews,
-        (SELECT COALESCE(ROUND(AVG(pr.rating)::numeric, 1), 0) FROM provider_reviews pr WHERE pr.provider_id = p.id) as average_rating
+        (SELECT COALESCE(ROUND(AVG(pr.rating)::numeric, 1), 0) FROM provider_reviews pr WHERE pr.provider_id = p.id) as average_rating,
+        sp.name as specialty_name
        FROM providers p
        LEFT JOIN users u ON p.id = u.id
+       LEFT JOIN specialties sp ON p.specialty = sp.id::text
        WHERE p.id = $1`,
       [id]
     );

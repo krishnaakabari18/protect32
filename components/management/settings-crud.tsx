@@ -62,7 +62,17 @@ const SettingsCRUD = () => {
         seo_meta_title: '',
         seo_meta_description: '',
         seo_meta_keywords: '',
-        seo_og_image: ''
+        seo_og_image: '',
+
+        // App versions
+        android_status: 'active',
+        ios_status: 'active',
+        android_version: '1.0.0',
+        ios_version: '1.0.0',
+
+        // Procedure content
+        procedure_default_description: '',
+        procedure_price_disclaimer: '',
     });
 
     const [imageUploading, setImageUploading] = useState(false);
@@ -758,6 +768,68 @@ const SettingsCRUD = () => {
         </div>
     );
 
+    const renderAppTab = () => (
+        <div className="space-y-6">
+            {/* Mobile App Version Control */}
+            <div className="panel">
+                <h5 className="text-lg font-semibold mb-4">Mobile App Version Control</h5>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Android Version</label>
+                        <input type="text" name="android_version" value={settings.android_version} onChange={handleChange}
+                            className="form-input" placeholder="e.g. 1.0.0" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Android Status</label>
+                        <select name="android_status" value={settings.android_status} onChange={handleChange} className="form-select">
+                            <option value="active">Active</option>
+                            <option value="maintenance">Maintenance</option>
+                            <option value="force_update">Force Update</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">iOS Version</label>
+                        <input type="text" name="ios_version" value={settings.ios_version} onChange={handleChange}
+                            className="form-input" placeholder="e.g. 1.0.0" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">iOS Status</label>
+                        <select name="ios_status" value={settings.ios_status} onChange={handleChange} className="form-select">
+                            <option value="active">Active</option>
+                            <option value="maintenance">Maintenance</option>
+                            <option value="force_update">Force Update</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            {/* Procedure Content */}
+            <div className="panel">
+                <h5 className="text-lg font-semibold mb-4">Procedure Content</h5>
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Default Procedure Description</label>
+                        <p className="text-xs text-gray-400 mb-1">Shown when a procedure has no description set</p>
+                        <textarea name="procedure_default_description" rows={4}
+                            value={settings.procedure_default_description} onChange={handleChange}
+                            className="form-textarea w-full"
+                            placeholder="e.g. A routine procedure to remove plaque and tartar buildup..." />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Procedure Price Disclaimer</label>
+                        <p className="text-xs text-gray-400 mb-1">Shown below procedure prices on public pages</p>
+                        <textarea name="procedure_price_disclaimer" rows={3}
+                            value={settings.procedure_price_disclaimer} onChange={handleChange}
+                            className="form-textarea w-full"
+                            placeholder="e.g. This is an estimated cost range. Actual prices may vary..." />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
     const tabs = [
         { id: 'payment', label: 'Payment', icon: <IconDollarSign /> },
         { id: 'email', label: 'Email', icon: <IconMail /> },
@@ -766,6 +838,7 @@ const SettingsCRUD = () => {
         { id: 'analytics', label: 'Analytics', icon: <IconCode /> },
         { id: 'sms', label: 'SMS & WhatsApp', icon: <IconPhone /> },
         { id: 'seo', label: 'SEO', icon: <IconSearch /> },
+        { id: 'app', label: 'App & Content', icon: <IconSettings /> },
     ];
 
     return (
@@ -807,6 +880,7 @@ const SettingsCRUD = () => {
                     {activeTab === 'analytics' && renderAnalyticsTab()}
                     {activeTab === 'sms' && renderSMSTab()}
                     {activeTab === 'seo' && renderSEOTab()}
+                    {activeTab === 'app' && renderAppTab()}
                 </div>
             </div>
         </div>

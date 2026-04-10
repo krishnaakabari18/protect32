@@ -116,6 +116,9 @@ export const API_ENDPOINTS = {
   
   // Inquiries
   inquiries: `${API_BASE_URL}/inquiries`,
+
+  // Settings
+  settings: `${API_BASE_URL}/settings`,
   
   // Dashboard
   dashboard: `${API_BASE_URL}/dashboard`,

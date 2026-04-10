@@ -710,10 +710,12 @@ const ProvidersCRUD = () => {
                     <div>
                         <label>Speciality <span className="text-red-500">*</span></label>
                         <SearchableSelect
-                            options={specialties.map(s => ({ value: s.name, label: s.name }))}
+                            options={specialties.map(s => ({ value: s.id, label: s.name }))}
                             value={clinic.specialty}
                             onChange={(val) => {
-                                updateClinic('specialty', val);
+                                updateClinic('specialty', val, {});
+                                // Also sync to top-level params.specialty
+                                setParams((prev: any) => ({ ...prev, specialty: val }));
                                 hcb(0, 'specialty', val);
                             }}
                             placeholder={specialties.length === 0 ? 'Loading...' : 'Select Speciality'}
@@ -1087,7 +1089,7 @@ const ProvidersCRUD = () => {
                                             </div>
                                             <div className="text-xs text-white-dark">{item.user_email || item.email || '-'}</div>
                                         </td>
-                                        <td>{(() => { const c = typeof item.clinics === 'string' ? JSON.parse(item.clinics || '[]') : (item.clinics || []); return c[0]?.specialty || item.specialty || '-'; })()}</td>
+                                        <td>{(() => { const c = typeof item.clinics === 'string' ? JSON.parse(item.clinics || '[]') : (item.clinics || []); const specId = c[0]?.specialty || item.specialty || ''; const specObj = specialties.find((s: any) => s.id === specId); return specObj ? specObj.name : specId || '-'; })()}</td>
                                         <td>{item.years_of_experience || item.experience_years} yrs</td>
                                         <td>{(() => { const c = typeof item.clinics === 'string' ? JSON.parse(item.clinics || '[]') : (item.clinics || []); return c[0]?.name || item.clinic_name || '-'; })()}</td>
                                         <td>{item.location}</td>

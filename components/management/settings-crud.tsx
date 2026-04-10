@@ -212,6 +212,19 @@ const SettingsCRUD = () => {
         setTesting(true);
         try {
             const token = localStorage.getItem('auth_token');
+            
+            // Debug logging
+            console.log('=== TEST CONNECTION DEBUG ===');
+            console.log('Type:', type);
+            console.log('Token exists:', !!token);
+            console.log('Token length:', token?.length);
+            console.log('Token preview:', token?.substring(0, 20) + '...');
+            
+            if (!token) {
+                Swal.fire('Error', 'No authentication token found. Please login again.', 'error');
+                return;
+            }
+            
             let endpoint = '';
             let body = {};
 
@@ -239,6 +252,10 @@ const SettingsCRUD = () => {
                 };
             }
 
+            console.log('Endpoint:', endpoint);
+            console.log('Request body:', body);
+            console.log('Authorization header:', `Bearer ${token?.substring(0, 20)}...`);
+
             const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
@@ -249,13 +266,26 @@ const SettingsCRUD = () => {
                 body: JSON.stringify(body),
             });
 
+            console.log('Response status:', response.status);
+            console.log('Response ok:', response.ok);
+            
             const data = await response.json();
-            if (data.success) {
+            
+            console.log(`${type.toUpperCase()} Test Response:`, data);
+            console.log('Response success:', data.success);
+            console.log('Response message:', data.message);
+            console.log('Response error:', data.error);
+            
+            if (response.ok && data.success) {
                 Swal.fire('Success', data.message, 'success');
             } else {
-                Swal.fire('Error', data.error || 'Connection test failed', 'error');
+                const errorMsg = data.message || data.error || 'Connection test failed';
+                console.error('Test failed with error:', errorMsg);
+                Swal.fire('Error', errorMsg, 'error');
             }
         } catch (error: any) {
+            console.error(`${type} test error:`, error);
+            console.error('Error stack:', error.stack);
             Swal.fire('Error', error.message || 'Connection test failed', 'error');
         } finally {
             setTesting(false);

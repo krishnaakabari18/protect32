@@ -168,8 +168,8 @@ const InquiriesCRUD = () => {
             </div>
 
             {/* Filters */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-                <div className="lg:col-span-2">
+            <div className="flex flex-wrap gap-3 mb-5">
+                <div className="flex-1 min-w-[200px] max-w-[400px]">
                     <input type="text" className="form-input w-full" placeholder="Search name, email, phone, subject..."
                         value={searchInput}
                         onChange={e => {
@@ -178,17 +178,23 @@ const InquiriesCRUD = () => {
                             debounceRef.current = setTimeout(() => { setSearchQuery(val); setPagination(p => ({ ...p, page: 1 })); }, 400);
                         }} />
                 </div>
-                <div>
+                <div className="w-[180px]">
                     <select className="form-select w-full" value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}>
                         <option value="">All Status</option>
                         {Object.entries(STATUS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                     </select>
                 </div>
-                <div className="flex gap-2">
-                    <input type="date" className="form-input flex-1" value={filterFromDate} onChange={e => { setFilterFromDate(e.target.value); setPagination(p => ({ ...p, page: 1 })); }} />
-                    <input type="date" className="form-input flex-1" value={filterToDate} onChange={e => { setFilterToDate(e.target.value); setPagination(p => ({ ...p, page: 1 })); }} />
+                <div className="w-[140px]">
+                    <input type="date" className="form-input w-full" placeholder="From" value={filterFromDate} onChange={e => { setFilterFromDate(e.target.value); setPagination(p => ({ ...p, page: 1 })); }} />
                 </div>
-                {hasFilters && <div><button type="button" className="btn btn-outline-danger w-full" onClick={clearFilters}>Clear</button></div>}
+                <div className="w-[140px]">
+                    <input type="date" className="form-input w-full" placeholder="To" value={filterToDate} onChange={e => { setFilterToDate(e.target.value); setPagination(p => ({ ...p, page: 1 })); }} />
+                </div>
+                {hasFilters && (
+                    <div>
+                        <button type="button" className="btn btn-outline-danger" onClick={clearFilters}>Clear Filters</button>
+                    </div>
+                )}
             </div>
 
             {loading ? (

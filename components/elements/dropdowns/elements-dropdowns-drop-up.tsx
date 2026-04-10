@@ -92,7 +92,7 @@ const isRtl = useSelector((state: IRootState) => state.themeConfig.rtlClass) ===
                     <div className="flex items-center justify-center">
                         <div className="dropdown">
                             <Dropdown
-                                placement={`${isRtl ? 'top-start' : 'top-end'}`}
+                                placement={isRtl ? 'top-start' : 'top-end'}
                                 btnClassName="btn btn-info dropdown-toggle inline-flex"
                                 button={
                                     <>
@@ -121,7 +121,7 @@ const isRtl = useSelector((state: IRootState) => state.themeConfig.rtlClass) ===
                     <div className="flex items-center justify-center">
                         <div className="dropdown">
                             <Dropdown
-                                placement={`${isRtl ? 'top-start' : 'top-end'}`}
+                                placement={isRtl ? 'top-start' : 'top-end'}
                                 btnClassName="btn btn-outline-info dropdown-toggle inline-flex"
                                 button={
                                     <>

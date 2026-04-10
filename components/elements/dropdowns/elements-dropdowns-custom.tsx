@@ -152,7 +152,7 @@ const isRtl = useSelector((state: IRootState) => state.themeConfig.rtlClass) ===
                     <div className="flex w-1/4 items-center justify-center">
                         <div className="dropdown">
                             <Dropdown
-                                placement={`${isRtl ? 'top-end' : 'top-start'}`}
+                                placement={isRtl ? 'top-end' : 'top-start'}
                                 btnClassName="btn p-0 rounded-none border-0 shadow-none dropdown-toggle text-black dark:text-white-dark hover:text-primary dark:hover:text-primary"
                                 button={<IconHorizontalDots className="h-6 w-6 opacity-70" />}
                             >
@@ -176,7 +176,7 @@ const isRtl = useSelector((state: IRootState) => state.themeConfig.rtlClass) ===
                     <div className="flex w-1/4 items-center justify-center">
                         <div className="dropdown">
                             <Dropdown
-                                placement={`${isRtl ? 'top-end' : 'top-start'}`}
+                                placement={isRtl ? 'top-end' : 'top-start'}
                                 btnClassName="btn p-0 rounded-none border-0 shadow-none dropdown-toggle text-black dark:text-white-dark hover:text-primary dark:hover:text-primary"
                                 button={<IconHorizontalDots className="h-6 w-6 opacity-70" />}
                             >
@@ -200,7 +200,7 @@ const isRtl = useSelector((state: IRootState) => state.themeConfig.rtlClass) ===
                     <div className="flex w-1/4 items-center justify-center">
                         <div className="dropdown">
                             <Dropdown
-                                placement={`${isRtl ? 'top-end' : 'top-start'}`}
+                                placement={isRtl ? 'top-end' : 'top-start'}
                                 btnClassName="btn p-0 rounded-none border-0 shadow-none dropdown-toggle text-black dark:text-white-dark hover:text-primary dark:hover:text-primary"
                                 button={<IconHorizontalDots className="h-6 w-6 opacity-70" />}
                             >
@@ -224,7 +224,7 @@ const isRtl = useSelector((state: IRootState) => state.themeConfig.rtlClass) ===
                     <div className="flex w-1/4 items-center justify-center">
                         <div className="dropdown">
                             <Dropdown
-                                placement={`${isRtl ? 'top-start' : 'top-end'}`}
+                                placement={isRtl ? 'top-start' : 'top-end'}
                                 btnClassName="btn p-0 rounded-none border-0 shadow-none dropdown-toggle text-black dark:text-white-dark hover:text-primary dark:hover:text-primary"
                                 button={<IconHorizontalDots className="h-6 w-6 opacity-70" />}
                             >

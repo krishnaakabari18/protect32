@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const AuthMiddleware = require('../../middleware/auth');
+const { AuthMiddleware } = require('../../middleware/auth');
 
 // Import controller
 const ProcedureController = require('../../controllers/procedureController');

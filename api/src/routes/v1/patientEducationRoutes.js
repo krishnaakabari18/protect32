@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const PatientEducationController = require('../../controllers/patientEducationController');
-const AuthMiddleware = require('../../middleware/auth');
+const { AuthMiddleware } = require('../../middleware/auth');
 const { upload } = require('../../utils/educationImageUpload');
 
 /**

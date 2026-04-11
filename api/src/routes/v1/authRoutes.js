@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const AuthController = require('../../controllers/authController');
-const AuthMiddleware = require('../../middleware/auth');
+const { AuthMiddleware, authLimiter } = require('../../middleware/auth');
 const { uploadProfilePicture } = require('../../utils/upload');
 
 /**
@@ -110,7 +110,7 @@ const { uploadProfilePicture } = require('../../utils/upload');
  *       400:
  *         description: User already exists
  */
-router.post('/register', uploadProfilePicture, AuthController.register);
+router.post('/register', authLimiter, uploadProfilePicture, AuthController.register);
 
 /**
  * @swagger
@@ -134,7 +134,7 @@ router.post('/register', uploadProfilePicture, AuthController.register);
  *       401:
  *         description: Invalid credentials
  */
-router.post('/login', AuthController.login);
+router.post('/login', authLimiter, AuthController.login);
 
 /**
  * @swagger

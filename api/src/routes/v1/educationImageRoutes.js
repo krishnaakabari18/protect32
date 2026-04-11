@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const EducationImageController = require('../../controllers/educationImageController');
-const AuthMiddleware = require('../../middleware/auth');
+const { AuthMiddleware } = require('../../middleware/auth');
 const { upload } = require('../../utils/educationImageUpload');
 
 /**

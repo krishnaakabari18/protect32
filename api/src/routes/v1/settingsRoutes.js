@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const settingsController = require('../../controllers/settingsController');
 const { uploadSettingsImages } = require('../../controllers/settingsController');
-const { authenticate } = require('../../middleware/auth');
+const { AuthMiddleware } = require('../../middleware/auth'); const authenticate = AuthMiddleware.authenticate;
 
 /**
  * @swagger

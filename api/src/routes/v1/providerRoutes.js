@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const ProviderController = require('../../controllers/providerController');
 const { uploadClinicPhotos } = require('../../controllers/providerController');
+const { AuthMiddleware } = require('../../middleware/auth');
+const auth = AuthMiddleware.authenticate;
 
 /**
  * @swagger
@@ -81,7 +83,7 @@ const { uploadClinicPhotos } = require('../../controllers/providerController');
  *       201:
  *         description: Provider created successfully
  */
-router.post('/', uploadClinicPhotos, ProviderController.createProvider);
+router.post('/', auth, uploadClinicPhotos, ProviderController.createProvider);
 
 /**
  * @swagger
@@ -178,7 +180,7 @@ router.post('/list', ProviderController.getAllProviders);
  *       404:
  *         description: Provider not found
  */
-router.get('/:id', ProviderController.getProviderById);
+router.get('/:id', auth, ProviderController.getProviderById);
 
 /**
  * @swagger
@@ -227,7 +229,7 @@ router.get('/:id', ProviderController.getProviderById);
  *       404:
  *         description: Provider not found
  */
-router.put('/:id', uploadClinicPhotos, ProviderController.updateProvider);
+router.put('/:id', auth, uploadClinicPhotos, ProviderController.updateProvider);
 
 /**
  * @swagger
@@ -248,7 +250,7 @@ router.put('/:id', uploadClinicPhotos, ProviderController.updateProvider);
  *       404:
  *         description: Provider not found
  */
-router.delete('/:id', ProviderController.deleteProvider);
+router.delete('/:id', auth, ProviderController.deleteProvider);
 
 /**
  * @swagger
@@ -288,9 +290,9 @@ router.delete('/:id', ProviderController.deleteProvider);
  *       404:
  *         description: Provider or image not found
  */
-router.delete('/:id/images/:imageType', ProviderController.deleteProviderImage);
+router.delete('/:id/images/:imageType', auth, ProviderController.deleteProviderImage);
 
 // Get procedures assigned to a specific provider
-router.get('/:id/procedures', ProviderController.getProviderProcedures);
+router.get('/:id/procedures', auth, ProviderController.getProviderProcedures);
 
 module.exports = router;

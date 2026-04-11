@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const PlanFeatureController = require('../../controllers/planFeatureController');
-const { authenticate } = require('../../middleware/auth');
+const { AuthMiddleware } = require('../../middleware/auth'); const authenticate = AuthMiddleware.authenticate;
 
 /**
  * @swagger

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
-const { authenticate } = require('../../middleware/auth');
+const { AuthMiddleware } = require('../../middleware/auth'); const authenticate = AuthMiddleware.authenticate;
 const pool = require('../../config/database');
 const Razorpay = require('razorpay');
 

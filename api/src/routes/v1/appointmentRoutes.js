@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const AppointmentController = require('../../controllers/appointmentController');
+const { AuthMiddleware } = require('../../middleware/auth');
+const auth = AuthMiddleware.authenticate;
 
 /**
  * @swagger
@@ -82,7 +84,7 @@ const AppointmentController = require('../../controllers/appointmentController')
  *       201:
  *         description: Appointment created successfully
  */
-router.post('/', AppointmentController.createAppointment);
+router.post('/', auth, AppointmentController.createAppointment);
 
 /**
  * @swagger
@@ -128,7 +130,7 @@ router.post('/', AppointmentController.createAppointment);
  *                   items:
  *                     $ref: '#/components/schemas/Appointment'
  */
-router.get('/', AppointmentController.getAllAppointments);
+router.get('/', auth, AppointmentController.getAllAppointments);
 
 /**
  * @swagger
@@ -149,7 +151,7 @@ router.get('/', AppointmentController.getAllAppointments);
  *       404:
  *         description: Appointment not found
  */
-router.get('/:id', AppointmentController.getAppointmentById);
+router.get('/:id', auth, AppointmentController.getAppointmentById);
 
 /**
  * @swagger
@@ -195,7 +197,7 @@ router.get('/:id', AppointmentController.getAppointmentById);
  *       404:
  *         description: Appointment not found
  */
-router.put('/:id', AppointmentController.updateAppointment);
+router.put('/:id', auth, AppointmentController.updateAppointment);
 
 /**
  * @swagger
@@ -216,6 +218,6 @@ router.put('/:id', AppointmentController.updateAppointment);
  *       404:
  *         description: Appointment not found
  */
-router.delete('/:id', AppointmentController.deleteAppointment);
+router.delete('/:id', auth, AppointmentController.deleteAppointment);
 
 module.exports = router;

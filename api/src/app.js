@@ -4,6 +4,7 @@ const path = require('path');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
 const routes = require('./routes');
+const { apiLimiter } = require('./middleware/auth');
 
 
 const app = express();
@@ -56,6 +57,9 @@ const corsOptions = {
 
 // Apply CORS middleware
 app.use(cors(corsOptions));
+
+// Apply global rate limiting to all API routes
+app.use('/api', apiLimiter);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

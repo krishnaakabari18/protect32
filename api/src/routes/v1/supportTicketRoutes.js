@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const SupportTicketController = require('../../controllers/supportTicketController');
 const TicketReplyController = require('../../controllers/ticketReplyController');
-const { authenticate } = require('../../middleware/auth');
+const { AuthMiddleware } = require('../../middleware/auth'); const authenticate = AuthMiddleware.authenticate;
 
 // All routes require authentication
 router.use(authenticate);

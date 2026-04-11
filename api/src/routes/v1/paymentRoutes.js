@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const PaymentController = require('../../controllers/paymentController');
-const AuthMiddleware = require('../../middleware/auth');
+const { AuthMiddleware } = require('../../middleware/auth');
 
 /**
  * @swagger

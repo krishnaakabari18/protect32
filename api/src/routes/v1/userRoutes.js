@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const UserController = require('../../controllers/userController');
 const { uploadProfilePicture } = require('../../controllers/userController');
+const { AuthMiddleware } = require('../../middleware/auth');
+const auth = AuthMiddleware.authenticate;
 
 /**
  * @swagger
@@ -89,7 +91,7 @@ const { uploadProfilePicture } = require('../../controllers/userController');
  *       500:
  *         description: Server error
  */
-router.post('/', uploadProfilePicture, UserController.createUser);
+router.post('/', auth, uploadProfilePicture, UserController.createUser);
 
 /**
  * @swagger
@@ -122,7 +124,7 @@ router.post('/', uploadProfilePicture, UserController.createUser);
  *                   items:
  *                     $ref: '#/components/schemas/User'
  */
-router.get('/', UserController.getAllUsers);
+router.get('/', auth, UserController.getAllUsers);
 
 /**
  * @swagger
@@ -143,7 +145,7 @@ router.get('/', UserController.getAllUsers);
  *       404:
  *         description: User not found
  */
-router.get('/:id', UserController.getUserById);
+router.get('/:id', auth, UserController.getUserById);
 
 /**
  * @swagger
@@ -185,7 +187,7 @@ router.get('/:id', UserController.getUserById);
  *       404:
  *         description: User not found
  */
-router.put('/:id', uploadProfilePicture, UserController.updateUser);
+router.put('/:id', auth, uploadProfilePicture, UserController.updateUser);
 
 /**
  * @swagger
@@ -206,6 +208,40 @@ router.put('/:id', uploadProfilePicture, UserController.updateUser);
  *       404:
  *         description: User not found
  */
-router.delete('/:id', UserController.deleteUser);
+router.delete('/:id', auth, UserController.deleteUser);
+
+/**
+ * @swagger
+ * /users/profile:
+ *   get:
+ *     summary: Get logged-in user's profile (from JWT token — no ID needed)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User profile
+ *   put:
+ *     summary: Update logged-in user's profile (from JWT token — no ID needed)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Profile updated
+ */
+router.get('/profile', auth, (req, res) => {
+  const { id, first_name, last_name, email, mobile_number, user_type, profile_picture, date_of_birth, address, is_active, is_verified, created_at } = req.user;
+  res.json({ success: true, message: 'Profile fetched', data: { id, first_name, last_name, email, mobile_number, user_type, profile_picture, date_of_birth, address, is_active, is_verified, created_at }, error: null });
+});
+
+router.put('/profile', auth, uploadProfilePicture, async (req, res) => {
+  try {
+    const updated = await UserController.updateUserById(req.user.id, req.body, req.file);
+    res.json({ success: true, message: 'Profile updated', data: updated, error: null });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message, data: null, error: e.message });
+  }
+});
 
 module.exports = router;

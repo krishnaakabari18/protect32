@@ -345,6 +345,11 @@ const UsersCrud = () => {
         setErrors({});
         
         if (user) {
+            // menu_permissions stores names — map to IDs using loaded menus list
+            const existingNames: string[] = Array.isArray(user.menu_permissions) ? user.menu_permissions : [];
+            const menuIds = menus
+                .filter((m: any) => existingNames.includes(m.name))
+                .map((m: any) => m.id);
             setParams({
                 id: user.id,
                 email: user.email,
@@ -357,7 +362,7 @@ const UsersCrud = () => {
                 address: user.address || '',
                 is_active: user.is_active !== false,
                 profile_picture: user.profile_picture || null,
-                menu_permissions: Array.isArray(user.menu_permissions) ? user.menu_permissions : [],
+                menu_permissions: menuIds,
             });
         }
         setAddContactModal(true);

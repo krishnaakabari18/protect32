@@ -130,7 +130,22 @@ class UserController {
       }
 
       delete user.password_hash;
-      
+
+      // Save menu permissions — resolve menu_ids to names, store in users.menu_permissions
+      const menuIds = req.body.menu_ids
+        ? (typeof req.body.menu_ids === 'string' ? JSON.parse(req.body.menu_ids) : req.body.menu_ids)
+        : null;
+
+      if (menuIds && menuIds.length > 0) {
+        const pool = require('../config/database');
+        const menuRows = await pool.query(
+          'SELECT id, name FROM menus WHERE id = ANY($1::uuid[])', [menuIds]
+        );
+        const menuNames = menuRows.rows.map(r => r.name);
+        await pool.query('UPDATE users SET menu_permissions = $1 WHERE id = $2', [menuNames, user.id]);
+        user.menu_permissions = menuNames;
+      }
+
       // Convert relative paths to absolute URLs
       const userWithUrls = convertUserUrls(user);
       
@@ -241,7 +256,28 @@ class UserController {
 
       const user = await UserModel.update(req.params.id, updateData);
       delete user.password_hash;
-      
+
+      // Save menu permissions if menu_ids provided
+      const menuIds = req.body.menu_ids
+        ? (typeof req.body.menu_ids === 'string' ? JSON.parse(req.body.menu_ids) : req.body.menu_ids)
+        : null;
+
+      if (menuIds !== null) {
+        const pool = require('../config/database');
+        if (menuIds.length > 0) {
+          const menuRows = await pool.query(
+            'SELECT id, name FROM menus WHERE id = ANY($1::uuid[])', [menuIds]
+          );
+          const menuNames = menuRows.rows.map(r => r.name);
+          await pool.query('UPDATE users SET menu_permissions = $1 WHERE id = $2', [menuNames, req.params.id]);
+          user.menu_permissions = menuNames;
+        } else {
+          // Empty array — clear all permissions
+          await pool.query('UPDATE users SET menu_permissions = $1 WHERE id = $2', [[], req.params.id]);
+          user.menu_permissions = [];
+        }
+      }
+
       // Convert relative paths to absolute URLs
       const userWithUrls = convertUserUrls(user);
       

@@ -161,15 +161,15 @@ class AuthController {
       const { mobile_number, otp_code } = req.body;
 
       if (!mobile_number || !otp_code) {
-        return res.status(400).json({ error: 'mobile_number and otp_code are required' });
+        return res.status(400).json({ success: false, message: 'mobile_number and otp_code are required', data: null, error: 'MISSING_FIELDS' });
       }
 
       const otpRecord = await AuthModel.verifyOTP(mobile_number, otp_code);
       if (!otpRecord) {
-        return res.status(400).json({ error: 'Invalid or expired OTP' });
+        return res.status(400).json({ success: false, message: 'Invalid or expired OTP', data: null, error: 'INVALID_OTP' });
       }
       if (otpRecord.attempts >= 3) {
-        return res.status(400).json({ error: 'Too many attempts. Please request a new OTP' });
+        return res.status(400).json({ success: false, message: 'Too many attempts. Please request a new OTP', data: null, error: 'MAX_ATTEMPTS' });
       }
 
       await AuthModel.markOTPVerified(otpRecord.id);
@@ -179,26 +179,64 @@ class AuthController {
       let user = result.rows[0];
 
       if (!user) {
-        return res.status(404).json({ error: 'User not found. Please request OTP again.' });
+        return res.status(404).json({ success: false, message: 'User not found. Please request OTP again.', data: null, error: 'USER_NOT_FOUND' });
       }
 
       // Mark mobile as verified and set online
       await UserModel.update(user.id, { mobile_verified: true, is_verified: true, is_online: true, last_seen: new Date() });
       user = await UserModel.findById(user.id);
-
       delete user.password_hash;
 
-      const accessToken = JWTUtil.generateAccessToken(user.id, user.user_type);
+      const accessToken  = JWTUtil.generateAccessToken(user.id, user.user_type);
       const refreshToken = JWTUtil.generateRefreshToken(user.id);
-      const deviceInfo = { userAgent: req.headers['user-agent'] || 'unknown', platform: req.headers['sec-ch-ua-platform'] || 'unknown' };
+      const deviceInfo   = { userAgent: req.headers['user-agent'] || 'unknown', platform: req.headers['sec-ch-ua-platform'] || 'unknown' };
       await AuthModel.createRefreshToken(user.id, refreshToken, deviceInfo, req.ip);
 
+      // Base response data
+      const responseData = { user, accessToken, refreshToken };
+
+      // If patient — enrich with patient profile + active subscription
+      if (user.user_type === 'patient') {
+        // Patient profile
+        const patientRow = await pool.query('SELECT * FROM patients WHERE id = $1', [user.id]);
+        responseData.patient = patientRow.rows[0] || null;
+
+        // Active/latest subscription
+        const subRow = await pool.query(
+          `SELECT razorpay_subscription_id, razorpay_plan_id, plan_title, plan_price,
+                  status, is_active, start_date, expiry_date,
+                  total_count, paid_count, remaining_count, short_url
+           FROM subscriptions
+           WHERE patient_id = $1
+           ORDER BY expiry_date DESC NULLS LAST
+           LIMIT 1`,
+          [user.id]
+        );
+        const sub = subRow.rows[0] || null;
+        responseData.subscription = sub ? {
+          subscription_id:  sub.razorpay_subscription_id,
+          plan_id:          sub.razorpay_plan_id,
+          plan_name:        sub.plan_title,
+          plan_price:       sub.plan_price,
+          status:           sub.status,
+          is_active:        sub.is_active,
+          start_date:       sub.start_date,
+          expiry_date:      sub.expiry_date,
+          total_count:      sub.total_count,
+          paid_count:       sub.paid_count,
+          remaining_count:  sub.remaining_count,
+          payment_link:     sub.short_url,
+        } : null;
+      }
+
       res.json({
+        success: true,
         message: 'OTP verified successfully',
-        data: { user, accessToken, refreshToken }
+        data: responseData,
+        error: null,
       });
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ success: false, message: error.message, data: null, error: error.message });
     }
   }
 

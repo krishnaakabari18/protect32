@@ -240,6 +240,12 @@ class PatientController {
     }
   }
 
+  // Internal helper — fetch patient by ID without HTTP context
+  static async getByIdInternal(id) {
+    const patient = await PatientModel.findById(id);
+    return patient ? convertPatientUrls(patient) : null;
+  }
+
   static async getById(req, res) {
     try {
       const patient = await PatientModel.findById(req.params.id);
@@ -253,6 +259,65 @@ class PatientController {
       res.json({ data: patientWithUrls });
     } catch (error) {
       res.status(500).json({ error: error.message });
+    }
+  }
+
+  // Patient self-service: update own profile using JWT token (no ID in URL)
+  static async updateProfile(req, res) {
+    try {
+      const patientId = req.user.id; // from JWT — never from URL/body
+      const patientData = {};
+
+      const fields = [
+        'emergency_contact_name','emergency_contact_number','insurance_provider','insurance_policy_number',
+        'gender','blood_group','height_cm','weight_kg','occupation','marital_status','nationality',
+        'preferred_language','religion','medical_history','current_medications','allergies',
+        'chronic_conditions','previous_surgeries','family_medical_history','dental_history',
+        'dental_concerns','previous_dental_treatments','dental_anxiety_level','preferred_appointment_time',
+        'special_needs','secondary_phone','work_phone','preferred_contact_method',
+        'address_line_1','address_line_2','city','state','postal_code','country',
+        'insurance_type','insurance_expiry_date','insurance_coverage_amount',
+      ];
+      fields.forEach(f => { if (req.body[f] !== undefined) patientData[f] = req.body[f] || null; });
+
+      // JSON fields
+      ['communication_preferences','appointment_preferences','privacy_settings'].forEach(f => {
+        if (req.body[f] !== undefined) {
+          try { patientData[f] = typeof req.body[f] === 'string' ? JSON.parse(req.body[f]) : req.body[f]; }
+          catch (e) { /* ignore parse error */ }
+        }
+      });
+
+      // Profile photo
+      if (req.files?.profile_photo?.[0]) {
+        patientData.profile_photo = req.files.profile_photo[0].path.replace(/\\/g, '/');
+      }
+
+      if (Object.keys(patientData).length === 0 && !req.body.first_name && !req.body.last_name && !req.body.email && !req.body.mobile_number) {
+        return res.status(400).json({ success: false, message: 'No fields to update', data: null, error: 'NO_FIELDS' });
+      }
+
+      const patient = await PatientModel.update(patientId, patientData);
+      if (!patient) return res.status(404).json({ success: false, message: 'Patient profile not found', data: null, error: 'NOT_FOUND' });
+
+      // Update linked user fields
+      const { first_name, last_name, email, mobile_number } = req.body;
+      if (first_name || last_name || email || mobile_number) {
+        const userFields = []; const userValues = []; let up = 1;
+        if (first_name)    { userFields.push(`first_name = $${up++}`);    userValues.push(first_name); }
+        if (last_name)     { userFields.push(`last_name = $${up++}`);     userValues.push(last_name); }
+        if (email)         { userFields.push(`email = $${up++}`);         userValues.push(email); }
+        if (mobile_number) { userFields.push(`mobile_number = $${up++}`); userValues.push(mobile_number); }
+        if (userFields.length) {
+          userValues.push(patientId);
+          const pool = require('../config/database');
+          await pool.query(`UPDATE users SET ${userFields.join(', ')} WHERE id = $${up}`, userValues);
+        }
+      }
+
+      res.json({ success: true, message: 'Profile updated successfully', data: convertPatientUrls(patient), error: null });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message, data: null, error: error.message });
     }
   }
 

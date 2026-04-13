@@ -92,8 +92,17 @@ const swaggerOptions = {
     persistAuthorization: true,
     displayRequestDuration: true,
     filter: true,
-    tryItOutEnabled: true
-  }
+    tryItOutEnabled: true,
+    defaultModelsExpandDepth: -1,   // hide schema models section
+    defaultModelExpandDepth: 3,
+    docExpansion: 'none',           // start collapsed — click to expand
+    operationsSorter: 'alpha',
+  },
+  customCss: `
+    .swagger-ui .opblock-summary { cursor: pointer; }
+    .swagger-ui .try-out__btn { background: #4CAF50; color: white; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; }
+    .swagger-ui .execute-wrapper .btn.execute { background: #1976D2; }
+  `,
 };
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerOptions));
 

@@ -152,8 +152,93 @@ router.put('/:id', SupportTicketController.updateTicket);
 router.delete('/:id', SupportTicketController.deleteTicket);
 
 // Ticket Replies Routes
+/**
+ * @swagger
+ * /support-tickets/{ticket_id}/replies:
+ *   get:
+ *     summary: Get all replies for a support ticket
+ *     tags: [Support Tickets]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: ticket_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Support ticket UUID
+ *     responses:
+ *       200:
+ *         description: List of replies
+ *   post:
+ *     summary: Add a reply to a support ticket
+ *     tags: [Support Tickets]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: ticket_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [message]
+ *             properties:
+ *               message:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Reply created
+ */
 router.get('/:ticket_id/replies', TicketReplyController.getRepliesByTicket);
 router.post('/:ticket_id/replies', TicketReplyController.createReply);
+
+/**
+ * @swagger
+ * /support-tickets/replies/{id}:
+ *   put:
+ *     summary: Update a ticket reply
+ *     tags: [Support Tickets]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Reply updated
+ *   delete:
+ *     summary: Delete a ticket reply
+ *     tags: [Support Tickets]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Reply deleted
+ */
 router.put('/replies/:id', TicketReplyController.updateReply);
 router.delete('/replies/:id', TicketReplyController.deleteReply);
 

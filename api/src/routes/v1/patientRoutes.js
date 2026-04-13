@@ -97,6 +97,332 @@ router.get('/', AuthMiddleware.authenticate, PatientController.getAll);
  *       200:
  *         description: List of my family members
  */
+
+/**
+ * @swagger
+ * /patients/profile:
+ *   get:
+ *     summary: Get logged-in patient's profile with active subscription info
+ *     tags: [Patients]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Patient profile with subscription details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:         { type: object }
+ *                     patient:      { type: object }
+ *                     subscription: { type: object, nullable: true }
+ *   put:
+ *     summary: Update logged-in patient's profile (all fields via form-data)
+ *     tags: [Patients]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               first_name:
+ *                 type: string
+ *                 description: User first name
+ *               last_name:
+ *                 type: string
+ *                 description: User last name
+ *               email:
+ *                 type: string
+ *                 description: User email
+ *               mobile_number:
+ *                 type: string
+ *                 description: Mobile number
+ *               date_of_birth:
+ *                 type: string
+ *                 format: date
+ *                 description: "Date of birth (YYYY-MM-DD)"
+ *               address:
+ *                 type: string
+ *                 description: User address
+ *               profile_photo:
+ *                 type: string
+ *                 format: binary
+ *                 description: "Profile photo (JPEG/PNG, max 5MB)"
+ *               gender:
+ *                 type: string
+ *                 enum: [Male, Female, Other]
+ *               blood_group:
+ *                 type: string
+ *                 enum: ["A+","A-","B+","B-","AB+","AB-","O+","O-"]
+ *               height_cm:
+ *                 type: integer
+ *                 description: Height in cm
+ *               weight_kg:
+ *                 type: number
+ *                 description: Weight in kg
+ *               occupation:
+ *                 type: string
+ *               marital_status:
+ *                 type: string
+ *                 enum: [Single, Married, Divorced, Widowed, Separated]
+ *               nationality:
+ *                 type: string
+ *               preferred_language:
+ *                 type: string
+ *               religion:
+ *                 type: string
+ *               secondary_phone:
+ *                 type: string
+ *               work_phone:
+ *                 type: string
+ *               preferred_contact_method:
+ *                 type: string
+ *                 enum: [phone, email, sms, whatsapp]
+ *               address_line_1:
+ *                 type: string
+ *               address_line_2:
+ *                 type: string
+ *               city:
+ *                 type: string
+ *               state:
+ *                 type: string
+ *               postal_code:
+ *                 type: string
+ *               country:
+ *                 type: string
+ *                 default: India
+ *               emergency_contact_name:
+ *                 type: string
+ *               emergency_contact_number:
+ *                 type: string
+ *               insurance_provider:
+ *                 type: string
+ *               insurance_policy_number:
+ *                 type: string
+ *               insurance_type:
+ *                 type: string
+ *                 enum: [Individual, Family, Group, Government]
+ *               insurance_expiry_date:
+ *                 type: string
+ *                 format: date
+ *               insurance_coverage_amount:
+ *                 type: number
+ *               medical_history:
+ *                 type: string
+ *               current_medications:
+ *                 type: string
+ *               allergies:
+ *                 type: string
+ *               chronic_conditions:
+ *                 type: string
+ *               previous_surgeries:
+ *                 type: string
+ *               family_medical_history:
+ *                 type: string
+ *               dental_history:
+ *                 type: string
+ *               dental_concerns:
+ *                 type: string
+ *               previous_dental_treatments:
+ *                 type: string
+ *               dental_anxiety_level:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 10
+ *               preferred_appointment_time:
+ *                 type: string
+ *                 enum: [morning, afternoon, evening]
+ *               special_needs:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Profile updated — returns updated user, patient and subscription
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *                 message: { type: string }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:         { type: object }
+ *                     patient:      { type: object }
+ *                     subscription: { type: object, nullable: true }
+ */
+router.get('/profile', AuthMiddleware.authenticate, async (req, res) => {
+  try {
+    const pool = require('../../config/database');
+    const userId = req.user.id;
+
+    // 1. Patient profile
+    const patient = await PatientController.getByIdInternal(userId);
+    if (!patient) return res.status(404).json({ success: false, message: 'Patient profile not found', data: null, error: 'NOT_FOUND' });
+
+    // 2. User info (name, email, photo)
+    const userRow = await pool.query(
+      'SELECT id, first_name, last_name, email, mobile_number, profile_picture, user_type, date_of_birth, address, is_verified, created_at FROM users WHERE id = $1',
+      [userId]
+    );
+    const user = userRow.rows[0] || {};
+
+    // 3. Active subscription (latest active or future plan)
+    const subRow = await pool.query(
+      `SELECT s.id, s.razorpay_subscription_id, s.razorpay_plan_id, s.plan_title, s.plan_price,
+              s.status, s.is_active, s.start_date, s.expiry_date, s.total_count,
+              s.paid_count, s.remaining_count, s.short_url
+       FROM subscriptions s
+       WHERE s.patient_id = $1
+       ORDER BY s.expiry_date DESC NULLS LAST
+       LIMIT 1`,
+      [userId]
+    );
+    const subscription = subRow.rows[0] || null;
+
+    res.json({
+      success: true,
+      message: 'Profile fetched successfully',
+      data: {
+        user: {
+          id: user.id,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          email: user.email,
+          mobile_number: user.mobile_number,
+          profile_picture: user.profile_picture,
+          user_type: user.user_type,
+          date_of_birth: user.date_of_birth,
+          address: user.address,
+          is_verified: user.is_verified,
+          member_since: user.created_at,
+        },
+        patient,
+        subscription: subscription ? {
+          subscription_id: subscription.razorpay_subscription_id,
+          plan_id: subscription.razorpay_plan_id,
+          plan_name: subscription.plan_title,
+          plan_price: subscription.plan_price,
+          status: subscription.status,
+          is_active: subscription.is_active,
+          start_date: subscription.start_date,
+          expiry_date: subscription.expiry_date,
+          total_count: subscription.total_count,
+          paid_count: subscription.paid_count,
+          remaining_count: subscription.remaining_count,
+          payment_link: subscription.short_url,
+        } : null,
+      },
+      error: null,
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message, data: null, error: e.message });
+  }
+});
+
+router.put('/profile', AuthMiddleware.authenticate, uploadPatientPhotos, async (req, res) => {
+  try {
+    const pool = require('../../config/database');
+    const PatientModel = require('../../models/patientModel');
+    const { convertPatientUrls } = require('../../utils/urlHelper');
+    const userId = req.user.id;
+
+    // 1. Update users table
+    const userFields = []; const userValues = []; let up = 1;
+    const { first_name, last_name, email, mobile_number, date_of_birth, address } = req.body;
+    if (first_name)    { userFields.push(`first_name = $${up++}`);    userValues.push(first_name); }
+    if (last_name)     { userFields.push(`last_name = $${up++}`);     userValues.push(last_name); }
+    if (email)         { userFields.push(`email = $${up++}`);         userValues.push(email); }
+    if (mobile_number) { userFields.push(`mobile_number = $${up++}`); userValues.push(mobile_number); }
+    if (date_of_birth) { userFields.push(`date_of_birth = $${up++}`); userValues.push(date_of_birth); }
+    if (address)       { userFields.push(`address = $${up++}`);       userValues.push(address); }
+    if (userFields.length) {
+      userValues.push(userId);
+      await pool.query(`UPDATE users SET ${userFields.join(', ')} WHERE id = $${up}`, userValues);
+    }
+
+    // 2. Build patient data
+    const patientData = {};
+    const patientFields = [
+      'gender','blood_group','height_cm','weight_kg','occupation',
+      'marital_status','nationality','preferred_language','religion',
+      'secondary_phone','work_phone','preferred_contact_method',
+      'address_line_1','address_line_2','city','state','postal_code','country',
+      'emergency_contact_name','emergency_contact_number',
+      'insurance_provider','insurance_policy_number','insurance_type',
+      'insurance_expiry_date','insurance_coverage_amount',
+      'medical_history','current_medications','allergies',
+      'chronic_conditions','previous_surgeries','family_medical_history',
+      'dental_history','dental_concerns','previous_dental_treatments',
+      'dental_anxiety_level','preferred_appointment_time','special_needs',
+    ];
+    patientFields.forEach(f => {
+      if (req.body[f] !== undefined) patientData[f] = req.body[f] === '' ? null : req.body[f];
+    });
+    ['communication_preferences','appointment_preferences','privacy_settings'].forEach(f => {
+      if (req.body[f] !== undefined) {
+        try { patientData[f] = typeof req.body[f] === 'string' ? JSON.parse(req.body[f]) : req.body[f]; } catch {}
+      }
+    });
+    if (req.files && req.files.profile_photo && req.files.profile_photo[0]) {
+      patientData.profile_photo = req.files.profile_photo[0].path.replace(/\\/g, '/');
+    }
+
+    // 3. Update patient record
+    let updatedPatient = null;
+    if (Object.keys(patientData).length > 0) {
+      updatedPatient = await PatientModel.update(userId, patientData);
+      updatedPatient = convertPatientUrls(updatedPatient);
+    }
+
+    // 4. Fetch updated user
+    const userRow = await pool.query(
+      `SELECT id, first_name, last_name, email, mobile_number, profile_picture,
+              user_type, date_of_birth, address, is_verified, created_at
+       FROM users WHERE id = $1`, [userId]
+    );
+    const updatedUser = userRow.rows[0] || {};
+
+    // 5. Fetch active subscription
+    const subRow = await pool.query(
+      `SELECT razorpay_subscription_id, razorpay_plan_id, plan_title, plan_price,
+              status, is_active, start_date, expiry_date, remaining_count
+       FROM subscriptions WHERE patient_id = $1
+       ORDER BY expiry_date DESC NULLS LAST LIMIT 1`, [userId]
+    );
+    const sub = subRow.rows[0] || null;
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: {
+        user: updatedUser,
+        patient: updatedPatient,
+        subscription: sub ? {
+          subscription_id: sub.razorpay_subscription_id,
+          plan_id:         sub.razorpay_plan_id,
+          plan_name:       sub.plan_title,
+          plan_price:      sub.plan_price,
+          status:          sub.status,
+          is_active:       sub.is_active,
+          start_date:      sub.start_date,
+          expiry_date:     sub.expiry_date,
+          remaining_count: sub.remaining_count,
+        } : null,
+      },
+      error: null,
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message, data: null, error: e.message });
+  }
+});
 router.get('/my/family-members', AuthMiddleware.authenticate, PatientController.getMyFamilyMembers);
 
 /**

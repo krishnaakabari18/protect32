@@ -293,6 +293,41 @@ router.delete('/:id', auth, ProviderController.deleteProvider);
 router.delete('/:id/images/:imageType', auth, ProviderController.deleteProviderImage);
 
 // Get procedures assigned to a specific provider
+/**
+ * @swagger
+ * /providers/{id}/procedures:
+ *   get:
+ *     summary: Get procedures assigned to a specific provider
+ *     tags: [Providers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Provider UUID
+ *     responses:
+ *       200:
+ *         description: List of procedures for the provider
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:        { type: string }
+ *                       name:      { type: string }
+ *                       category:  { type: string }
+ *                       price:     { type: number }
+ *       404:
+ *         description: Provider not found
+ */
 router.get('/:id/procedures', auth, ProviderController.getProviderProcedures);
 
 module.exports = router;

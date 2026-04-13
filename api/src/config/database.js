@@ -1,4 +1,10 @@
-const { Pool } = require('pg');
+const { Pool, types } = require('pg');
+
+// Return date columns as plain strings (YYYY-MM-DD) instead of JS Date objects
+// This prevents "2026-04-12T18:30:00.000Z" timezone conversion issues
+types.setTypeParser(1082, val => val);  // date
+types.setTypeParser(1114, val => val);  // timestamp without timezone
+types.setTypeParser(1184, val => val);  // timestamp with timezone
 
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',

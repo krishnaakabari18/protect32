@@ -14,6 +14,7 @@ interface User {
     email: string;
     mobile_number: string;
     user_type: string;
+    profile_picture?: string;
 }
 
 interface Patient {
@@ -203,6 +204,7 @@ const PatientsCrud = () => {
     });
 
     const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
+    const [photoPreview, setPhotoPreview] = useState<string | null>(null);
     const [familyPhoto, setFamilyPhoto] = useState<File | null>(null);
     const [touched, setTouched] = useState<Record<string, boolean>>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -492,6 +494,13 @@ const PatientsCrud = () => {
             appointment_preferences: patient.appointment_preferences || {},
             privacy_settings: patient.privacy_settings || {}
         });
+        // Show existing profile photo preview
+        if (patient.profile_photo) {
+            setPhotoPreview(buildMediaUrl(patient.profile_photo));
+        } else {
+            setPhotoPreview(null);
+        }
+        setProfilePhoto(null);
         setIsOpen(true);
     };
 
@@ -588,6 +597,7 @@ const PatientsCrud = () => {
         });
         setEditingPatient(null);
         setProfilePhoto(null);
+        setPhotoPreview(null);
         setActiveTab('basic');
     };
 
@@ -881,9 +891,36 @@ const PatientsCrud = () => {
                 </label>
                 <SearchableSelect
                     name="id"
-                    options={users.map(u => ({ value: u.id, label: `${u.first_name} ${u.last_name} (${u.email || u.mobile_number})` }))}
+                    options={users.map(u => ({
+                        value: u.id,
+                        label: `${u.first_name} ${u.last_name} (${u.email || u.mobile_number})`,
+                        meta: {
+                            first_name: u.first_name,
+                            last_name: u.last_name,
+                            email: u.email,
+                            profile_picture: u.profile_picture,
+                        }
+                    }))}
                     value={formData.id || ''}
-                    onChange={val => handleInputChange({ target: { name: 'id', value: val, type: 'select' } } as any)}
+                    onChange={(val, opt) => {
+                        handleInputChange({ target: { name: 'id', value: val, type: 'select' } } as any);
+                        if (opt?.meta) {
+                            setFormData(prev => ({
+                                ...prev,
+                                id: val,
+                                first_name: opt.meta.first_name || '',
+                                last_name: opt.meta.last_name || '',
+                                email: opt.meta.email || '',
+                            } as any));
+                            // Show existing profile picture preview
+                            if (opt.meta.profile_picture) {
+                                const url = buildMediaUrl(opt.meta.profile_picture);
+                                setPhotoPreview(url || null);
+                            } else {
+                                setPhotoPreview(null);
+                            }
+                        }
+                    }}
                     placeholder="Select a user..."
                     disabled={!!editingPatient}
                     className={touched.id && errors.id ? 'border-red-500' : ''}
@@ -909,10 +946,24 @@ const PatientsCrud = () => {
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Profile Photo</label>
+                {/* Show existing/selected photo preview */}
+                {(photoPreview || profilePhoto) && (
+                    <div className="mb-2">
+                        <img
+                            src={profilePhoto ? URL.createObjectURL(profilePhoto) : photoPreview!}
+                            alt="Profile"
+                            className="w-16 h-16 rounded-full object-cover border-2 border-primary"
+                        />
+                    </div>
+                )}
                 <input
                     type="file"
                     accept="image/*"
-                    onChange={(e) => setProfilePhoto(e.target.files?.[0] || null)}
+                    onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        setProfilePhoto(file);
+                        if (file) setPhotoPreview(URL.createObjectURL(file));
+                    }}
                     className="form-input"
                 />
             </div>

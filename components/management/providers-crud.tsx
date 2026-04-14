@@ -24,7 +24,6 @@ const TABS = [
 
 const FIELD_TAB: Record<string, string> = {
     id: 'provider', date_of_birth: 'provider',
-    pincode: 'provider',
     years_of_experience: 'provider', state_dental_council_reg_number: 'provider',
     procedure_ids: 'provider',
     clinic_0_pan_no: 'clinic', clinic_0_gst_number: 'clinic', clinic_0_name: 'clinic', clinic_0_contact_number: 'clinic',
@@ -70,7 +69,7 @@ const DEFAULT_CLINIC = {
 };
 
 const DEFAULT_VALUES = {
-    id: '', date_of_birth: '', pincode: '',
+    id: '', date_of_birth: '',
     first_name: '', last_name: '',
     whatsapp_number: '', same_as_whatsapp: false,
     email: '', years_of_experience: 0, state_dental_council_reg_number: '',
@@ -230,7 +229,6 @@ const ProvidersCRUD = () => {
         
         if (modalMode === 'create' && !params.id) e.id = 'Please select a user';
         if (!params.date_of_birth) e.date_of_birth = 'Date of birth is required';
-        if (!params.pincode) e.pincode = 'Pincode is required';
         if (params.years_of_experience === '' || params.years_of_experience === null || params.years_of_experience === undefined) e.years_of_experience = 'Years of experience is required';
         if (!params.state_dental_council_reg_number) e.state_dental_council_reg_number = 'Registration number is required';
         
@@ -438,7 +436,7 @@ const ProvidersCRUD = () => {
     const hb = (e: any) => {
         const { name } = e.target; const val = params[name];
         setTouched(p => ({ ...p, [name]: true }));
-        const req: Record<string,string> = { date_of_birth:'Date of birth is required', pincode:'Pincode is required', years_of_experience:'Years of experience is required', state_dental_council_reg_number:'Registration number is required' };
+        const req: Record<string,string> = { date_of_birth:'Date of birth is required', years_of_experience:'Years of experience is required', state_dental_council_reg_number:'Registration number is required' };
         const ne = { ...errors };
         if (name === 'id') { if (modalMode === 'create' && !val) ne.id = 'Please select a user'; else delete ne.id; }
         else if (req[name]) { if (!val && val !== 0) ne[name] = req[name]; else delete ne[name]; }
@@ -552,11 +550,6 @@ const ProvidersCRUD = () => {
                 <label htmlFor="date_of_birth">Date of Birth <span className="text-red-500">*</span></label>
                 <input id="date_of_birth" name="date_of_birth" type="date" className={`form-input ${errCls('date_of_birth')}`} value={params.date_of_birth} onChange={cv} onBlur={hb} disabled={isView} />
                 {errMsg('date_of_birth')}
-            </div>
-            <div>
-                <label htmlFor="pincode">Pincode <span className="text-red-500">*</span></label>
-                <input id="pincode" name="pincode" type="text" className={`form-input ${errCls('pincode')}`} value={params.pincode} onChange={cv} onBlur={hb} disabled={isView} placeholder="Enter pincode" />
-                {errMsg('pincode')}
             </div>
             <div>
                 <label htmlFor="years_of_experience">Years of Experience <span className="text-red-500">*</span></label>
@@ -688,6 +681,11 @@ const ProvidersCRUD = () => {
             <div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <div>
+                        <label>Clinic Name <span className="text-red-500">*</span></label>
+                        <input type="text" name="clinic_0_name" className={`form-input ${ef('name')}`} value={clinic.name} onChange={e => updateClinic('name', e.target.value)} onBlur={e => hcb(0,'name',e.target.value)} disabled={isView} />
+                        {em('name')}
+                    </div>
+                    <div>
                         <label>Pan No <span className="text-red-500">*</span></label>
                         <input type="text" name="clinic_0_pan_no" className={`form-input ${ef('pan_no')}`} value={clinic.pan_no} onChange={e => updateClinic('pan_no', e.target.value)} onBlur={e => hcb(0,'pan_no',e.target.value)} disabled={isView} placeholder="e.g. ABCDE1234F" />
                         {em('pan_no')}
@@ -697,11 +695,7 @@ const ProvidersCRUD = () => {
                         <input type="text" name="clinic_0_gst_number" className={`form-input ${ef('gst_number')}`} value={clinic.gst_number || ''} onChange={e => updateClinic('gst_number', e.target.value)} onBlur={e => hcb(0,'gst_number',e.target.value)} disabled={isView} placeholder="e.g. 22ABCDE1234F1Z5" />
                         {em('gst_number')}
                     </div>
-                    <div>
-                        <label>Clinic Name <span className="text-red-500">*</span></label>
-                        <input type="text" name="clinic_0_name" className={`form-input ${ef('name')}`} value={clinic.name} onChange={e => updateClinic('name', e.target.value)} onBlur={e => hcb(0,'name',e.target.value)} disabled={isView} />
-                        {em('name')}
-                    </div>
+                    
                     <div>
                         <label>Contact Number <span className="text-red-500">*</span></label>
                         <input type="text" name="clinic_0_contact_number" className={`form-input ${ef('contact_number')}`} value={clinic.contact_number} onChange={e => updateClinic('contact_number', e.target.value)} onBlur={e => hcb(0,'contact_number',e.target.value)} disabled={isView} />

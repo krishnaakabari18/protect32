@@ -946,16 +946,6 @@ const PatientsCrud = () => {
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Profile Photo</label>
-                {/* Show existing/selected photo preview */}
-                {(photoPreview || profilePhoto) && (
-                    <div className="mb-2">
-                        <img
-                            src={profilePhoto ? URL.createObjectURL(profilePhoto) : photoPreview!}
-                            alt="Profile"
-                            className="w-16 h-16 rounded-full object-cover border-2 border-primary"
-                        />
-                    </div>
-                )}
                 <input
                     type="file"
                     accept="image/*"
@@ -966,6 +956,16 @@ const PatientsCrud = () => {
                     }}
                     className="form-input"
                 />
+                {/* Show existing/selected photo preview */}
+                {(photoPreview || profilePhoto) && (
+                    <div className="mt-2">
+                        <img
+                            src={profilePhoto ? URL.createObjectURL(profilePhoto) : photoPreview!}
+                            alt="Profile"
+                            className="w-16 h-16 rounded-full object-cover border-2 border-primary"
+                        />
+                    </div>
+                )}
             </div>
 
             <div>

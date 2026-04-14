@@ -32,6 +32,7 @@ const dashboardRoutes = require('./dashboardRoutes');
 const medicationAIRoutes = require('./medicationAIRoutes');
 const subscriptionRoutes = require('./subscriptionRoutes');
 const inquiryRoutes = require('./inquiryRoutes');
+const providerDashboardRoutes = require('./providerDashboardRoutes');
 
 
 // Mount routes
@@ -65,5 +66,6 @@ router.use('/dashboard', dashboardRoutes);
 router.use('/medication-ai', medicationAIRoutes);
 router.use('/subscriptions', subscriptionRoutes);
 router.use('/inquiries', inquiryRoutes);
+router.use('/provider-dashboard', providerDashboardRoutes);
 
 module.exports = router;

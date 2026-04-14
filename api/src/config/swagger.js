@@ -75,6 +75,7 @@ const options = {
       { name: 'Procedures', description: 'Procedure master management' },
       { name: 'Subscriptions', description: 'Razorpay subscription management' },
       { name: 'Inquiries', description: 'Inquiry management' },
+      { name: 'Provider Dashboard', description: 'Provider-specific dashboard APIs' },
     ]
   },
   apis: ['./src/routes/v1/*.js']

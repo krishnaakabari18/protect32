@@ -1,31 +1,29 @@
 const pool = require('../config/database');
 
-// Generate appointment code: p32-YYYYMMDD-XXX (using TODAY'S date, not appointment date)
+// Generate appointment code: p32-YYYYMMDD-XXX (date + globally sequential number)
 async function generateAppointmentCode() {
-  // Use today's date
   const today = new Date();
-  const year = today.getFullYear();
+  const year  = today.getFullYear();
   const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
-  const dateStr = `${year}${month}${day}`; // YYYYMMDD
-  
+  const day   = String(today.getDate()).padStart(2, '0');
+  const dateStr = `${year}${month}${day}`;
+
   try {
-    // Get all appointments with today's code prefix
+    // Get the highest sequence number across ALL appointments (not just today)
     const result = await pool.query(
-      `SELECT appointment_code FROM appointments 
-       WHERE appointment_code LIKE $1
-       ORDER BY appointment_code DESC
-       LIMIT 1`,
-      [`p32-${dateStr}-%`]
+      `SELECT appointment_code FROM appointments
+       WHERE appointment_code ~ '^p32-[0-9]+-[0-9]+$'
+       ORDER BY CAST(SPLIT_PART(appointment_code, '-', 3) AS INTEGER) DESC
+       LIMIT 1`
     );
-    
+
     let nextSeq = 1;
     if (result.rows.length > 0) {
       const lastCode = result.rows[0].appointment_code;
-      const lastSeq = parseInt(lastCode.split('-')[2]) || 0;
-      nextSeq = lastSeq + 1;
+      const parts = lastCode.split('-');
+      nextSeq = (parseInt(parts[2]) || 0) + 1;
     }
-    
+
     return `p32-${dateStr}-${nextSeq.toString().padStart(3, '0')}`;
   } catch (error) {
     console.error('Error generating appointment code:', error);
@@ -37,7 +35,8 @@ class AppointmentModel {
   static async create(appointmentData) {
     const {
       patient_id, provider_id, operatory_id, appointment_date,
-      start_time, end_time, service, notes, status, cancellation_reason
+      start_time, end_time, service, notes, status, cancellation_reason,
+      procedure_items, estimated_cost
     } = appointmentData;
 
     const appointment_code = await generateAppointmentCode(appointment_date);
@@ -45,11 +44,13 @@ class AppointmentModel {
     const result = await pool.query(
       `INSERT INTO appointments
          (patient_id, provider_id, operatory_id, appointment_date, start_time, end_time,
-          service, notes, status, cancellation_reason, appointment_code)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+          service, notes, status, cancellation_reason, appointment_code, procedure_items, estimated_cost)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
        RETURNING *`,
       [patient_id, provider_id, operatory_id || null, appointment_date, start_time, end_time,
-       service, notes || null, status || 'Upcoming', cancellation_reason || null, appointment_code]
+       service, notes || null, status || 'Upcoming', cancellation_reason || null, appointment_code,
+       procedure_items ? JSON.stringify(procedure_items) : '[]',
+       estimated_cost || 0]
     );
     return result.rows[0];
   }
@@ -60,6 +61,7 @@ class AppointmentModel {
           a.appointment_code,
           TO_CHAR(a.appointment_date, 'YYYY-MM-DD') as appointment_date,
           a.start_time, a.end_time, a.service, a.status, a.notes, a.cancellation_reason,
+          a.procedure_items, a.estimated_cost,
           a.created_at, a.updated_at,
           u1.first_name as patient_first_name, u1.last_name as patient_last_name,
           u2.first_name as provider_first_name, u2.last_name as provider_last_name,
@@ -141,6 +143,11 @@ class AppointmentModel {
 
     // duration_minutes is calculated, not stored; appointment_code is immutable
     const { duration_minutes, appointment_code, ...dataToUpdate } = appointmentData;
+
+    // Serialize procedure_items array to JSON
+    if (dataToUpdate.procedure_items && Array.isArray(dataToUpdate.procedure_items)) {
+      dataToUpdate.procedure_items = JSON.stringify(dataToUpdate.procedure_items);
+    }
 
     Object.keys(dataToUpdate).forEach(key => {
       if (dataToUpdate[key] !== undefined) {

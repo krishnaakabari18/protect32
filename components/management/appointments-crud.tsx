@@ -12,6 +12,17 @@ import Swal from 'sweetalert2';
 import { API_ENDPOINTS } from '@/config/api.config';
 import SearchableSelect from '@/components/ui/searchable-select';
 
+import IconPlus from '@/components/icon/icon-plus';
+
+interface ProcedureRow {
+    procedure_id: string;
+    procedure_name: string;
+    price: string;
+    discount: string;
+    final_price: string;
+}
+const emptyProcRow = (): ProcedureRow => ({ procedure_id: '', procedure_name: '', price: '', discount: '0', final_price: '' });
+
 const AppointmentsCRUD = () => {
     const [addModal, setAddModal] = useState(false);
     const [viewMode, setViewMode] = useState('list');
@@ -53,51 +64,81 @@ const AppointmentsCRUD = () => {
     const [touched, setTouched] = useState<Record<string, boolean>>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    // Generate appointment code: p32-YYYYMMDD-001 (using TODAY'S date, not appointment date)
-    const generateCode = async () => {
-        // Use today's date for the code
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const day = String(today.getDate()).padStart(2, '0');
-        const todayStr = `${year}-${month}-${day}`;
-        const dateStr = `${year}${month}${day}`; // YYYYMMDD
-        
+    // Procedure rows state
+    const [procedureRows, setProcedureRows] = useState<ProcedureRow[]>([emptyProcRow()]);
+    const [providerProcedures, setProviderProcedures] = useState<any[]>([]);
+
+    const fetchProviderProcedures = async (providerId: string) => {
+        if (!providerId) { setProviderProcedures([]); return; }
         try {
-            // Fetch appointments created today to get the next sequence number
             const token = localStorage.getItem('auth_token');
-            const response = await fetch(`${API_ENDPOINTS.appointments}?limit=1000`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'ngrok-skip-browser-warning': 'true',
-                },
+            const res = await fetch(`${API_ENDPOINTS.dropdowns}/provider-procedures?parent_id=${providerId}`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
             });
-            
+            const data = await res.json();
+            if (res.ok) setProviderProcedures(data.data || []);
+        } catch (e) { console.error(e); }
+    };
+
+    const updateProcRow = (i: number, field: keyof ProcedureRow, val: string) => {
+        setProcedureRows(prev => {
+            const next = [...prev];
+            const row = { ...next[i], [field]: val };
+            if (field === 'price' || field === 'discount') {
+                const price = parseFloat(field === 'price' ? val : row.price) || 0;
+                const disc  = parseFloat(field === 'discount' ? val : row.discount) || 0;
+                row.final_price = (price - price * disc / 100).toFixed(2);
+            }
+            next[i] = row;
+            return next;
+        });
+    };
+
+    const handleProcSelect = (i: number, procedureId: string, opt?: any) => {
+        const price = opt?.meta?.price != null ? String(opt.meta.price) : '';
+        const priceNum = parseFloat(price) || 0;
+        setProcedureRows(prev => {
+            const next = [...prev];
+            const disc = parseFloat(next[i].discount) || 0;
+            next[i] = {
+                procedure_id: procedureId,
+                procedure_name: opt?.label || '',
+                price,
+                discount: next[i].discount || '0',
+                final_price: priceNum > 0 ? (priceNum - priceNum * disc / 100).toFixed(2) : '',
+            };
+            return next;
+        });
+    };
+
+    const totalProcPrice = procedureRows.reduce((s, r) => s + (parseFloat(r.final_price) || 0), 0);
+
+    // Generate appointment code: p32-YYYYMMDD-XXX (date + globally sequential number)
+    const generateCode = async () => {
+        const today = new Date();
+        const year  = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day   = String(today.getDate()).padStart(2, '0');
+        const dateStr = `${year}${month}${day}`;
+        try {
+            const token = localStorage.getItem('auth_token');
+            const response = await fetch(`${API_ENDPOINTS.appointments}?limit=10000`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+            });
             if (response.ok) {
                 const data = await response.json();
-                const allAppointments = data.data || [];
-                
-                // Find the highest sequence number for today's codes
-                let maxSequence = 0;
-                const prefix = `p32-${dateStr}-`;
-                
-                allAppointments.forEach((apt: any) => {
-                    if (apt.appointment_code && apt.appointment_code.startsWith(prefix)) {
-                        const seqStr = apt.appointment_code.split('-')[2];
-                        const seq = parseInt(seqStr) || 0;
-                        if (seq > maxSequence) maxSequence = seq;
+                const all = data.data || [];
+                let maxSeq = 0;
+                all.forEach((apt: any) => {
+                    if (apt.appointment_code && apt.appointment_code.startsWith('p32-')) {
+                        const parts = apt.appointment_code.split('-');
+                        const num = parseInt(parts[parts.length - 1]) || 0;
+                        if (num > maxSeq) maxSeq = num;
                     }
                 });
-                
-                // Next sequence number
-                const nextSeq = (maxSequence + 1).toString().padStart(3, '0');
-                return `p32-${dateStr}-${nextSeq}`;
+                return `p32-${dateStr}-${(maxSeq + 1).toString().padStart(3, '0')}`;
             }
-        } catch (error) {
-            console.error('Error generating code:', error);
-        }
-        
-        // Fallback: use 001
+        } catch (e) { console.error(e); }
         return `p32-${dateStr}-001`;
     };
 
@@ -247,7 +288,17 @@ const AppointmentsCRUD = () => {
                     'Authorization': `Bearer ${token}`,
                     'ngrok-skip-browser-warning': 'true',
                 },
-                body: JSON.stringify(params),
+                body: JSON.stringify({
+                    ...params,
+                    procedure_items: procedureRows.filter(r => r.procedure_id).map(r => ({
+                        procedure_id: r.procedure_id,
+                        procedure_name: r.procedure_name,
+                        price: parseFloat(r.price) || 0,
+                        discount: parseFloat(r.discount) || 0,
+                        final_price: parseFloat(r.final_price) || 0,
+                    })),
+                    estimated_cost: totalProcPrice.toFixed(2),
+                }),
             });
 
             const data = await response.json();
@@ -266,49 +317,48 @@ const AppointmentsCRUD = () => {
         }
     };
 
-    const openModal = (mode: 'create' | 'edit' | 'view', item: any = null) => {
+    const openModal = async (mode: 'create' | 'edit' | 'view', item: any = null) => {
         setModalMode(mode);
         setTouched({});
         setErrors({});
         const json = JSON.parse(JSON.stringify(defaultValues));
-        
+
         if (item) {
-            Object.keys(item).forEach(key => {
-                if (json.hasOwnProperty(key)) {
-                    json[key] = item[key];
-                }
-            });
-            
-            // Format date for input field (YYYY-MM-DD)
+            Object.keys(item).forEach(key => { if (json.hasOwnProperty(key)) json[key] = item[key]; });
             if (item.appointment_date) {
-                // Extract date portion and ensure it's in YYYY-MM-DD format
                 let dateStr = item.appointment_date;
-                if (dateStr.includes('T')) {
-                    dateStr = dateStr.split('T')[0];
-                }
+                if (dateStr.includes('T')) dateStr = dateStr.split('T')[0];
                 json.appointment_date = dateStr;
             }
-            
-            // Ensure duration_minutes is set (either from item or calculate from times)
             if (item.duration_minutes) {
                 json.duration_minutes = parseInt(item.duration_minutes);
             } else if (item.start_time && item.end_time) {
-                // Calculate duration from start and end times
-                const [startHour, startMin] = item.start_time.split(':').map(Number);
-                const [endHour, endMin] = item.end_time.split(':').map(Number);
-                const durationMins = (endHour * 60 + endMin) - (startHour * 60 + startMin);
-                json.duration_minutes = durationMins;
+                const [sh, sm] = item.start_time.split(':').map(Number);
+                const [eh, em] = item.end_time.split(':').map(Number);
+                json.duration_minutes = (eh * 60 + em) - (sh * 60 + sm);
             }
-            
-            // Format time fields (HH:MM format)
-            if (item.start_time) {
-                json.start_time = item.start_time.substring(0, 5); // Get HH:MM from HH:MM:SS
+            if (item.start_time) json.start_time = item.start_time.substring(0, 5);
+            if (item.end_time)   json.end_time   = item.end_time.substring(0, 5);
+
+            // Load procedure rows
+            if (item.provider_id) await fetchProviderProcedures(item.provider_id);
+            if (item.procedure_items) {
+                const rows = typeof item.procedure_items === 'string' ? JSON.parse(item.procedure_items) : item.procedure_items;
+                setProcedureRows(rows.length > 0 ? rows.map((r: any) => ({
+                    procedure_id: r.procedure_id || '',
+                    procedure_name: r.procedure_name || '',
+                    price: String(r.price || ''),
+                    discount: String(r.discount || '0'),
+                    final_price: String(r.final_price || r.price || ''),
+                })) : [emptyProcRow()]);
+            } else {
+                setProcedureRows([emptyProcRow()]);
             }
-            if (item.end_time) {
-                json.end_time = item.end_time.substring(0, 5);
-            }
+        } else {
+            setProcedureRows([emptyProcRow()]);
+            setProviderProcedures([]);
         }
-        
+
         setParams(json);
         setAddModal(true);
     };
@@ -528,7 +578,7 @@ const AppointmentsCRUD = () => {
                                             <th>Date</th>
                                             <th>Time</th>
                                             <th>Duration</th>
-                                            <th>Service</th>
+                                            <th>Amount (₹)</th>
                                             <th>Status</th>
                                             <th className="!text-center">Actions</th>
                                         </tr>
@@ -551,7 +601,7 @@ const AppointmentsCRUD = () => {
                                                 <td>{formatDate(item.appointment_date)}</td>
                                                 <td>{item.start_time?.substring(0, 5)} - {item.end_time?.substring(0, 5)}</td>
                                                 <td>{Math.round(item.duration_minutes || 0)} min</td>
-                                                <td>{item.service || '-'}</td>
+                                                <td>{item.estimated_cost ? `₹${parseFloat(item.estimated_cost).toFixed(2)}` : '-'}</td>
                                                 <td>
                                                     <span className={`badge ${
                                                         item.status === 'Upcoming' ? 'bg-info' :
@@ -733,7 +783,7 @@ const AppointmentsCRUD = () => {
                                                     disabled
                                                     readOnly
                                                 />
-                                                {modalMode === 'create' && <p className="text-xs text-gray-400 mt-0.5">Format: p32-YYYYMMDD-001 (sequential)</p>}
+                                                {modalMode === 'create' && <p className="text-xs text-gray-400 mt-0.5">Format: p32-YYYYMMDD-001 (globally sequential)</p>}
                                             </div>
                                             <div>
                                                 <label htmlFor="patient_id">Patient <span className="text-red-500">*</span></label>
@@ -759,6 +809,8 @@ const AppointmentsCRUD = () => {
                                                     value={params.provider_id}
                                                     onChange={(val) => {
                                                         setParams((prev: any) => ({ ...prev, provider_id: val }));
+                                                        setProcedureRows([emptyProcRow()]);
+                                                        fetchProviderProcedures(val);
                                                         if (errors.provider_id) setErrors(prev => { const n = { ...prev }; delete n.provider_id; return n; });
                                                     }}
                                                     placeholder="Select Provider"
@@ -766,6 +818,71 @@ const AppointmentsCRUD = () => {
                                                     className={touched.provider_id && errors.provider_id ? 'border-red-500' : ''}
                                                 />
                                                 {touched.provider_id && errors.provider_id && <p className="mt-1 text-xs text-red-500">{errors.provider_id}</p>}
+                                            </div>
+
+                                            {/* Procedure Rows */}
+                                            <div className="col-span-2">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <label className="font-semibold text-sm">Procedures</label>
+                                                    {modalMode !== 'view' && (
+                                                        <button type="button" className="btn btn-sm btn-outline-primary"
+                                                            onClick={() => setProcedureRows(prev => [...prev, emptyProcRow()])}>
+                                                            <IconPlus className="w-4 h-4 mr-1" />Add Procedure
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                {/* Header */}
+                                                <div className="grid gap-2 mb-1 text-xs text-gray-500 font-medium px-1"
+                                                    style={{ gridTemplateColumns: '3fr 2fr 1.2fr 2fr 36px' }}>
+                                                    <div>Procedure</div>
+                                                    <div>Provider Price (₹)</div>
+                                                    <div>Savings (%)</div>
+                                                    <div>Final Price (₹)</div>
+                                                    {modalMode !== 'view' && <div></div>}
+                                                </div>
+                                                <div className="space-y-2">
+                                                    {procedureRows.map((row, i) => {
+                                                        const usedIds = procedureRows.map((r, ri) => ri !== i ? r.procedure_id : null).filter(Boolean);
+                                                        const opts = providerProcedures
+                                                            .filter(p => !usedIds.includes(p.value))
+                                                            .concat(row.procedure_id && !providerProcedures.find(p => p.value === row.procedure_id)
+                                                                ? [{ value: row.procedure_id, label: row.procedure_name, meta: { price: row.price } }]
+                                                                : []);
+                                                        return (
+                                                            <div key={i} className="grid gap-2 items-center"
+                                                                style={{ gridTemplateColumns: '3fr 2fr 1.2fr 2fr 36px' }}>
+                                                                <SearchableSelect
+                                                                    options={opts}
+                                                                    value={row.procedure_id}
+                                                                    onChange={(val, opt) => handleProcSelect(i, val, opt)}
+                                                                    placeholder={!params.provider_id ? 'Select Provider first' : 'Select Procedure'}
+                                                                    disabled={modalMode === 'view' || !params.provider_id}
+                                                                />
+                                                                <input type="number" className="form-input" placeholder="0.00"
+                                                                    value={row.price} min="0" disabled={modalMode === 'view'}
+                                                                    onChange={e => updateProcRow(i, 'price', e.target.value)} />
+                                                                <input type="number" className="form-input text-center" placeholder="0"
+                                                                    value={row.discount} min="0" max="100" disabled={modalMode === 'view'}
+                                                                    onChange={e => updateProcRow(i, 'discount', e.target.value)} />
+                                                                <input type="number" className="form-input font-semibold text-primary bg-primary/5"
+                                                                    placeholder="0.00" value={row.final_price} readOnly disabled={modalMode === 'view'} />
+                                                                {modalMode !== 'view' && (
+                                                                    <button type="button" className="btn btn-sm btn-outline-danger px-2"
+                                                                        onClick={() => setProcedureRows(prev => prev.length === 1 ? [emptyProcRow()] : prev.filter((_, ri) => ri !== i))}>
+                                                                        ✕
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                                {/* Total */}
+                                                <div className="mt-3 flex justify-end">
+                                                    <div className="bg-primary/10 rounded-lg px-4 py-2 text-right">
+                                                        <div className="text-xs text-gray-500">Total Final Price</div>
+                                                        <div className="text-xl font-bold text-primary">₹{totalProcPrice.toFixed(2)}</div>
+                                                    </div>
+                                                </div>
                                             </div>
                                             <div>
                                                 <label htmlFor="appointment_date">Appointment Date <span className="text-red-500">*</span></label>
@@ -832,19 +949,6 @@ const AppointmentsCRUD = () => {
                                                     readOnly
                                                 />
                                                 <small className="text-white-dark">Auto-calculated based on duration</small>
-                                            </div>
-                                            <div className="col-span-2">
-                                                <label htmlFor="service">Service/Treatment</label>
-                                                <input
-                                                    id="service"
-                                                    type="text"
-                                                    name="service"
-                                                    placeholder="e.g., Root Canal, Cleaning, Checkup"
-                                                    className="form-input"
-                                                    value={params.service}
-                                                    onChange={changeValue}
-                                                    disabled={modalMode === 'view'}
-                                                />
                                             </div>
                                             <div>
                                                 <label htmlFor="status">Status</label>

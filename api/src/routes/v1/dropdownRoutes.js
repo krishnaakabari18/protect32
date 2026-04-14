@@ -66,6 +66,19 @@ router.get('/:type', authenticate, async (req, res) => {
     let data = [];
 
     switch (type) {
+      case 'procedure-max-price': {
+        // Returns max provider price for a given procedure_id
+        if (!parent_id) { data = []; break; }
+        const r = await pool.query(
+          `SELECT COALESCE(MAX(pp.price), 0) as max_price
+           FROM provider_procedures pp
+           WHERE pp.procedure_id = $1 AND pp.price IS NOT NULL`,
+          [parent_id]
+        );
+        data = [{ max_price: parseFloat(r.rows[0]?.max_price || 0) }];
+        break;
+      }
+
       case 'provider-procedures': {
         // Returns procedures assigned to a provider with their fee from provider_procedures
         if (!parent_id) { data = []; break; }

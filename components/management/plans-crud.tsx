@@ -11,6 +11,11 @@ import React, { Fragment, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import Swal from 'sweetalert2';
 import { API_ENDPOINTS } from '@/config/api.config';
+import SearchableSelect from '@/components/ui/searchable-select';
+import { useDropdown } from '@/hooks/useDropdown';
+
+interface ProcRow { procedure_id: string; procedure_name: string; price: string; }
+const emptyProcRow = (): ProcRow => ({ procedure_id: '', procedure_name: '', price: '' });
 
 const PlansCRUD = () => {
     const [addModal, setAddModal] = useState(false);
@@ -35,13 +40,51 @@ const PlansCRUD = () => {
         free_xrays_annually: 0,
         is_popular: false,
         is_active: true,
-        features: [] as string[],  // array of feature names
+        features: [] as string[],
+        procedure_rows: [] as ProcRow[],
     };
 
     const [params, setParams] = useState<any>(JSON.parse(JSON.stringify(defaultValues)));
     const [modalMode, setModalMode] = useState<'create' | 'edit' | 'view'>('create');
     const [touched, setTouched] = useState<Record<string, boolean>>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [procedureRows, setProcedureRows] = useState<ProcRow[]>([emptyProcRow()]);
+
+    // Fetch all active procedures for the dropdown
+    const { options: procedureOptions } = useDropdown({ type: 'procedures' });
+
+    const totalProcPrice = procedureRows.reduce((s, r) => s + (parseFloat(r.price) || 0), 0);
+
+    // Auto-recalculate savings when total changes
+    useEffect(() => {
+        const planPrice = parseFloat(params.price) || 0;
+        if (totalProcPrice > 0 && planPrice > 0 && planPrice <= totalProcPrice) {
+            const savings = parseFloat(((totalProcPrice - planPrice) / totalProcPrice * 100).toFixed(1));
+            setParams((p: any) => ({ ...p, discount_percent: savings }));
+        }
+    }, [totalProcPrice]);
+
+    const fetchMaxPrice = async (procedureId: string): Promise<string> => {
+        if (!procedureId) return '';
+        try {
+            const token = localStorage.getItem('auth_token');
+            const res = await fetch(`${API_ENDPOINTS.dropdowns}/procedure-max-price?parent_id=${procedureId}`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+            });
+            const data = await res.json();
+            const maxPrice = data.data?.[0]?.max_price;
+            return maxPrice != null ? String(maxPrice) : '';
+        } catch { return ''; }
+    };
+
+    const handleProcSelect = async (i: number, procedureId: string, opt?: any) => {
+        const price = await fetchMaxPrice(procedureId);
+        setProcedureRows(prev => {
+            const next = [...prev];
+            next[i] = { procedure_id: procedureId, procedure_name: opt?.label || '', price };
+            return next;
+        });
+    };
 
     useEffect(() => {
         fetchItems();
@@ -91,7 +134,12 @@ const PlansCRUD = () => {
         if (!params.title) newErrors.title = 'Plan title is required.';
         if (!params.price) newErrors.price = 'Price is required.';
         else if (isNaN(parseFloat(params.price)) || parseFloat(params.price) < 0) newErrors.price = 'Price must be a valid positive number.';
-        flushSync(() => { setErrors(newErrors); setTouched({ title: true, price: true }); });
+        const validRows = procedureRows.filter(r => r.procedure_id);
+        if (validRows.length === 0) newErrors.procedures = 'At least one procedure is required.';
+        // Check duplicates
+        const ids = validRows.map(r => r.procedure_id);
+        if (new Set(ids).size !== ids.length) newErrors.procedures = 'Duplicate procedures are not allowed.';
+        flushSync(() => { setErrors(newErrors); setTouched({ title: true, price: true, procedures: true }); });
         if (Object.keys(newErrors).length > 0) {
             const el = document.querySelector(`[name="${Object.keys(newErrors)[0]}"]`) as HTMLElement;
             if (el) { el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
@@ -106,7 +154,7 @@ const PlansCRUD = () => {
             const token = localStorage.getItem('auth_token');
             const url = params.id ? `${API_ENDPOINTS.plans}/${params.id}` : API_ENDPOINTS.plans;
             const method = params.id ? 'PUT' : 'POST';
-            const body = { ...params, provider_id: null };
+            const body = { ...params, provider_id: null, procedure_rows: procedureRows.filter(r => r.procedure_id) };
             const res = await fetch(url, {
                 method,
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
@@ -127,10 +175,16 @@ const PlansCRUD = () => {
         const json = JSON.parse(JSON.stringify(defaultValues));
         if (item) {
             Object.keys(item).forEach(k => { if (k in json) json[k] = item[k]; });
-            // Ensure features is always an array of strings
             if (!Array.isArray(json.features)) {
                 try { json.features = json.features ? JSON.parse(json.features) : []; } catch { json.features = []; }
             }
+            // Load procedure rows
+            const rows = item.procedure_rows
+                ? (typeof item.procedure_rows === 'string' ? JSON.parse(item.procedure_rows) : item.procedure_rows)
+                : [];
+            setProcedureRows(rows.length > 0 ? rows : [emptyProcRow()]);
+        } else {
+            setProcedureRows([emptyProcRow()]);
         }
         setParams(json);
         setAddModal(true);
@@ -287,23 +341,98 @@ const PlansCRUD = () => {
                                                 {touched.title && errors.title && <p className="mt-1 text-xs text-red-500">{errors.title}</p>}
                                             </div>
 
-                                            {/* Price */}
-                                            <div>
-                                                <label htmlFor="price">Price (₹) <span className="text-red-500">*</span></label>
-                                                <input id="price" name="price" type="number" step="0.01" min="0" placeholder="0.00"
-                                                    className={`form-input ${touched.price && errors.price ? 'border-red-500' : ''}`}
-                                                    value={params.price} onChange={cv}
-                                                    onBlur={e => { setTouched(p=>({...p,price:true})); if (!e.target.value) setErrors(p=>({...p,price:'Price is required.'})); else setErrors(p=>{const n={...p};delete n.price;return n;}); }}
-                                                    disabled={isView} />
-                                                {touched.price && errors.price && <p className="mt-1 text-xs text-red-500">{errors.price}</p>}
+                                            {/* Procedure Rows */}
+                                            <div className="col-span-2">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <label className="font-semibold">Procedures <span className="text-red-500">*</span></label>
+                                                    {!isView && (
+                                                        <button type="button" className="btn btn-sm btn-outline-primary"
+                                                            onClick={() => setProcedureRows(prev => [...prev, emptyProcRow()])}>
+                                                            <IconPlus className="w-4 h-4 mr-1" />Add More
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                {/* Header */}
+                                                <div className="grid grid-cols-12 gap-2 mb-1 text-xs text-gray-500 font-medium px-1">
+                                                    <div className="col-span-7">Procedure</div>
+                                                    <div className="col-span-4">Max Price (₹)</div>
+                                                    {!isView && <div className="col-span-1"></div>}
+                                                </div>
+                                                <div className="space-y-2">
+                                                    {procedureRows.map((row, i) => {
+                                                        const usedIds = procedureRows.map((r, ri) => ri !== i ? r.procedure_id : null).filter(Boolean);
+                                                        const opts = procedureOptions.filter(o => !usedIds.includes(o.value));
+                                                        if (row.procedure_id && !opts.find(o => o.value === row.procedure_id)) {
+                                                            opts.unshift({ value: row.procedure_id, label: row.procedure_name });
+                                                        }
+                                                        return (
+                                                            <div key={i} className="grid grid-cols-12 gap-2 items-center">
+                                                                <div className="col-span-7">
+                                                                    <SearchableSelect
+                                                                        options={opts}
+                                                                        value={row.procedure_id}
+                                                                        onChange={(val, opt) => handleProcSelect(i, val, opt)}
+                                                                        placeholder="Select Procedure"
+                                                                        disabled={isView}
+                                                                    />
+                                                                </div>
+                                                                <div className="col-span-4">
+                                                                    <input type="number" className="form-input bg-gray-50 dark:bg-gray-800 font-semibold"
+                                                                        value={row.price} readOnly placeholder="0.00" />
+                                                                </div>
+                                                                {!isView && (
+                                                                    <div className="col-span-1">
+                                                                        <button type="button" className="btn btn-sm btn-outline-danger w-full"
+                                                                            onClick={() => setProcedureRows(prev => prev.length === 1 ? [emptyProcRow()] : prev.filter((_, ri) => ri !== i))}>
+                                                                            ✕
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                                {errors.procedures && <p className="mt-1 text-xs text-red-500">{errors.procedures}</p>}
+
+                                                {/* Summary: Total Price, Plan Price, Savings */}
+                                                <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-sm text-gray-500">Total Price (sum of procedures)</span>
+                                                        <span className="font-bold text-lg">₹{totalProcPrice.toFixed(2)}</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between gap-4">
+                                                        <label htmlFor="price" className="text-sm text-gray-500 whitespace-nowrap">
+                                                            Plan Price (₹) <span className="text-red-500">*</span>
+                                                        </label>
+                                                        <div className="flex-1 max-w-[160px]">
+                                                            <input id="price" name="price" type="number" step="0.01" min="0" placeholder="0.00"
+                                                                className={`form-input text-right font-semibold ${touched.price && errors.price ? 'border-red-500' : ''}`}
+                                                                value={params.price}
+                                                                onChange={e => {
+                                                                    cv(e);
+                                                                    // Auto-calc savings
+                                                                    const planPrice = parseFloat(e.target.value) || 0;
+                                                                    if (totalProcPrice > 0 && planPrice <= totalProcPrice) {
+                                                                        const savings = ((totalProcPrice - planPrice) / totalProcPrice * 100).toFixed(1);
+                                                                        setParams((p: any) => ({ ...p, price: e.target.value, discount_percent: parseFloat(savings) }));
+                                                                    }
+                                                                }}
+                                                                onBlur={e => { setTouched(p=>({...p,price:true})); if (!e.target.value) setErrors(p=>({...p,price:'Price is required.'})); else setErrors(p=>{const n={...p};delete n.price;return n;}); }}
+                                                                disabled={isView} />
+                                                            {touched.price && errors.price && <p className="mt-1 text-xs text-red-500">{errors.price}</p>}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-sm text-gray-500">Savings (%)</span>
+                                                        <span className={`font-bold text-lg ${params.discount_percent > 0 ? 'text-success' : ''}`}>
+                                                            {params.discount_percent > 0 ? `${params.discount_percent}%` : '0%'}
+                                                        </span>
+                                                    </div>
+                                                </div>
                                             </div>
 
-                                            {/* Discount */}
-                                            <div>
-                                                <label htmlFor="discount_percent">Savings (%)</label>
-                                                <input id="discount_percent" name="discount_percent" type="number" min="0" max="100"
-                                                    className="form-input" value={params.discount_percent} onChange={cv} disabled={isView} />
-                                            </div>
+                                            {/* Discount — hidden, auto-calculated */}
+                                            <input type="hidden" name="discount_percent" value={params.discount_percent} />
 
                                             {/* Free Checkups */}
                                             <div>

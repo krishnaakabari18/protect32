@@ -68,9 +68,15 @@ class ProviderModel {
         sp.name as specialty_name,
         COALESCE(
           (SELECT json_agg(
-            json_build_object('procedure_id', pp.procedure_id::text, 'price', pp.price)
-            ORDER BY pp.procedure_id
-          ) FROM provider_procedures pp WHERE pp.provider_id = p.id),
+            json_build_object(
+              'procedure_id', pp.procedure_id::text,
+              'name', pr.name,
+              'category', pr.category,
+              'price', pp.price
+            ) ORDER BY pr.name
+          ) FROM provider_procedures pp
+            JOIN procedures pr ON pp.procedure_id = pr.id
+          WHERE pp.provider_id = p.id),
           '[]'::json
         ) as procedure_fees,
         COALESCE(
@@ -176,9 +182,15 @@ class ProviderModel {
         u.profile_picture as user_profile_picture,
         COALESCE(
           (SELECT json_agg(
-            json_build_object('procedure_id', pp.procedure_id::text, 'price', pp.price)
-            ORDER BY pp.procedure_id
-          ) FROM provider_procedures pp WHERE pp.provider_id = p.id),
+            json_build_object(
+              'procedure_id', pp.procedure_id::text,
+              'name', pr.name,
+              'category', pr.category,
+              'price', pp.price
+            ) ORDER BY pr.name
+          ) FROM provider_procedures pp
+            JOIN procedures pr ON pp.procedure_id = pr.id
+          WHERE pp.provider_id = p.id),
           '[]'::json
         ) as procedure_fees,
         COALESCE(

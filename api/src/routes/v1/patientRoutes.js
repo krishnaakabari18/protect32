@@ -6,20 +6,18 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// Multer setup for patient photo uploads
+// Multer setup — profile photos go to uploads/users/{userId}/
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const uploadPath = path.join('uploads', 'patients', String(year), month, day);
+    // Use patient ID from URL param, or logged-in user ID for self-service routes
+    const userId = req.params.id || req.user?.id || 'temp';
+    const uploadPath = path.join('uploads', 'users', userId);
     if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath, { recursive: true });
     cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname);
-    cb(null, `${Date.now()}_${path.basename(file.originalname, ext).replace(/\s+/g, '_')}${ext}`);
+    cb(null, `profile_${Date.now()}${ext}`);
   }
 });
 
@@ -272,7 +270,8 @@ router.get('/profile', AuthMiddleware.authenticate, async (req, res) => {
       'SELECT id, first_name, last_name, email, mobile_number, profile_picture, user_type, date_of_birth, address, is_verified, created_at FROM users WHERE id = $1',
       [userId]
     );
-    const user = userRow.rows[0] || {};
+    const { convertUserUrls } = require('../../utils/urlHelper');
+    const user = convertUserUrls(userRow.rows[0] || {});
 
     // 3. Active subscription (latest active or future plan)
     const subRow = await pool.query(
@@ -332,23 +331,40 @@ router.put('/profile', AuthMiddleware.authenticate, uploadPatientPhotos, async (
     const pool = require('../../config/database');
     const PatientModel = require('../../models/patientModel');
     const { convertPatientUrls } = require('../../utils/urlHelper');
+    const fs = require('fs');
+    const pathLib = require('path');
     const userId = req.user.id;
 
-    // 1. Update users table
-    const userFields = []; const userValues = []; let up = 1;
+    // 1. Handle profile photo upload
+    let photoPath = null;
+    if (req.files && req.files.profile_photo && req.files.profile_photo[0]) {
+      photoPath = req.files.profile_photo[0].path.replace(/\\/g, '/');
+      // Move from temp folder to correct user folder if needed
+      if (photoPath.includes('/temp/') || photoPath.includes('\\temp\\')) {
+        const correctDir = pathLib.join('uploads', 'users', userId);
+        if (!fs.existsSync(correctDir)) fs.mkdirSync(correctDir, { recursive: true });
+        const newPath = pathLib.join(correctDir, pathLib.basename(photoPath));
+        fs.renameSync(photoPath, newPath);
+        photoPath = newPath.replace(/\\/g, '/');
+      }
+    }
+
+    // 2. Update users table (first_name, last_name, email, mobile_number, date_of_birth, address, profile_picture)
     const { first_name, last_name, email, mobile_number, date_of_birth, address } = req.body;
-    if (first_name)    { userFields.push(`first_name = $${up++}`);    userValues.push(first_name); }
-    if (last_name)     { userFields.push(`last_name = $${up++}`);     userValues.push(last_name); }
-    if (email)         { userFields.push(`email = $${up++}`);         userValues.push(email); }
-    if (mobile_number) { userFields.push(`mobile_number = $${up++}`); userValues.push(mobile_number); }
-    if (date_of_birth) { userFields.push(`date_of_birth = $${up++}`); userValues.push(date_of_birth); }
-    if (address)       { userFields.push(`address = $${up++}`);       userValues.push(address); }
+    const userFields = []; const userValues = []; let up = 1;
+    if (first_name)    { userFields.push(`first_name = $${up++}`);      userValues.push(first_name); }
+    if (last_name)     { userFields.push(`last_name = $${up++}`);       userValues.push(last_name); }
+    if (email)         { userFields.push(`email = $${up++}`);           userValues.push(email); }
+    if (mobile_number) { userFields.push(`mobile_number = $${up++}`);   userValues.push(mobile_number); }
+    if (date_of_birth) { userFields.push(`date_of_birth = $${up++}`);   userValues.push(date_of_birth); }
+    if (address)       { userFields.push(`address = $${up++}`);         userValues.push(address); }
+    if (photoPath)     { userFields.push(`profile_picture = $${up++}`); userValues.push(photoPath); }
     if (userFields.length) {
       userValues.push(userId);
       await pool.query(`UPDATE users SET ${userFields.join(', ')} WHERE id = $${up}`, userValues);
     }
 
-    // 2. Build patient data
+    // 3. Build patient fields
     const patientData = {};
     const patientFields = [
       'gender','blood_group','height_cm','weight_kg','occupation',
@@ -371,26 +387,35 @@ router.put('/profile', AuthMiddleware.authenticate, uploadPatientPhotos, async (
         try { patientData[f] = typeof req.body[f] === 'string' ? JSON.parse(req.body[f]) : req.body[f]; } catch {}
       }
     });
-    if (req.files && req.files.profile_photo && req.files.profile_photo[0]) {
-      patientData.profile_photo = req.files.profile_photo[0].path.replace(/\\/g, '/');
-    }
+    if (photoPath) patientData.profile_photo = photoPath;
 
-    // 3. Update patient record
+    // 4. Upsert patient record — create if not exists, update if exists
     let updatedPatient = null;
-    if (Object.keys(patientData).length > 0) {
-      updatedPatient = await PatientModel.update(userId, patientData);
-      updatedPatient = convertPatientUrls(updatedPatient);
+    const existingRow = await pool.query('SELECT id FROM patients WHERE id = $1', [userId]);
+    if (existingRow.rows.length > 0) {
+      if (Object.keys(patientData).length > 0) {
+        updatedPatient = await PatientModel.update(userId, patientData);
+      } else {
+        updatedPatient = (await pool.query('SELECT * FROM patients WHERE id = $1', [userId])).rows[0];
+      }
+    } else {
+      patientData.id = userId;
+      updatedPatient = await PatientModel.create(patientData);
     }
+    if (updatedPatient) updatedPatient = convertPatientUrls(updatedPatient);
 
-    // 4. Fetch updated user
+    // 5. Fetch updated user
     const userRow = await pool.query(
       `SELECT id, first_name, last_name, email, mobile_number, profile_picture,
               user_type, date_of_birth, address, is_verified, created_at
        FROM users WHERE id = $1`, [userId]
     );
     const updatedUser = userRow.rows[0] || {};
+    // Convert profile_picture to full URL
+    const { convertUserUrls } = require('../../utils/urlHelper');
+    const userWithUrl = convertUserUrls(updatedUser);
 
-    // 5. Fetch active subscription
+    // 6. Fetch active subscription
     const subRow = await pool.query(
       `SELECT razorpay_subscription_id, razorpay_plan_id, plan_title, plan_price,
               status, is_active, start_date, expiry_date, remaining_count
@@ -403,7 +428,7 @@ router.put('/profile', AuthMiddleware.authenticate, uploadPatientPhotos, async (
       success: true,
       message: 'Profile updated successfully',
       data: {
-        user: updatedUser,
+        user: userWithUrl,
         patient: updatedPatient,
         subscription: sub ? {
           subscription_id: sub.razorpay_subscription_id,

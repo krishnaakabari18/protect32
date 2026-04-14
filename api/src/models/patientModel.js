@@ -81,7 +81,10 @@ class PatientModel {
 
   static async findById(id) {
     const query = `
-      SELECT p.*, u.first_name, u.last_name, u.email, u.mobile_number, u.profile_picture, u.date_of_birth, u.address
+      SELECT p.*,
+        u.first_name, u.last_name, u.email, u.mobile_number, u.date_of_birth, u.address,
+        COALESCE(p.profile_photo, u.profile_picture) as profile_photo,
+        u.profile_picture
       FROM patients p
       JOIN users u ON p.id = u.id
       WHERE p.id = $1
@@ -92,7 +95,10 @@ class PatientModel {
 
   static async findAll(filters = {}) {
     let query = `
-      SELECT p.*, u.first_name, u.last_name, u.email, u.mobile_number, u.profile_picture, u.date_of_birth
+      SELECT p.*,
+        u.first_name, u.last_name, u.email, u.mobile_number, u.date_of_birth,
+        COALESCE(p.profile_photo, u.profile_picture) as profile_photo,
+        u.profile_picture
       FROM patients p
       JOIN users u ON p.id = u.id
       WHERE 1=1

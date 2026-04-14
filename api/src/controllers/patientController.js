@@ -13,29 +13,18 @@ const safeParseInt = (value, defaultValue = null) => {
   return isNaN(parsed) ? defaultValue : parsed;
 };
 
-// Configure storage for patient and family member photos with date-based folder structure
+// Configure storage — profile photos go to uploads/users/{userId}/ (same as user controller)
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    
-    const uploadPath = path.join('uploads', 'patients', String(year), month, day);
-    
-    // Ensure directory exists
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-    }
-    
+    // req.params.id is available when multer runs after route matching
+    const userId = req.params?.id || req.user?.id || 'temp';
+    const uploadPath = path.join('uploads', 'users', String(userId));
+    if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath, { recursive: true });
     cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
-    const timestamp = Date.now();
     const ext = path.extname(file.originalname);
-    const basename = path.basename(file.originalname, ext).replace(/\s+/g, '_');
-    const filename = `${timestamp}_${basename}${ext}`;
-    cb(null, filename);
+    cb(null, `profile_${Date.now()}${ext}`);
   }
 });
 
@@ -166,10 +155,13 @@ class PatientController {
         console.error('Error parsing JSON fields:', e);
       }
       
-      // Add uploaded photo path
+      // Add uploaded photo path — save to patients.profile_photo AND users.profile_picture
       if (req.files && req.files.profile_photo && req.files.profile_photo.length > 0) {
-        patientData.profile_photo = req.files.profile_photo[0].path.replace(/\\/g, '/');
-        console.log('Uploaded Profile Photo:', patientData.profile_photo);
+        const photoPath = req.files.profile_photo[0].path.replace(/\\/g, '/');
+        patientData.profile_photo = photoPath;
+        // Sync to users table
+        const pool = require('../config/database');
+        await pool.query('UPDATE users SET profile_picture = $1 WHERE id = $2', [photoPath, id]);
       }
       
       console.log('Creating patient with data:', patientData);
@@ -288,9 +280,12 @@ class PatientController {
         }
       });
 
-      // Profile photo
+      // Profile photo — save to patients.profile_photo AND users.profile_picture
       if (req.files?.profile_photo?.[0]) {
-        patientData.profile_photo = req.files.profile_photo[0].path.replace(/\\/g, '/');
+        const photoPath = req.files.profile_photo[0].path.replace(/\\/g, '/');
+        patientData.profile_photo = photoPath;
+        const pool = require('../config/database');
+        await pool.query('UPDATE users SET profile_picture = $1 WHERE id = $2', [photoPath, patientId]);
       }
 
       if (Object.keys(patientData).length === 0 && !req.body.first_name && !req.body.last_name && !req.body.email && !req.body.mobile_number) {
@@ -412,51 +407,48 @@ class PatientController {
         }
       }
       
-      // Add uploaded photo path if new photo is uploaded
+      // Add uploaded photo path — save to patients.profile_photo AND users.profile_picture
       if (req.files && req.files.profile_photo && req.files.profile_photo.length > 0) {
-        patientData.profile_photo = req.files.profile_photo[0].path.replace(/\\/g, '/');
-        console.log('Updated Profile Photo:', patientData.profile_photo);
-      }
-      
-      console.log('Updating patient with data:', patientData);
-      console.log('Number of fields to update:', Object.keys(patientData).length);
-      
-      if (Object.keys(patientData).length === 0) {
-        console.log('No fields to update - all fields were undefined or excluded');
-        return res.status(400).json({ 
-          error: 'No fields to update', 
-          receivedFields: Object.keys(req.body),
-          debug: 'All fields were undefined or excluded from update'
-        });
-      }
-      
-      const patient = await PatientModel.update(req.params.id, patientData);
-      if (!patient) {
-        return res.status(404).json({ error: 'Patient not found' });
+        let photoPath = req.files.profile_photo[0].path.replace(/\\/g, '/');
+        const patientId = req.params.id;
+
+        // If file landed in 'temp' folder, move it to the correct user folder
+        if (photoPath.includes('/temp/') || photoPath.includes('\\temp\\')) {
+          const correctDir = path.join('uploads', 'users', patientId);
+          if (!fs.existsSync(correctDir)) fs.mkdirSync(correctDir, { recursive: true });
+          const newPath = path.join(correctDir, path.basename(photoPath));
+          fs.renameSync(photoPath, newPath);
+          photoPath = newPath.replace(/\\/g, '/');
+        }
+
+        patientData.profile_photo = photoPath;
+        const pool = require('../config/database');
+        await pool.query('UPDATE users SET profile_picture = $1 WHERE id = $2', [photoPath, patientId]);
       }
 
-      // Also update the linked user's first_name, last_name, email, mobile_number
+      if (Object.keys(patientData).length === 0) {
+        return res.status(400).json({ error: 'No fields to update', receivedFields: Object.keys(req.body) });
+      }
+
+      const patient = await PatientModel.update(req.params.id, patientData);
+      if (!patient) return res.status(404).json({ error: 'Patient not found' });
+
+      // Update linked user fields
       const { first_name, last_name, email, mobile_number } = req.body;
       if (first_name || last_name || email || mobile_number) {
-        const userFields = [];
-        const userValues = [];
-        let up = 1;
-        if (first_name) { userFields.push(`first_name = $${up++}`); userValues.push(first_name); }
-        if (last_name)  { userFields.push(`last_name = $${up++}`);  userValues.push(last_name); }
-        if (email)      { userFields.push(`email = $${up++}`);      userValues.push(email); }
+        const pool = require('../config/database');
+        const userFields = []; const userValues = []; let up = 1;
+        if (first_name)    { userFields.push(`first_name = $${up++}`);    userValues.push(first_name); }
+        if (last_name)     { userFields.push(`last_name = $${up++}`);     userValues.push(last_name); }
+        if (email)         { userFields.push(`email = $${up++}`);         userValues.push(email); }
         if (mobile_number) { userFields.push(`mobile_number = $${up++}`); userValues.push(mobile_number); }
         if (userFields.length > 0) {
           userValues.push(req.params.id);
-          const pool = require('../config/database');
           await pool.query(`UPDATE users SET ${userFields.join(', ')} WHERE id = $${up}`, userValues);
         }
       }
-      
-      // Convert relative paths to absolute URLs
-      const patientWithUrls = convertPatientUrls(patient);
-      
-      console.log('Patient updated successfully:', patient);
-      res.json({ message: 'Patient updated successfully', data: patientWithUrls });
+
+      res.json({ message: 'Patient updated successfully', data: convertPatientUrls(patient) });
     } catch (error) {
       console.error('Update patient error:', error);
       res.status(500).json({ error: error.message });

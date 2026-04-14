@@ -101,7 +101,16 @@ interface FamilyMember {
     emergency_contact?: boolean;
     notes?: string;
 }
-
+type SelectOption = {
+    value: string;
+    label: string;
+    meta?: {
+        first_name?: string;
+        last_name?: string;
+        email?: string;
+        profile_picture?: string;
+    };
+};
 const PatientsCrud = () => {
     const [patients, setPatients] = useState<Patient[]>([]);
     const [users, setUsers] = useState<User[]>([]);
@@ -902,24 +911,27 @@ const PatientsCrud = () => {
                         }
                     }))}
                     value={formData.id || ''}
-                    onChange={(val, opt) => {
-                        handleInputChange({ target: { name: 'id', value: val, type: 'select' } } as any);
-                        if (opt?.meta) {
-                            setFormData(prev => ({
-                                ...prev,
-                                id: val,
-                                first_name: opt.meta.first_name || '',
-                                last_name: opt.meta.last_name || '',
-                                email: opt.meta.email || '',
-                            } as any));
-                            // Show existing profile picture preview
-                            if (opt.meta.profile_picture) {
-                                const url = buildMediaUrl(opt.meta.profile_picture);
-                                setPhotoPreview(url || null);
-                            } else {
-                                setPhotoPreview(null);
-                            }
-                        }
+                    onChange={(val: string, opt?: SelectOption) => {
+                        handleInputChange({
+                            target: { name: 'id', value: val, type: 'select' }
+                        } as any);
+
+                        const meta = opt?.meta;
+                        if (!meta) return;
+
+                        setFormData(prev => ({
+                            ...prev,
+                            id: val,
+                            first_name: meta.first_name ?? '',
+                            last_name: meta.last_name ?? '',
+                            email: meta.email ?? '',
+                        }));
+
+                        setPhotoPreview(
+                            meta.profile_picture
+                                ? buildMediaUrl(meta.profile_picture)
+                                : null
+                        );
                     }}
                     placeholder="Select a user..."
                     disabled={!!editingPatient}

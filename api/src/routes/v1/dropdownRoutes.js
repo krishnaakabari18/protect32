@@ -79,6 +79,28 @@ router.get('/:type', authenticate, async (req, res) => {
         break;
       }
 
+      case 'provider-patients': {
+        // Patients who have non-cancelled appointments with this provider
+        if (!parent_id) { data = []; break; }
+        const r = await pool.query(
+          `SELECT DISTINCT u.id as value,
+             CONCAT(u.first_name, ' ', u.last_name) as label,
+             u.email as meta_email, u.mobile_number as meta_phone
+           FROM appointments a
+           JOIN users u ON a.patient_id = u.id
+           WHERE a.provider_id = $1
+             AND a.status != 'Cancelled'
+           ORDER BY label`,
+          [parent_id]
+        );
+        data = r.rows.map(row => ({
+          value: row.value,
+          label: row.label,
+          meta: { email: row.meta_email, phone: row.meta_phone }
+        }));
+        break;
+      }
+
       case 'provider-procedures': {
         // Returns procedures assigned to a provider with their fee from provider_procedures
         if (!parent_id) { data = []; break; }

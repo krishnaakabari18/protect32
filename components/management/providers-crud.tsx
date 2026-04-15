@@ -20,6 +20,7 @@ const TABS = [
     { id: 'equipment', label: 'Equipment' },
     { id: 'specialists', label: 'Specialists' },
     { id: 'bank', label: 'Bank Details' },
+    { id: 'holidays', label: 'Holidays' },
 ];
 
 const FIELD_TAB: Record<string, string> = {
@@ -103,6 +104,8 @@ const ProvidersCRUD = () => {
     const [specialties, setSpecialties] = useState<any[]>([]);
     const [statesList, setStatesList] = useState<any[]>([]);
     const [citiesList, setCitiesList] = useState<any[]>([]);
+    const [holidays, setHolidays] = useState<any[]>([]);
+    const [holidayLoading, setHolidayLoading] = useState(false);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 });
@@ -320,7 +323,14 @@ const ProvidersCRUD = () => {
             const method = params.id && modalMode === 'edit' ? 'PUT' : 'POST';
             const res = await fetch(url, { method, headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' }, body: fd });
             const data = await res.json();
-            if (res.ok) { showMessage(`Provider has been ${modalMode === 'edit' ? 'updated' : 'created'} successfully.`); setAddModal(false); fetchItems(); }
+            if (res.ok) {
+                // Sync holidays after provider is saved
+                const savedId = data.data?.id || params.id;
+                if (savedId && holidays.length > 0) await syncHolidays(savedId);
+                showMessage(`Provider has been ${modalMode === 'edit' ? 'updated' : 'created'} successfully.`);
+                setAddModal(false);
+                fetchItems();
+            }
             else showMessage(data.error || 'Operation failed', 'error');
         } catch (err: any) { showMessage('Error: ' + err.message, 'error'); }
         finally { setLoading(false); }
@@ -329,6 +339,8 @@ const ProvidersCRUD = () => {
     // ─── Open / Delete ───────────────────────────────────────────────────────
     const openModal = async (mode: 'create' | 'edit' | 'view', item: any = null) => {
         setModalMode(mode); setTouched({}); setErrors({}); setActiveTab('provider');
+        setHolidays([]);
+        if (item?.id) fetchHolidays(item.id);
         const json = JSON.parse(JSON.stringify(DEFAULT_VALUES));
         if (item) {
             Object.keys(item).forEach(k => { if (k in json) json[k] = item[k]; });
@@ -1041,10 +1053,135 @@ const ProvidersCRUD = () => {
     );
 
     // ─── Render ──────────────────────────────────────────────────────────────
+
+    const fetchHolidays = async (providerId: string) => {
+        if (!providerId) return;
+        setHolidayLoading(true);
+        try {
+            const token = localStorage.getItem('auth_token');
+            const res = await fetch(`${API_ENDPOINTS.providers}/${providerId}/holidays`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+            });
+            const data = await res.json();
+            if (res.ok) setHolidays(data.data || []);
+        } catch (e) { console.error(e); }
+        finally { setHolidayLoading(false); }
+    };
+
+    // Save all holidays to backend (called from saveItem after provider is saved)
+    const syncHolidays = async (providerId: string) => {
+        if (!holidays.length) return;
+        const token = localStorage.getItem('auth_token');
+        // Delete all existing then re-insert (bulk replace)
+        for (const h of holidays) {
+            if (h._deleted && h.id) {
+                await fetch(`${API_ENDPOINTS.providers}/${providerId}/holidays/${h.id}`, {
+                    method: 'DELETE', headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+                }).catch(() => {});
+            } else if (!h._deleted) {
+                await fetch(`${API_ENDPOINTS.providers}/${providerId}/holidays`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+                    body: JSON.stringify({ holiday_date: h.holiday_date, title: h.title, description: h.description, is_full_day: h.is_full_day, start_time: h.start_time, end_time: h.end_time }),
+                }).catch(() => {});
+            }
+        }
+    };
+
+    const addHolidayRow = () => {
+        setHolidays(prev => [...prev, { _local: true, holiday_date: '', title: '', description: '', is_full_day: true, start_time: '', end_time: '' }]);
+    };
+
+    const updateHolidayRow = (i: number, field: string, value: any) => {
+        setHolidays(prev => { const next = [...prev]; next[i] = { ...next[i], [field]: value }; return next; });
+    };
+
+    const removeHolidayRow = (i: number) => {
+        setHolidays(prev => {
+            const next = [...prev];
+            if (next[i].id) { next[i] = { ...next[i], _deleted: true }; }
+            else { next.splice(i, 1); }
+            return next;
+        });
+    };
+
+    const renderHolidaysTab = () => (
+        <div>
+            <div className="flex items-center justify-between mb-4">
+                <p className="text-sm text-gray-500">Add holidays or days off. They will be saved when you click Add/Update Provider.</p>
+                {!isView && (
+                    <button type="button" className="btn btn-sm btn-outline-primary" onClick={addHolidayRow}>
+                        + Add More
+                    </button>
+                )}
+            </div>
+
+            {holidays.filter(h => !h._deleted).length === 0 && (
+                <div className="text-center py-8 text-gray-400 border-2 border-dashed rounded-lg">
+                    No holidays added. Click "+ Add More" to add.
+                </div>
+            )}
+
+            <div className="space-y-3">
+                {holidays.map((h, i) => h._deleted ? null : (
+                    <div key={i} className="grid grid-cols-1 md:grid-cols-4 gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg items-end">
+                        <div>
+                            <label className="text-xs text-gray-500 block mb-1">Date <span className="text-red-500">*</span></label>
+                            <input type="date" className="form-input" value={h.holiday_date || ''}
+                                disabled={isView}
+                                onChange={e => updateHolidayRow(i, 'holiday_date', e.target.value)} />
+                        </div>
+                        <div>
+                            <label className="text-xs text-gray-500 block mb-1">Title <span className="text-red-500">*</span></label>
+                            <input type="text" className="form-input" placeholder="e.g. Diwali, Leave"
+                                value={h.title || ''} disabled={isView}
+                                onChange={e => updateHolidayRow(i, 'title', e.target.value)} />
+                        </div>
+                        <div>
+                            <label className="text-xs text-gray-500 block mb-1">Description</label>
+                            <input type="text" className="form-input" placeholder="Optional"
+                                value={h.description || ''} disabled={isView}
+                                onChange={e => updateHolidayRow(i, 'description', e.target.value)} />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <label className="flex items-center gap-1 text-sm cursor-pointer">
+                                <input type="checkbox" className="form-checkbox" checked={h.is_full_day !== false}
+                                    disabled={isView}
+                                    onChange={e => updateHolidayRow(i, 'is_full_day', e.target.checked)} />
+                                Full Day
+                            </label>
+                            {!isView && (
+                                <button type="button" className="btn btn-sm btn-outline-danger ml-auto"
+                                    onClick={() => removeHolidayRow(i)}>✕</button>
+                            )}
+                        </div>
+                        {!h.is_full_day && (
+                            <>
+                                <div>
+                                    <label className="text-xs text-gray-500 block mb-1">Start Time</label>
+                                    <input type="time" className="form-input" value={h.start_time || ''}
+                                        disabled={isView}
+                                        onChange={e => updateHolidayRow(i, 'start_time', e.target.value)} />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-500 block mb-1">End Time</label>
+                                    <input type="time" className="form-input" value={h.end_time || ''}
+                                        disabled={isView}
+                                        onChange={e => updateHolidayRow(i, 'end_time', e.target.value)} />
+                                </div>
+                            </>
+                        )}
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+
     const tabContent: Record<string, () => JSX.Element> = {
         provider: renderProviderTab, clinic: renderClinicTab, hours: renderHoursTab,
         equipment: renderEquipmentTab, specialists: renderSpecialistsTab,
         bank: renderBankTab,
+        holidays: renderHolidaysTab,
     };
 
     const tabHasError = (tabId: string) => Object.keys(errors).some(k => (FIELD_TAB[k] || 'provider') === tabId);
@@ -1136,7 +1273,10 @@ const ProvidersCRUD = () => {
                                                 {TABS.map(tab => (
                                                     <button key={tab.id} type="button"
                                                         className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors relative ${activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-primary'}`}
-                                                        onClick={() => setActiveTab(tab.id)}
+                                                        onClick={() => {
+                                                            setActiveTab(tab.id);
+                                                            if (tab.id === 'holidays' && params.id) fetchHolidays(params.id);
+                                                        }}
                                                     >
                                                         {tab.label}
                                                         {tabHasError(tab.id) && <span className="ml-1 inline-block w-2 h-2 rounded-full bg-red-500 align-middle" />}

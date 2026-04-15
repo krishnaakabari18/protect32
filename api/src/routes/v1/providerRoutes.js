@@ -330,4 +330,149 @@ router.delete('/:id/images/:imageType', auth, ProviderController.deleteProviderI
  */
 router.get('/:id/procedures', auth, ProviderController.getProviderProcedures);
 
+/**
+ * @swagger
+ * /providers/{id}/holidays:
+ *   get:
+ *     summary: Get all holidays for a provider
+ *     tags: [Providers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *       - in: query
+ *         name: year
+ *         schema: { type: integer }
+ *         description: Filter by year (e.g. 2026)
+ *       - in: query
+ *         name: month
+ *         schema: { type: integer }
+ *         description: Filter by month (1-12)
+ *     responses:
+ *       200:
+ *         description: List of holidays
+ *   post:
+ *     summary: Add a holiday for a provider
+ *     tags: [Providers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [holiday_date, title]
+ *             properties:
+ *               holiday_date: { type: string, format: date }
+ *               title:        { type: string }
+ *               description:  { type: string }
+ *               is_full_day:  { type: boolean, default: true }
+ *               start_time:   { type: string, example: "09:00" }
+ *               end_time:     { type: string, example: "17:00" }
+ *     responses:
+ *       201:
+ *         description: Holiday added
+ */
+router.get('/:id/holidays', auth, async (req, res) => {
+  try {
+    const pool = require('../../config/database');
+    let q = 'SELECT * FROM provider_holidays WHERE provider_id = $1';
+    const vals = [req.params.id]; let p = 2;
+    if (req.query.year)  { q += ` AND EXTRACT(YEAR  FROM holiday_date) = $${p++}`; vals.push(req.query.year); }
+    if (req.query.month) { q += ` AND EXTRACT(MONTH FROM holiday_date) = $${p++}`; vals.push(req.query.month); }
+    q += ' ORDER BY holiday_date ASC';
+    const r = await pool.query(q, vals);
+    res.json({ success: true, data: r.rows, total: r.rows.length });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/:id/holidays', auth, async (req, res) => {
+  try {
+    const pool = require('../../config/database');
+    const { holiday_date, title, description, is_full_day = true, start_time, end_time } = req.body;
+    if (!holiday_date || !title) return res.status(400).json({ error: 'holiday_date and title are required' });
+    const r = await pool.query(
+      `INSERT INTO provider_holidays (provider_id, holiday_date, title, description, is_full_day, start_time, end_time)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT (provider_id, holiday_date) DO UPDATE SET title=$3, description=$4, is_full_day=$5, start_time=$6, end_time=$7, updated_at=NOW()
+       RETURNING *`,
+      [req.params.id, holiday_date, title, description || null, is_full_day, start_time || null, end_time || null]
+    );
+    res.status(201).json({ success: true, message: 'Holiday added', data: r.rows[0] });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * @swagger
+ * /providers/{id}/holidays/{holidayId}:
+ *   put:
+ *     summary: Update a provider holiday
+ *     tags: [Providers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: holidayId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Holiday updated
+ *   delete:
+ *     summary: Delete a provider holiday
+ *     tags: [Providers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: holidayId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Holiday deleted
+ */
+router.put('/:id/holidays/:holidayId', auth, async (req, res) => {
+  try {
+    const pool = require('../../config/database');
+    const { holiday_date, title, description, is_full_day, start_time, end_time } = req.body;
+    const r = await pool.query(
+      `UPDATE provider_holidays SET
+         holiday_date=COALESCE($1,holiday_date), title=COALESCE($2,title),
+         description=$3, is_full_day=COALESCE($4,is_full_day),
+         start_time=$5, end_time=$6, updated_at=NOW()
+       WHERE id=$7 AND provider_id=$8 RETURNING *`,
+      [holiday_date, title, description, is_full_day, start_time, end_time, req.params.holidayId, req.params.id]
+    );
+    if (!r.rows[0]) return res.status(404).json({ error: 'Holiday not found' });
+    res.json({ success: true, message: 'Holiday updated', data: r.rows[0] });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.delete('/:id/holidays/:holidayId', auth, async (req, res) => {
+  try {
+    const pool = require('../../config/database');
+    const r = await pool.query('DELETE FROM provider_holidays WHERE id=$1 AND provider_id=$2 RETURNING id', [req.params.holidayId, req.params.id]);
+    if (!r.rows[0]) return res.status(404).json({ error: 'Holiday not found' });
+    res.json({ success: true, message: 'Holiday deleted' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 module.exports = router;

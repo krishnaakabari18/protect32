@@ -98,7 +98,21 @@ class ProviderModel {
           '[]'::json
         ) as reviews,
         (SELECT COUNT(*) FROM provider_reviews pr WHERE pr.provider_id = p.id) as total_reviews,
-        (SELECT COALESCE(ROUND(AVG(pr.rating)::numeric, 1), 0) FROM provider_reviews pr WHERE pr.provider_id = p.id) as average_rating
+        (SELECT COALESCE(ROUND(AVG(pr.rating)::numeric, 1), 0) FROM provider_reviews pr WHERE pr.provider_id = p.id) as average_rating,
+        COALESCE(
+          (SELECT json_agg(
+            json_build_object(
+              'id', ph.id,
+              'holiday_date', TO_CHAR(ph.holiday_date, 'YYYY-MM-DD'),
+              'title', ph.title,
+              'description', ph.description,
+              'is_full_day', ph.is_full_day,
+              'start_time', ph.start_time,
+              'end_time', ph.end_time
+            ) ORDER BY ph.holiday_date ASC
+          ) FROM provider_holidays ph WHERE ph.provider_id = p.id),
+          '[]'::json
+        ) as holidays
       FROM providers p
       LEFT JOIN users u ON p.id = u.id
       LEFT JOIN specialties sp ON p.specialty = sp.id::text
@@ -213,7 +227,21 @@ class ProviderModel {
         ) as reviews,
         (SELECT COUNT(*) FROM provider_reviews pr WHERE pr.provider_id = p.id) as total_reviews,
         (SELECT COALESCE(ROUND(AVG(pr.rating)::numeric, 1), 0) FROM provider_reviews pr WHERE pr.provider_id = p.id) as average_rating,
-        sp.name as specialty_name
+        sp.name as specialty_name,
+        COALESCE(
+          (SELECT json_agg(
+            json_build_object(
+              'id', ph.id,
+              'holiday_date', TO_CHAR(ph.holiday_date, 'YYYY-MM-DD'),
+              'title', ph.title,
+              'description', ph.description,
+              'is_full_day', ph.is_full_day,
+              'start_time', ph.start_time,
+              'end_time', ph.end_time
+            ) ORDER BY ph.holiday_date ASC
+          ) FROM provider_holidays ph WHERE ph.provider_id = p.id),
+          '[]'::json
+        ) as holidays
        FROM providers p
        LEFT JOIN users u ON p.id = u.id
        LEFT JOIN specialties sp ON p.specialty = sp.id::text

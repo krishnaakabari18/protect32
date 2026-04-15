@@ -27,13 +27,48 @@ router.post('/', AuthMiddleware.authenticate, PrescriptionController.create);
  * @swagger
  * /prescriptions:
  *   get:
- *     summary: Get all prescriptions
+ *     summary: Get all prescriptions with filters
  *     tags: [Prescriptions]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: patient_id
+ *         schema: { type: string, format: uuid }
+ *         description: Filter by patient ID
+ *       - in: query
+ *         name: provider_id
+ *         schema: { type: string, format: uuid }
+ *         description: Filter by provider ID
+ *       - in: query
+ *         name: medication_name
+ *         schema: { type: string }
+ *         description: Search by medication name
+ *       - in: query
+ *         name: date_prescribed
+ *         schema: { type: string, format: date }
+ *         description: Filter by exact date prescribed (YYYY-MM-DD)
+ *       - in: query
+ *         name: from_date
+ *         schema: { type: string, format: date }
+ *         description: Filter from date
+ *       - in: query
+ *         name: to_date
+ *         schema: { type: string, format: date }
+ *         description: Filter to date
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *         description: Search by patient name or medication
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10 }
  *     responses:
  *       200:
- *         description: List of prescriptions
+ *         description: List of prescriptions with pagination
  */
 router.get('/', AuthMiddleware.authenticate, PrescriptionController.getAll);
 

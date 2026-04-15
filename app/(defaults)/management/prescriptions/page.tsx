@@ -1,7 +1,8 @@
-import PrescriptionsCRUDWithAI from '@/components/management/prescriptions-crud-with-ai';
+import { Metadata } from 'next';
+import PrescriptionsCRUD from '@/components/management/prescriptions-crud';
 
-const PrescriptionsPage = () => {
-    return <PrescriptionsCRUDWithAI />;
-};
+export const metadata: Metadata = { title: 'Prescriptions' };
+
+const PrescriptionsPage = () => <PrescriptionsCRUD />;
 
 export default PrescriptionsPage;

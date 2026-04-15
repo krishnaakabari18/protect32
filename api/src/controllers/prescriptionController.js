@@ -32,23 +32,11 @@ class PrescriptionController {
   static async getAll(req, res) {
     try {
       const { page = 1, limit = 10 } = req.query;
-      const data = await PrescriptionModel.findAll(req.query);
-      
-      // Pagination
-      const pageNum = parseInt(page);
-      const limitNum = parseInt(limit);
-      const startIndex = (pageNum - 1) * limitNum;
-      const endIndex = startIndex + limitNum;
-      const paginatedData = data.slice(startIndex, endIndex);
-      
-      res.json({ 
-        data: paginatedData,
-        pagination: {
-          page: pageNum,
-          limit: limitNum,
-          total: data.length,
-          totalPages: Math.ceil(data.length / limitNum)
-        }
+      const { rows, total } = await PrescriptionModel.findAll(req.query);
+      const pageNum = parseInt(page), limitNum = parseInt(limit);
+      res.json({
+        data: rows,
+        pagination: { page: pageNum, limit: limitNum, total, totalPages: Math.ceil(total / limitNum) }
       });
     } catch (error) {
       res.status(500).json({ error: error.message });

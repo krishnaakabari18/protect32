@@ -13,7 +13,7 @@ class PrescriptionModel {
 
   static async findAll(filters = {}) {
     let query = `
-      SELECT pr.*, 
+      SELECT pr.*,
         p.first_name as patient_first_name, p.last_name as patient_last_name,
         prov.first_name as provider_first_name, prov.last_name as provider_last_name
       FROM prescriptions pr
@@ -22,21 +22,30 @@ class PrescriptionModel {
       WHERE 1=1
     `;
     const values = [];
-    let paramCount = 1;
+    let idx = 1;
 
-    Object.keys(filters).forEach(key => {
-      if (filters[key] !== undefined && key !== 'page' && key !== 'limit') {
-        query += ` AND pr.${key} = $${paramCount}`;
-        values.push(filters[key]);
-        paramCount++;
-      }
-    });
+    if (filters.patient_id)      { query += ` AND pr.patient_id = $${idx++}`;  values.push(filters.patient_id); }
+    if (filters.provider_id)     { query += ` AND pr.provider_id = $${idx++}`; values.push(filters.provider_id); }
+    if (filters.medication_name) { query += ` AND pr.medication_name ILIKE $${idx++}`; values.push('%' + filters.medication_name + '%'); }
+    if (filters.date_prescribed) { query += ` AND DATE(pr.date_prescribed) = $${idx++}`; values.push(filters.date_prescribed); }
+    if (filters.from_date)       { query += ` AND DATE(pr.date_prescribed) >= $${idx++}`; values.push(filters.from_date); }
+    if (filters.to_date)         { query += ` AND DATE(pr.date_prescribed) <= $${idx++}`; values.push(filters.to_date); }
+    if (filters.search) {
+      query += ` AND (p.first_name ILIKE $${idx} OR p.last_name ILIKE $${idx} OR pr.medication_name ILIKE $${idx})`;
+      values.push('%' + filters.search + '%'); idx++;
+    }
 
-    query += ' ORDER BY pr.created_at DESC';
+    const countResult = await pool.query('SELECT COUNT(*) FROM (' + query + ') sub', values);
+    const total = parseInt(countResult.rows[0].count);
+
+    const page  = parseInt(filters.page)  || 1;
+    const limit = parseInt(filters.limit) || 10;
+    query += ` ORDER BY pr.created_at DESC LIMIT $${idx++} OFFSET $${idx++}`;
+    values.push(limit, (page - 1) * limit);
+
     const result = await pool.query(query, values);
-    return result.rows;
+    return { rows: result.rows, total };
   }
-
   static async findById(id) {
     const query = 'SELECT * FROM prescriptions WHERE id = $1';
     const result = await pool.query(query, [id]);

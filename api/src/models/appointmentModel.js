@@ -60,7 +60,7 @@ class AppointmentModel {
         SELECT a.id, a.patient_id, a.provider_id, a.operatory_id,
           a.appointment_code,
           TO_CHAR(a.appointment_date, 'YYYY-MM-DD') as appointment_date,
-          a.start_time, a.end_time, a.service, a.status, a.notes, a.cancellation_reason,
+          TO_CHAR(a.start_time, 'HH24:MI') as start_time, TO_CHAR(a.end_time, 'HH24:MI') as end_time, a.service, a.status, a.notes, a.cancellation_reason,
           a.procedure_items, a.estimated_cost,
           a.created_at, a.updated_at,
           u1.first_name as patient_first_name, u1.last_name as patient_last_name, u1.email as patient_email,
@@ -119,8 +119,10 @@ class AppointmentModel {
 
   static async findById(id) {
     const result = await pool.query(
-      `SELECT a.*,
-        a.appointment_code,
+      `SELECT a.id, a.patient_id, a.provider_id, a.operatory_id, a.appointment_code,
+        TO_CHAR(a.start_time, 'HH24:MI') as start_time, TO_CHAR(a.end_time, 'HH24:MI') as end_time,
+        a.service, a.status, a.notes, a.cancellation_reason, a.procedure_items, a.estimated_cost,
+        a.payment_method, a.payment_status, a.is_paid, a.created_at, a.updated_at,
         u1.first_name as patient_first_name, u1.last_name as patient_last_name, u1.email as patient_email,
         u2.first_name as provider_first_name, u2.last_name as provider_last_name,
         pr.clinic_name, pr.contact_number as clinic_contact,

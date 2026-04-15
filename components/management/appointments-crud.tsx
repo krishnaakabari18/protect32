@@ -56,6 +56,7 @@ const AppointmentsCRUD = () => {
         notes: '',
         cancellation_reason: '',
         appointment_code: '',
+        payment_method: 'cash',
     };
 
     const [params, setParams] = useState<any>(JSON.parse(JSON.stringify(defaultValues)));
@@ -278,38 +279,126 @@ const AppointmentsCRUD = () => {
         setLoading(true);
         try {
             const token = localStorage.getItem('auth_token');
-            const url = params.id ? `${API_ENDPOINTS.appointments}/${params.id}` : API_ENDPOINTS.appointments;
-            const method = params.id ? 'PUT' : 'POST';
+            const isEdit = !!params.id;
+            const procedureItems = procedureRows.filter(r => r.procedure_id).map(r => ({
+                procedure_id: r.procedure_id,
+                procedure_name: r.procedure_name,
+                price: parseFloat(r.price) || 0,
+                discount: parseFloat(r.discount) || 0,
+                final_price: parseFloat(r.final_price) || 0,
+            }));
+            const amount = totalProcPrice || parseFloat(params.estimated_cost) || 0;
 
-            const response = await fetch(url, {
-                method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                    'ngrok-skip-browser-warning': 'true',
-                },
+            // ── EDIT: normal update, no payment flow ──────────────────────────
+            if (isEdit) {
+                const response = await fetch(`${API_ENDPOINTS.appointments}/${params.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+                    body: JSON.stringify({ ...params, procedure_items: procedureItems, estimated_cost: amount.toFixed(2) }),
+                });
+                const data = await response.json();
+                if (response.ok) { showMessage('Appointment updated successfully.'); setAddModal(false); fetchItems(); }
+                else showMessage(data.error || 'Update failed', 'error');
+                return;
+            }
+
+            // ── CREATE: CASH — book immediately ───────────────────────────────
+            if (params.payment_method !== 'online') {
+                const response = await fetch(`${API_ENDPOINTS.appointments}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+                    body: JSON.stringify({ ...params, procedure_items: procedureItems, estimated_cost: amount.toFixed(2) }),
+                });
+                const data = await response.json();
+                if (response.ok) { showMessage('Appointment booked. Cash payment pending.'); setAddModal(false); fetchItems(); }
+                else showMessage(data.error || 'Booking failed', 'error');
+                return;
+            }
+
+            // ── CREATE: ONLINE — get Razorpay order first ─────────────────────
+            const bookRes = await fetch(`${API_ENDPOINTS.appointmentPayments}/book`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
                 body: JSON.stringify({
-                    ...params,
-                    procedure_items: procedureRows.filter(r => r.procedure_id).map(r => ({
-                        procedure_id: r.procedure_id,
-                        procedure_name: r.procedure_name,
-                        price: parseFloat(r.price) || 0,
-                        discount: parseFloat(r.discount) || 0,
-                        final_price: parseFloat(r.final_price) || 0,
-                    })),
-                    estimated_cost: totalProcPrice.toFixed(2),
+                    patient_id: params.patient_id,
+                    provider_id: params.provider_id,
+                    appointment_date: params.appointment_date,
+                    start_time: params.start_time,
+                    end_time: params.end_time,
+                    notes: params.notes,
+                    amount,
+                    payment_method: 'online',
+                    procedure_items: procedureItems,
+                    estimated_cost: amount.toFixed(2),
                 }),
             });
+            const bookData = await bookRes.json();
+            if (!bookRes.ok) { showMessage(bookData.error || 'Failed to initiate payment', 'error'); return; }
 
-            const data = await response.json();
+            const { razorpay_order_id, razorpay_key, appointment_data } = bookData;
 
-            if (response.ok) {
-                showMessage(`Appointment has been ${params.id ? 'updated' : 'created'} successfully.`);
-                setAddModal(false);
-                fetchItems();
-            } else {
-                showMessage(data.error || 'Operation failed', 'error');
+            // Open Razorpay checkout
+            const rzOptions = {
+                key: razorpay_key,
+                amount: Math.round(amount * 100),
+                currency: 'INR',
+                name: 'Protect32',
+                description: 'Appointment Payment',
+                order_id: razorpay_order_id,
+                handler: async (response: any) => {
+                    // Verify payment and create appointment
+                    setLoading(true);
+                    try {
+                        const verifyRes = await fetch(`${API_ENDPOINTS.appointmentPayments}/verify-online`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+                            body: JSON.stringify({
+                                razorpay_order_id: response.razorpay_order_id,
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_signature: response.razorpay_signature,
+                                appointment_data,
+                            }),
+                        });
+                        const verifyData = await verifyRes.json();
+                        if (verifyRes.ok) {
+                            showMessage('Payment successful! Appointment confirmed.');
+                            setAddModal(false);
+                            fetchItems();
+                        } else {
+                            showMessage(verifyData.error || 'Payment verification failed', 'error');
+                        }
+                    } catch (e: any) {
+                        showMessage('Verification error: ' + e.message, 'error');
+                    } finally { setLoading(false); }
+                },
+                modal: {
+                    ondismiss: async () => {
+                        // Record failed payment
+                        await fetch(`${API_ENDPOINTS.appointmentPayments}/failed-online`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+                            body: JSON.stringify({ razorpay_order_id, patient_id: params.patient_id, provider_id: params.provider_id, amount, error_reason: 'User dismissed checkout' }),
+                        }).catch(() => {});
+                        showMessage('Payment cancelled. Appointment not created.', 'error');
+                    },
+                },
+                prefill: {},
+                theme: { color: '#4361ee' },
+            };
+
+            // Load Razorpay script if not loaded
+            if (!(window as any).Razorpay) {
+                await new Promise<void>((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+                    script.onload = () => resolve();
+                    script.onerror = () => reject(new Error('Failed to load Razorpay'));
+                    document.body.appendChild(script);
+                });
             }
+            const rzInstance = new (window as any).Razorpay(rzOptions);
+            rzInstance.open();
+
         } catch (error: any) {
             showMessage('Error: ' + error.message, 'error');
         } finally {
@@ -579,6 +668,7 @@ const AppointmentsCRUD = () => {
                                             <th>Time</th>
                                             <th>Duration</th>
                                             <th>Amount (₹)</th>
+                                            <th>Payment</th>
                                             <th>Status</th>
                                             <th className="!text-center">Actions</th>
                                         </tr>
@@ -602,6 +692,11 @@ const AppointmentsCRUD = () => {
                                                 <td>{item.start_time?.substring(0, 5)} - {item.end_time?.substring(0, 5)}</td>
                                                 <td>{Math.round(item.duration_minutes || 0)} min</td>
                                                 <td>{item.estimated_cost ? `₹${parseFloat(item.estimated_cost).toFixed(2)}` : '-'}</td>
+                                                <td>
+                                                    <span className={`badge ${item.payment_method === 'online' ? 'bg-info' : 'bg-warning'}`}>
+                                                        {item.payment_method === 'online' ? '💳 Online' : '💵 Cash'}
+                                                    </span>
+                                                </td>
                                                 <td>
                                                     <span className={`badge ${
                                                         item.status === 'Upcoming' ? 'bg-info' :
@@ -963,6 +1058,20 @@ const AppointmentsCRUD = () => {
                                                     <option value="Upcoming">Upcoming</option>
                                                     <option value="Completed">Completed</option>
                                                     <option value="Cancelled">Cancelled</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label htmlFor="payment_method">Payment Method</label>
+                                                <select
+                                                    id="payment_method"
+                                                    name="payment_method"
+                                                    className="form-select"
+                                                    value={params.payment_method || 'cash'}
+                                                    onChange={changeValue}
+                                                    disabled={modalMode === 'view'}
+                                                >
+                                                    <option value="cash">💵 Cash</option>
+                                                    <option value="online">💳 Online</option>
                                                 </select>
                                             </div>
                                             <div className="col-span-2">

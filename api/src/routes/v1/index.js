@@ -32,6 +32,7 @@ const dashboardRoutes = require('./dashboardRoutes');
 const subscriptionRoutes = require('./subscriptionRoutes');
 const inquiryRoutes = require('./inquiryRoutes');
 const providerDashboardRoutes = require('./providerDashboardRoutes');
+const appointmentPaymentRoutes = require('./appointmentPaymentRoutes');
 
 
 // Mount routes
@@ -65,5 +66,6 @@ router.use('/dashboard', dashboardRoutes);
 router.use('/subscriptions', subscriptionRoutes);
 router.use('/inquiries', inquiryRoutes);
 router.use('/provider-dashboard', providerDashboardRoutes);
+router.use('/appointment-payments', appointmentPaymentRoutes);
 
 module.exports = router;

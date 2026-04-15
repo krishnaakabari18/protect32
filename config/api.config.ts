@@ -117,6 +117,9 @@ export const API_ENDPOINTS = {
   // Inquiries
   inquiries: `${API_BASE_URL}/inquiries`,
 
+  // Appointment Payments
+  appointmentPayments: `${API_BASE_URL}/appointment-payments`,
+
   // Settings
   settings: `${API_BASE_URL}/settings`,
   

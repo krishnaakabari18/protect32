@@ -76,6 +76,7 @@ const options = {
       { name: 'Subscriptions', description: 'Razorpay subscription management' },
       { name: 'Inquiries', description: 'Inquiry management' },
       { name: 'Provider Dashboard', description: 'Provider-specific dashboard APIs' },
+      { name: 'Appointment Payments', description: 'Appointment booking with cash/online payment handling' },
     ]
   },
   apis: ['./src/routes/v1/*.js']

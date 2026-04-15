@@ -1,6 +1,4 @@
 'use client';
-import IconLayoutGrid from '@/components/icon/icon-layout-grid';
-import IconListCheck from '@/components/icon/icon-list-check';
 import IconUserPlus from '@/components/icon/icon-user-plus';
 import IconX from '@/components/icon/icon-x';
 import IconPencil from '@/components/icon/icon-pencil';
@@ -15,7 +13,6 @@ import MedicationAIInput from '@/components/ui/medication-ai-input';
 
 const PrescriptionsCRUDWithAI = () => {
     const [addModal, setAddModal] = useState(false);
-    const [viewMode, setViewMode] = useState('list');
     const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -43,10 +40,63 @@ const PrescriptionsCRUDWithAI = () => {
     const [modalMode, setModalMode] = useState<'create' | 'edit' | 'view'>('create');
     const [touched, setTouched] = useState<Record<string, boolean>>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [filteredPatients, setFilteredPatients] = useState<any[]>([]);
+    const [patientDropdownOpen, setPatientDropdownOpen] = useState(false);
+    const [patientSearch, setPatientSearch] = useState('');
+    const patientDropdownRef = React.useRef<HTMLDivElement>(null);
+
+    // Close patient dropdown on outside click
+    React.useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (patientDropdownRef.current && !patientDropdownRef.current.contains(e.target as Node)) {
+                setPatientDropdownOpen(false);
+                setPatientSearch('');
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
 
     useEffect(() => {
         fetchItems();
     }, [pagination.page, pagination.limit, searchQuery]);
+
+    // Fetch patients when provider is selected
+    useEffect(() => {
+        if (params.provider_id && addModal) {
+            fetchPatientsByProvider(params.provider_id);
+        } else if (!params.provider_id) {
+            setFilteredPatients([]);
+        }
+    }, [params.provider_id, addModal]);
+
+    const fetchPatientsByProvider = async (providerId: string) => {
+        try {
+            const token = localStorage.getItem('auth_token');
+            const response = await fetch(`${API_ENDPOINTS.appointments}?provider_id=${providerId}&limit=500`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+            });
+            const data = await response.json();
+            if (response.ok && data.data) {
+                const uniquePatients = data.data.reduce((acc: any[], appt: any) => {
+                    if (appt.status === 'cancelled') return acc;
+                    if (appt.patient_id && !acc.find((p: any) => p.id === appt.patient_id)) {
+                        acc.push({
+                            id: appt.patient_id,
+                            first_name: appt.patient_first_name,
+                            last_name: appt.patient_last_name,
+                            email: appt.patient_email || '',
+                        });
+                    }
+                    return acc;
+                }, []);
+                setFilteredPatients(uniquePatients);
+            }
+        } catch (error) {
+            console.error('Error fetching patients by provider:', error);
+            setFilteredPatients([]);
+        }
+    };
 
     const fetchItems = async () => {
         setLoading(true);
@@ -163,6 +213,13 @@ const PrescriptionsCRUDWithAI = () => {
                 }
                 json.date_prescribed = dateStr;
             }
+            
+            // Pre-load patients for the existing provider
+            if (item.provider_id) {
+                fetchPatientsByProvider(item.provider_id);
+            }
+        } else {
+            setFilteredPatients([]);
         }
         
         setParams(json);
@@ -262,7 +319,7 @@ const PrescriptionsCRUDWithAI = () => {
     return (
         <div>
             <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
-                <h2 className="text-xl">Prescriptions (AI-Powered)</h2>
+                <h2 className="text-xl">Prescriptions</h2>
                 <div className="flex w-full flex-col gap-4 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
                     <div className="flex gap-3">
                         <div>
@@ -452,29 +509,15 @@ const PrescriptionsCRUDWithAI = () => {
                                     <div className="p-5">
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
-                                                <label htmlFor="patient_id">Patient <span className="text-red-500">*</span></label>
-                                                <SearchableSelect
-                                                    id="patient_id"
-                                                    dropdownType="patients"
-                                                    value={params.patient_id}
-                                                    onChange={(val) => {
-                                                        setParams((prev: any) => ({ ...prev, patient_id: val }));
-                                                        if (errors.patient_id) setErrors(prev => { const n = { ...prev }; delete n.patient_id; return n; });
-                                                    }}
-                                                    placeholder="Select Patient"
-                                                    disabled={modalMode === 'view'}
-                                                    className={touched.patient_id && errors.patient_id ? 'border-red-500' : ''}
-                                                />
-                                                {touched.patient_id && errors.patient_id && <p className="mt-1 text-xs text-red-500">{errors.patient_id}</p>}
-                                            </div>
-                                            <div>
                                                 <label htmlFor="provider_id">Provider <span className="text-red-500">*</span></label>
                                                 <SearchableSelect
                                                     id="provider_id"
                                                     dropdownType="providers"
                                                     value={params.provider_id}
                                                     onChange={(val) => {
-                                                        setParams((prev: any) => ({ ...prev, provider_id: val }));
+                                                        setParams((prev: any) => ({ ...prev, provider_id: val, patient_id: '' })); // Reset patient when provider changes
+                                                        setPatientDropdownOpen(false);
+                                                        setPatientSearch('');
                                                         if (errors.provider_id) setErrors(prev => { const n = { ...prev }; delete n.provider_id; return n; });
                                                     }}
                                                     placeholder="Select Provider"
@@ -482,6 +525,89 @@ const PrescriptionsCRUDWithAI = () => {
                                                     className={touched.provider_id && errors.provider_id ? 'border-red-500' : ''}
                                                 />
                                                 {touched.provider_id && errors.provider_id && <p className="mt-1 text-xs text-red-500">{errors.provider_id}</p>}
+                                                <p className="text-xs text-gray-400 mt-1">Select provider first</p>
+                                            </div>
+                                            <div>
+                                                <label htmlFor="patient_id">Patient <span className="text-red-500">*</span></label>
+                                                {params.provider_id ? (
+                                                    filteredPatients.length > 0 ? (
+                                                        <div ref={patientDropdownRef} className={`relative ${touched.patient_id && errors.patient_id ? 'border-red-500' : ''}`}>
+                                                            {/* Trigger */}
+                                                            <button
+                                                                type="button"
+                                                                className={`form-input w-full text-left flex items-center justify-between gap-2 cursor-pointer min-h-[38px] ${touched.patient_id && errors.patient_id ? 'border-red-500' : ''}`}
+                                                                onClick={() => !modalMode || modalMode !== 'view' ? setPatientDropdownOpen(o => !o) : undefined}
+                                                                disabled={modalMode === 'view'}
+                                                            >
+                                                                <span className={`text-sm truncate flex-1 ${!params.patient_id ? 'text-gray-400' : ''}`}>
+                                                                    {params.patient_id
+                                                                        ? (() => { const p = filteredPatients.find(p => p.id === params.patient_id); return p ? `${p.first_name} ${p.last_name}` : 'Select Patient'; })()
+                                                                        : 'Select Patient'}
+                                                                </span>
+                                                                <div className="flex items-center gap-1 flex-shrink-0">
+                                                                    {params.patient_id && (
+                                                                        <span className="text-gray-400 hover:text-danger text-base leading-none cursor-pointer px-1"
+                                                                            onClick={(e) => { e.stopPropagation(); setParams((prev: any) => ({ ...prev, patient_id: '' })); }}>×</span>
+                                                                    )}
+                                                                    <span className={`text-gray-400 text-xs transition-transform duration-200 ${patientDropdownOpen ? 'rotate-180' : ''}`}>▾</span>
+                                                                </div>
+                                                            </button>
+
+                                                            {/* Dropdown panel */}
+                                                            {patientDropdownOpen && (
+                                                                <div className="absolute z-[9999] mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl"
+                                                                    onMouseDown={e => e.stopPropagation()}>
+                                                                    {/* Search */}
+                                                                    <div className="p-2 border-b border-gray-100 dark:border-gray-700">
+                                                                        <input
+                                                                            autoFocus
+                                                                            type="text"
+                                                                            className="w-full text-sm px-2 py-1.5 border border-gray-200 dark:border-gray-600 rounded bg-white dark:bg-gray-800 outline-none focus:border-primary"
+                                                                            placeholder="Type to search..."
+                                                                            value={patientSearch}
+                                                                            onChange={e => setPatientSearch(e.target.value)}
+                                                                            onClick={e => e.stopPropagation()}
+                                                                        />
+                                                                    </div>
+                                                                    {/* Options */}
+                                                                    <ul className="max-h-52 overflow-y-auto py-1">
+                                                                        {filteredPatients
+                                                                            .filter(p => !patientSearch || `${p.first_name} ${p.last_name}`.toLowerCase().includes(patientSearch.toLowerCase()) || (p.email || '').toLowerCase().includes(patientSearch.toLowerCase()))
+                                                                            .map(patient => (
+                                                                                <li
+                                                                                    key={patient.id}
+                                                                                    className={`px-3 py-2 text-sm cursor-pointer hover:bg-primary/10 hover:text-primary transition-colors ${params.patient_id === patient.id ? 'bg-primary/10 text-primary font-medium' : ''}`}
+                                                                                    onMouseDown={e => {
+                                                                                        e.preventDefault();
+                                                                                        setParams((prev: any) => ({ ...prev, patient_id: patient.id }));
+                                                                                        if (errors.patient_id) setErrors(prev => { const n = { ...prev }; delete n.patient_id; return n; });
+                                                                                        setPatientDropdownOpen(false);
+                                                                                        setPatientSearch('');
+                                                                                    }}
+                                                                                >
+                                                                                    <div>{patient.first_name} {patient.last_name}</div>
+                                                                                    {patient.email && <div className="text-xs text-gray-400">{patient.email}</div>}
+                                                                                </li>
+                                                                            ))}
+                                                                        {filteredPatients.filter(p => !patientSearch || `${p.first_name} ${p.last_name}`.toLowerCase().includes(patientSearch.toLowerCase()) || (p.email || '').toLowerCase().includes(patientSearch.toLowerCase())).length === 0 && (
+                                                                            <li className="px-3 py-2 text-sm text-gray-400">No results found</li>
+                                                                        )}
+                                                                    </ul>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="form-input bg-gray-100 text-gray-500 cursor-not-allowed min-h-[38px] flex items-center">
+                                                            No patients with appointments
+                                                        </div>
+                                                    )
+                                                ) : (
+                                                    <div className="form-input bg-gray-100 text-gray-500 cursor-not-allowed min-h-[38px] flex items-center">
+                                                        Select provider first
+                                                    </div>
+                                                )}
+                                                {touched.patient_id && errors.patient_id && <p className="mt-1 text-xs text-red-500">{errors.patient_id}</p>}
+                                                <p className="text-xs text-gray-400 mt-1">Only patients with appointments</p>
                                             </div>
                                             <div className="col-span-2">
                                                 <label htmlFor="medication_name">Medication Name <span className="text-red-500">*</span></label>

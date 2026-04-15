@@ -126,14 +126,14 @@ router.get('/:type', authenticate, async (req, res) => {
 
       case 'patients': {
         const q = searchLike
-          ? `SELECT p.id as value, CONCAT(u.first_name,' ',u.last_name) as label, u.email as meta_email, u.mobile_number as meta_phone
+          ? `SELECT p.id as value, CONCAT(u.first_name,' ',u.last_name) as label, u.email as meta_email
              FROM patients p JOIN users u ON p.id=u.id
              WHERE u.first_name ILIKE $1 OR u.last_name ILIKE $1 OR u.email ILIKE $1
              ORDER BY u.first_name LIMIT 200`
-          : `SELECT p.id as value, CONCAT(u.first_name,' ',u.last_name) as label, u.email as meta_email, u.mobile_number as meta_phone
+          : `SELECT p.id as value, CONCAT(u.first_name,' ',u.last_name) as label, u.email as meta_email
              FROM patients p JOIN users u ON p.id=u.id ORDER BY u.first_name LIMIT 200`;
         const r = await pool.query(q, searchLike ? [searchLike] : []);
-        data = r.rows.map(row => ({ value: row.value, label: row.label, meta: { email: row.meta_email, phone: row.meta_phone } }));
+        data = r.rows.map(row => ({ value: row.value, label: row.label, meta: { email: row.meta_email } }));
         break;
       }
 
@@ -141,16 +141,16 @@ router.get('/:type', authenticate, async (req, res) => {
         const q = searchLike
           ? `SELECT p.id as value,
                COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'')||' '||COALESCE(u.last_name,'')), ''), p.full_name, p.clinic_name) as label,
-               u.email as meta_email, p.specialty as meta_specialty
+               u.email as meta_email
              FROM providers p LEFT JOIN users u ON p.id=u.id
              WHERE u.first_name ILIKE $1 OR u.last_name ILIKE $1 OR p.full_name ILIKE $1 OR p.specialty ILIKE $1
              ORDER BY label LIMIT 200`
           : `SELECT p.id as value,
                COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'')||' '||COALESCE(u.last_name,'')), ''), p.full_name, p.clinic_name) as label,
-               u.email as meta_email, p.specialty as meta_specialty
+               u.email as meta_email
              FROM providers p LEFT JOIN users u ON p.id=u.id ORDER BY label LIMIT 200`;
         const r = await pool.query(q, searchLike ? [searchLike] : []);
-        data = r.rows.map(row => ({ value: row.value, label: row.label, meta: { email: row.meta_email, specialty: row.meta_specialty } }));
+        data = r.rows.map(row => ({ value: row.value, label: row.label, meta: { email: row.meta_email } }));
         break;
       }
 

@@ -63,7 +63,7 @@ class AppointmentModel {
           a.start_time, a.end_time, a.service, a.status, a.notes, a.cancellation_reason,
           a.procedure_items, a.estimated_cost,
           a.created_at, a.updated_at,
-          u1.first_name as patient_first_name, u1.last_name as patient_last_name,
+          u1.first_name as patient_first_name, u1.last_name as patient_last_name, u1.email as patient_email,
           u2.first_name as provider_first_name, u2.last_name as provider_last_name,
           pr.clinic_name,
           EXTRACT(EPOCH FROM (a.end_time - a.start_time))/60 as duration_minutes

@@ -24,8 +24,15 @@ const pool = require('../../config/database');
  *         required: true
  *         schema:
  *           type: string
- *           enum: [patients, providers, procedures, plans, users, specialties, states, cities, document-types, ticket-types, notification-types, blood-groups, genders, marital-statuses, insurance-types]
- *         description: Type of dropdown data to fetch
+ *           enum: [patients, providers, procedures, plans, users, specialties, states, cities, document-types, ticket-types, notification-types, blood-groups, genders, marital-statuses, insurance-types, provider-patients, provider-procedures, provider-appointments, patient-appointments, procedure-max-price]
+ *         description: |
+ *           Type of dropdown data to fetch.
+ *           Dependent types (require parent_id):
+ *           - cities: parent_id = state_id
+ *           - provider-patients: parent_id = provider_id (patients with non-cancelled appointments)
+ *           - provider-procedures: parent_id = provider_id (procedures with prices)
+ *           - patient-appointments: parent_id = patient_id
+ *           - procedure-max-price: parent_id = procedure_id
  *       - in: query
  *         name: parent_id
  *         schema:

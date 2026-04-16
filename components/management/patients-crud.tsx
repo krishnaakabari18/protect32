@@ -217,6 +217,38 @@ const PatientsCrud = () => {
     const [familyPhoto, setFamilyPhoto] = useState<File | null>(null);
     const [touched, setTouched] = useState<Record<string, boolean>>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
+
+    // State/City dropdowns
+    const [statesList, setStatesList] = useState<any[]>([]);
+    const [citiesList, setCitiesList] = useState<any[]>([]);
+
+    useEffect(() => {
+        const fetchStates = async () => {
+            try {
+                const token = getAuthToken();
+                const res = await fetch(`${API_ENDPOINTS.statesCities}/states`, {
+                    headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+                });
+                const data = await res.json();
+                if (res.ok) setStatesList(data.data || []);
+            } catch (e) { console.error(e); }
+        };
+        fetchStates();
+    }, []);
+
+    const fetchCitiesByState = async (stateName: string) => {
+        if (!stateName) { setCitiesList([]); return; }
+        try {
+            const token = getAuthToken();
+            const state = statesList.find((s: any) => s.name === stateName);
+            if (!state) return;
+            const res = await fetch(`${API_ENDPOINTS.statesCities}/states/${state.id}/cities`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+            });
+            const data = await res.json();
+            if (res.ok) setCitiesList(data.data || []);
+        } catch (e) { console.error(e); }
+    };
     useEffect(() => {
         fetchPatients();
         fetchUsers();
@@ -510,6 +542,8 @@ const PatientsCrud = () => {
             setPhotoPreview(null);
         }
         setProfilePhoto(null);
+        // Load cities for existing state
+        if (patient.state) fetchCitiesByState(patient.state);
         setIsOpen(true);
     };
 
@@ -1297,26 +1331,37 @@ const PatientsCrud = () => {
 
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                    City <span className="text-red-500">*</span>
+                    State <span className="text-red-500">*</span>
                 </label>
-                <input
-                    type="text" name="city" value={formData.city}
-                    onChange={handleInputChange} onBlur={handleBlur}
-                    className={`form-input ${touched.city && errors.city ? 'border-red-500' : ''}`}
+                <SearchableSelect
+                    options={statesList.map(s => ({ value: s.name, label: s.name }))}
+                    value={(formData as any).state || ''}
+                    onChange={(val) => {
+                        handleInputChange({ target: { name: 'state', value: val, type: 'select' } } as any);
+                        handleInputChange({ target: { name: 'city', value: '', type: 'select' } } as any);
+                        fetchCitiesByState(val);
+                    }}
+                    placeholder={statesList.length === 0 ? 'Loading...' : 'Select State'}
+                    className={touched.state && errors.state ? 'border-red-500' : ''}
                 />
-                {touched.city && errors.city && <p className="mt-1 text-xs text-red-500">{errors.city}</p>}
+                {touched.state && errors.state && <p className="mt-1 text-xs text-red-500">{errors.state}</p>}
             </div>
 
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                    State <span className="text-red-500">*</span>
+                    City <span className="text-red-500">*</span>
                 </label>
-                <input
-                    type="text" name="state" value={formData.state}
-                    onChange={handleInputChange} onBlur={handleBlur}
-                    className={`form-input ${touched.state && errors.state ? 'border-red-500' : ''}`}
+                <SearchableSelect
+                    options={citiesList.map(c => ({ value: c.name, label: c.name }))}
+                    value={(formData as any).city || ''}
+                    onChange={(val) => {
+                        handleInputChange({ target: { name: 'city', value: val, type: 'select' } } as any);
+                    }}
+                    placeholder={!(formData as any).state ? 'Select State first' : citiesList.length === 0 ? 'Loading...' : 'Select City'}
+                    disabled={!(formData as any).state}
+                    className={touched.city && errors.city ? 'border-red-500' : ''}
                 />
-                {touched.state && errors.state && <p className="mt-1 text-xs text-red-500">{errors.state}</p>}
+                {touched.city && errors.city && <p className="mt-1 text-xs text-red-500">{errors.city}</p>}
             </div>
 
             <div>

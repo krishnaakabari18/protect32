@@ -398,14 +398,19 @@ router.get('/:id/holidays', auth, async (req, res) => {
 router.post('/:id/holidays', auth, async (req, res) => {
   try {
     const pool = require('../../config/database');
-    const { holiday_date, title, description, is_full_day = true, start_time, end_time } = req.body;
+    const { holiday_date, title, description, is_full_day = true, start_time, end_time, half_day_type, sessions } = req.body;
     if (!holiday_date || !title) return res.status(400).json({ error: 'holiday_date and title are required' });
     const r = await pool.query(
-      `INSERT INTO provider_holidays (provider_id, holiday_date, title, description, is_full_day, start_time, end_time)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)
-       ON CONFLICT (provider_id, holiday_date) DO UPDATE SET title=$3, description=$4, is_full_day=$5, start_time=$6, end_time=$7, updated_at=NOW()
+      `INSERT INTO provider_holidays (provider_id, holiday_date, title, description, is_full_day, start_time, end_time, half_day_type, sessions)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+       ON CONFLICT (provider_id, holiday_date) DO UPDATE SET
+         title=$3, description=$4, is_full_day=$5, start_time=$6, end_time=$7,
+         half_day_type=$8, sessions=$9, updated_at=NOW()
        RETURNING *`,
-      [req.params.id, holiday_date, title, description || null, is_full_day, start_time || null, end_time || null]
+      [req.params.id, holiday_date, title, description || null, is_full_day,
+       start_time || null, end_time || null,
+       half_day_type || null,
+       sessions ? JSON.stringify(sessions) : null]
     );
     res.status(201).json({ success: true, message: 'Holiday added', data: r.rows[0] });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -452,14 +457,18 @@ router.post('/:id/holidays', auth, async (req, res) => {
 router.put('/:id/holidays/:holidayId', auth, async (req, res) => {
   try {
     const pool = require('../../config/database');
-    const { holiday_date, title, description, is_full_day, start_time, end_time } = req.body;
+    const { holiday_date, title, description, is_full_day, start_time, end_time, half_day_type, sessions } = req.body;
     const r = await pool.query(
       `UPDATE provider_holidays SET
          holiday_date=COALESCE($1,holiday_date), title=COALESCE($2,title),
          description=$3, is_full_day=COALESCE($4,is_full_day),
-         start_time=$5, end_time=$6, updated_at=NOW()
-       WHERE id=$7 AND provider_id=$8 RETURNING *`,
-      [holiday_date, title, description, is_full_day, start_time, end_time, req.params.holidayId, req.params.id]
+         start_time=$5, end_time=$6,
+         half_day_type=$7, sessions=$8, updated_at=NOW()
+       WHERE id=$9 AND provider_id=$10 RETURNING *`,
+      [holiday_date, title, description, is_full_day, start_time, end_time,
+       half_day_type || null,
+       sessions ? JSON.stringify(sessions) : null,
+       req.params.holidayId, req.params.id]
     );
     if (!r.rows[0]) return res.status(404).json({ error: 'Holiday not found' });
     res.json({ success: true, message: 'Holiday updated', data: r.rows[0] });

@@ -108,7 +108,9 @@ class ProviderModel {
               'description', ph.description,
               'is_full_day', ph.is_full_day,
               'start_time', TO_CHAR(ph.start_time, 'HH24:MI'),
-              'end_time', TO_CHAR(ph.end_time, 'HH24:MI')
+              'end_time', TO_CHAR(ph.end_time, 'HH24:MI'),
+              'half_day_type', ph.half_day_type,
+              'sessions', ph.sessions
             ) ORDER BY ph.holiday_date ASC
           ) FROM provider_holidays ph WHERE ph.provider_id = p.id),
           '[]'::json
@@ -237,7 +239,9 @@ class ProviderModel {
               'description', ph.description,
               'is_full_day', ph.is_full_day,
               'start_time', TO_CHAR(ph.start_time, 'HH24:MI'),
-              'end_time', TO_CHAR(ph.end_time, 'HH24:MI')
+              'end_time', TO_CHAR(ph.end_time, 'HH24:MI'),
+              'half_day_type', ph.half_day_type,
+              'sessions', ph.sessions
             ) ORDER BY ph.holiday_date ASC
           ) FROM provider_holidays ph WHERE ph.provider_id = p.id),
           '[]'::json

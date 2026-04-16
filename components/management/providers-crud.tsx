@@ -1063,7 +1063,19 @@ const ProvidersCRUD = () => {
                 headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
             });
             const data = await res.json();
-            if (res.ok) setHolidays(data.data || []);
+            if (res.ok) {
+                const defaultSessions = {
+                    morning:   { enabled: false, start: '09:00', end: '12:00' },
+                    afternoon: { enabled: false, start: '12:00', end: '16:00' },
+                    evening:   { enabled: false, start: '16:00', end: '20:00' },
+                };
+                setHolidays((data.data || []).map((h: any) => ({
+                    ...h,
+                    sessions: h.sessions
+                        ? (typeof h.sessions === 'string' ? JSON.parse(h.sessions) : h.sessions)
+                        : { ...defaultSessions },
+                })));
+            }
         } catch (e) { console.error(e); }
         finally { setHolidayLoading(false); }
     };
@@ -1072,28 +1084,50 @@ const ProvidersCRUD = () => {
     const syncHolidays = async (providerId: string) => {
         if (!holidays.length) return;
         const token = localStorage.getItem('auth_token');
-        // Delete all existing then re-insert (bulk replace)
         for (const h of holidays) {
             if (h._deleted && h.id) {
                 await fetch(`${API_ENDPOINTS.providers}/${providerId}/holidays/${h.id}`, {
                     method: 'DELETE', headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
                 }).catch(() => {});
-            } else if (!h._deleted) {
+            } else if (!h._deleted && h.holiday_date && h.title) {
                 await fetch(`${API_ENDPOINTS.providers}/${providerId}/holidays`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
-                    body: JSON.stringify({ holiday_date: h.holiday_date, title: h.title, description: h.description, is_full_day: h.is_full_day, start_time: h.start_time, end_time: h.end_time }),
+                    body: JSON.stringify({
+                        holiday_date: h.holiday_date,
+                        title: h.title,
+                        description: h.description || null,
+                        is_full_day: h.is_full_day !== false,
+                        sessions: h.is_full_day !== false ? null : (h.sessions || null),
+                    }),
                 }).catch(() => {});
             }
         }
     };
 
     const addHolidayRow = () => {
-        setHolidays(prev => [...prev, { _local: true, holiday_date: '', title: '', description: '', is_full_day: true, start_time: '', end_time: '' }]);
+        setHolidays(prev => [...prev, {
+            _local: true, holiday_date: '', title: '', description: '', is_full_day: true,
+            sessions: {
+                morning:   { enabled: false, start: '09:00', end: '12:00' },
+                afternoon: { enabled: false, start: '12:00', end: '16:00' },
+                evening:   { enabled: false, start: '16:00', end: '20:00' },
+            }
+        }]);
     };
 
     const updateHolidayRow = (i: number, field: string, value: any) => {
         setHolidays(prev => { const next = [...prev]; next[i] = { ...next[i], [field]: value }; return next; });
+    };
+
+    const updateSession = (i: number, session: string, field: string, value: any) => {
+        setHolidays(prev => {
+            const next = [...prev];
+            const sessions = { ...(next[i].sessions || { morning: { enabled: false, start: '09:00', end: '12:00' }, afternoon: { enabled: false, start: '12:00', end: '16:00' }, evening: { enabled: false, start: '16:00', end: '20:00' } }) };
+            sessions[session] = { ...sessions[session], [field]: value };
+            next[i] = { ...next[i], sessions };
+            return next;
+        });
     };
 
     const removeHolidayRow = (i: number) => {
@@ -1105,10 +1139,16 @@ const ProvidersCRUD = () => {
         });
     };
 
+    const SESSION_DEFS = [
+        { key: 'morning',   label: 'Morning',   hint: 'Before 12 PM' },
+        { key: 'afternoon', label: 'Afternoon', hint: '12–4 PM' },
+        { key: 'evening',   label: 'Evening',   hint: 'After 4 PM' },
+    ];
+
     const renderHolidaysTab = () => (
         <div>
             <div className="flex items-center justify-between mb-4">
-                <p className="text-sm text-gray-500">Add holidays or days off. They will be saved when you click Add/Update Provider.</p>
+                <p className="text-sm text-gray-500">Add holidays or days off. Saved when you click Add/Update Provider.</p>
                 {!isView && (
                     <button type="button" className="btn btn-sm btn-outline-primary" onClick={addHolidayRow}>
                         + Add More
@@ -1122,54 +1162,72 @@ const ProvidersCRUD = () => {
                 </div>
             )}
 
-            <div className="space-y-3">
+            <div className="space-y-4">
                 {holidays.map((h, i) => h._deleted ? null : (
-                    <div key={i} className="grid grid-cols-1 md:grid-cols-4 gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg items-end">
-                        <div>
-                            <label className="text-xs text-gray-500 block mb-1">Date <span className="text-red-500">*</span></label>
-                            <input type="date" className="form-input" value={h.holiday_date || ''}
-                                disabled={isView}
-                                onChange={e => updateHolidayRow(i, 'holiday_date', e.target.value)} />
-                        </div>
-                        <div>
-                            <label className="text-xs text-gray-500 block mb-1">Title <span className="text-red-500">*</span></label>
-                            <input type="text" className="form-input" placeholder="e.g. Diwali, Leave"
-                                value={h.title || ''} disabled={isView}
-                                onChange={e => updateHolidayRow(i, 'title', e.target.value)} />
-                        </div>
-                        <div>
-                            <label className="text-xs text-gray-500 block mb-1">Description</label>
-                            <input type="text" className="form-input" placeholder="Optional"
-                                value={h.description || ''} disabled={isView}
-                                onChange={e => updateHolidayRow(i, 'description', e.target.value)} />
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <label className="flex items-center gap-1 text-sm cursor-pointer">
-                                <input type="checkbox" className="form-checkbox" checked={h.is_full_day !== false}
+                    <div key={i} className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                        {/* Row 1: Date, Title, Description, Full Day toggle, Remove */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end mb-3">
+                            <div>
+                                <label className="text-xs text-gray-500 block mb-1">Date <span className="text-red-500">*</span></label>
+                                <input type="date" className="form-input" value={h.holiday_date || ''}
                                     disabled={isView}
-                                    onChange={e => updateHolidayRow(i, 'is_full_day', e.target.checked)} />
-                                Full Day
-                            </label>
-                            {!isView && (
-                                <button type="button" className="btn btn-sm btn-outline-danger ml-auto"
-                                    onClick={() => removeHolidayRow(i)}>✕</button>
-                            )}
+                                    onChange={e => updateHolidayRow(i, 'holiday_date', e.target.value)} />
+                            </div>
+                            <div>
+                                <label className="text-xs text-gray-500 block mb-1">Title <span className="text-red-500">*</span></label>
+                                <input type="text" className="form-input" placeholder="e.g. Diwali, Leave"
+                                    value={h.title || ''} disabled={isView}
+                                    onChange={e => updateHolidayRow(i, 'title', e.target.value)} />
+                            </div>
+                            <div>
+                                <label className="text-xs text-gray-500 block mb-1">Description</label>
+                                <input type="text" className="form-input" placeholder="Optional"
+                                    value={h.description || ''} disabled={isView}
+                                    onChange={e => updateHolidayRow(i, 'description', e.target.value)} />
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                                    <input type="checkbox" className="form-checkbox" checked={h.is_full_day !== false}
+                                        disabled={isView}
+                                        onChange={e => updateHolidayRow(i, 'is_full_day', e.target.checked)} />
+                                    Full Day
+                                </label>
+                                {!isView && (
+                                    <button type="button" className="btn btn-sm btn-outline-danger ml-auto"
+                                        onClick={() => removeHolidayRow(i)}>✕</button>
+                                )}
+                            </div>
                         </div>
+
+                        {/* Half Day Sessions — shown when Full Day is unchecked */}
                         {!h.is_full_day && (
-                            <>
-                                <div>
-                                    <label className="text-xs text-gray-500 block mb-1">Start Time</label>
-                                    <input type="time" className="form-input" value={h.start_time || ''}
-                                        disabled={isView}
-                                        onChange={e => updateHolidayRow(i, 'start_time', e.target.value)} />
-                                </div>
-                                <div>
-                                    <label className="text-xs text-gray-500 block mb-1">End Time</label>
-                                    <input type="time" className="form-input" value={h.end_time || ''}
-                                        disabled={isView}
-                                        onChange={e => updateHolidayRow(i, 'end_time', e.target.value)} />
-                                </div>
-                            </>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
+                                {SESSION_DEFS.map(({ key, label, hint }) => {
+                                    const sess = h.sessions?.[key] || { enabled: false, start: '', end: '' };
+                                    return (
+                                        <div key={key} className={`p-3 rounded-lg border-2 transition-colors ${sess.enabled ? 'border-primary bg-primary/5' : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900'}`}>
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div>
+                                                    <span className={`font-semibold text-sm ${sess.enabled ? 'text-primary' : ''}`}>{label}</span>
+                                                    <span className="text-xs text-gray-400 ml-1">({hint})</span>
+                                                </div>
+                                                <input type="checkbox" className="form-checkbox"
+                                                    checked={!!sess.enabled} disabled={isView}
+                                                    onChange={e => updateSession(i, key, 'enabled', e.target.checked)} />
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <input type="time" className="form-input text-sm flex-1"
+                                                    value={sess.start || ''} disabled={isView || !sess.enabled}
+                                                    onChange={e => updateSession(i, key, 'start', e.target.value)} />
+                                                <span className="text-gray-400 text-xs">–</span>
+                                                <input type="time" className="form-input text-sm flex-1"
+                                                    value={sess.end || ''} disabled={isView || !sess.enabled}
+                                                    onChange={e => updateSession(i, key, 'end', e.target.value)} />
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         )}
                     </div>
                 ))}

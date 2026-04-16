@@ -112,7 +112,7 @@ export const API_ENDPOINTS = {
   notifications: `${API_BASE_URL}/notifications`,
   
   // Chat
-  chat: `${API_BASE_URL}/chat`,
+  chat: `${API_BASE_URL}/chats`,
   
   // Inquiries
   inquiries: `${API_BASE_URL}/inquiries`,

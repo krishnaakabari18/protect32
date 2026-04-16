@@ -30,6 +30,7 @@
     "passport-jwt": "^4.0.1",
     "pg": "^8.20.0",
     "razorpay": "^2.9.6",
+    "socket.io": "^4.8.3",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.0",
     "twilio": "^4.19.0"

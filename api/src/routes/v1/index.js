@@ -45,7 +45,7 @@ router.use('/patients', patientRoutes);
 router.use('/payments', paymentRoutes);
 router.use('/prescriptions', prescriptionRoutes);
 router.use('/notifications', notificationRoutes);
-router.use('/chat', chatRoutes);
+router.use('/chats', chatRoutes);
 router.use('/documents', documentRoutes);
 router.use('/reviews', reviewRoutes);
 router.use('/treatment-plans', treatmentPlanRoutes);

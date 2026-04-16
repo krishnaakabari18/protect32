@@ -41,6 +41,45 @@ const ReviewsCRUD = () => {
     const [modalMode, setModalMode] = useState<'create' | 'edit' | 'view'>('create');
     const [touched, setTouched] = useState<Record<string, boolean>>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [filteredProviders, setFilteredProviders] = useState<any[]>([]);
+    const [providerDropdownOpen, setProviderDropdownOpen] = useState(false);
+    const [providerSearch, setProviderSearch] = useState('');
+    const providerDropdownRef = React.useRef<HTMLDivElement>(null);
+
+    // Close provider dropdown on outside click
+    React.useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (providerDropdownRef.current && !providerDropdownRef.current.contains(e.target as Node)) {
+                setProviderDropdownOpen(false);
+                setProviderSearch('');
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    // Fetch providers when patient changes
+    React.useEffect(() => {
+        if (params.patient_id && addModal) {
+            fetchProvidersByPatient(params.patient_id);
+        } else if (!params.patient_id) {
+            setFilteredProviders([]);
+        }
+    }, [params.patient_id, addModal]);
+
+    const fetchProvidersByPatient = async (patientId: string) => {
+        try {
+            const token = localStorage.getItem('auth_token');
+            const res = await fetch(`${API_ENDPOINTS.dropdowns}/patient-providers?parent_id=${patientId}`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+            });
+            const data = await res.json();
+            if (res.ok) setFilteredProviders(data.data || []);
+        } catch (e) {
+            console.error('Error fetching providers by patient:', e);
+            setFilteredProviders([]);
+        }
+    };
 
     // Helper function to format date
     const formatDate = (dateStr: string) => {
@@ -196,6 +235,8 @@ const ReviewsCRUD = () => {
         setTouched({});
         setErrors({});
         setProcedureDropdownOpen(false);
+        setProviderDropdownOpen(false);
+        setProviderSearch('');
         const json = JSON.parse(JSON.stringify(defaultValues));
         
         if (item) {
@@ -210,10 +251,13 @@ const ReviewsCRUD = () => {
             } else if (!Array.isArray(json.diagnosis)) {
                 json.diagnosis = [];
             }
+            // Pre-load providers for this patient
+            if (item.patient_id) fetchProvidersByPatient(item.patient_id);
             // Fetch procedures for this provider
             if (item.provider_id) fetchProcedures(item.provider_id);
         } else {
             setProcedures([]);
+            setFilteredProviders([]);
         }
         
         setParams(json);
@@ -585,7 +629,9 @@ const ReviewsCRUD = () => {
                                                     dropdownType="patients"
                                                     value={params.patient_id}
                                                     onChange={(val) => {
-                                                        setParams((prev: any) => ({ ...prev, patient_id: val }));
+                                                        setParams((prev: any) => ({ ...prev, patient_id: val, provider_id: '', diagnosis: [] }));
+                                                        setFilteredProviders([]);
+                                                        setProviderDropdownOpen(false);
                                                         if (errors.patient_id) setErrors(prev => { const n = { ...prev }; delete n.patient_id; return n; });
                                                     }}
                                                     placeholder="Select Patient"
@@ -593,22 +639,85 @@ const ReviewsCRUD = () => {
                                                     className={touched.patient_id && errors.patient_id ? 'border-red-500' : ''}
                                                 />
                                                 {touched.patient_id && errors.patient_id && <p className="mt-1 text-xs text-red-500">{errors.patient_id}</p>}
+                                                <p className="text-xs text-gray-400 mt-1">Select patient first</p>
                                             </div>
                                             <div>
                                                 <label htmlFor="provider_id">Provider <span className="text-red-500">*</span></label>
-                                                <SearchableSelect
-                                                    id="provider_id"
-                                                    dropdownType="providers"
-                                                    value={params.provider_id}
-                                                    onChange={(val) => {
-                                                        setParams((prev: any) => ({ ...prev, provider_id: val }));
-                                                        if (errors.provider_id) setErrors(prev => { const n = { ...prev }; delete n.provider_id; return n; });
-                                                    }}
-                                                    placeholder="Select Provider"
-                                                    disabled={modalMode === 'view'}
-                                                    className={touched.provider_id && errors.provider_id ? 'border-red-500' : ''}
-                                                />
+                                                {params.patient_id ? (
+                                                    filteredProviders.length > 0 ? (
+                                                        <div ref={providerDropdownRef} className="relative">
+                                                            <button
+                                                                type="button"
+                                                                className={`form-input w-full text-left flex items-center justify-between gap-2 cursor-pointer min-h-[38px] ${touched.provider_id && errors.provider_id ? 'border-red-500' : ''}`}
+                                                                onClick={() => modalMode !== 'view' && setProviderDropdownOpen(o => !o)}
+                                                                disabled={modalMode === 'view'}
+                                                            >
+                                                                <span className={`text-sm truncate flex-1 ${!params.provider_id ? 'text-gray-400' : ''}`}>
+                                                                    {params.provider_id
+                                                                        ? filteredProviders.find(p => p.value === params.provider_id)?.label || 'Select Provider'
+                                                                        : 'Select Provider'}
+                                                                </span>
+                                                                <div className="flex items-center gap-1 flex-shrink-0">
+                                                                    {params.provider_id && (
+                                                                        <span className="text-gray-400 hover:text-danger text-base leading-none cursor-pointer px-1"
+                                                                            onClick={(e) => { e.stopPropagation(); setParams((prev: any) => ({ ...prev, provider_id: '', diagnosis: [] })); }}>×</span>
+                                                                    )}
+                                                                    <span className={`text-gray-400 text-xs transition-transform duration-200 ${providerDropdownOpen ? 'rotate-180' : ''}`}>▾</span>
+                                                                </div>
+                                                            </button>
+                                                            {providerDropdownOpen && (
+                                                                <div className="absolute z-[9999] mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl"
+                                                                    onMouseDown={e => e.stopPropagation()}>
+                                                                    <div className="p-2 border-b border-gray-100 dark:border-gray-700">
+                                                                        <input
+                                                                            autoFocus
+                                                                            type="text"
+                                                                            className="w-full text-sm px-2 py-1.5 border border-gray-200 dark:border-gray-600 rounded bg-white dark:bg-gray-800 outline-none focus:border-primary"
+                                                                            placeholder="Type to search..."
+                                                                            value={providerSearch}
+                                                                            onChange={e => setProviderSearch(e.target.value)}
+                                                                            onClick={e => e.stopPropagation()}
+                                                                        />
+                                                                    </div>
+                                                                    <ul className="max-h-52 overflow-y-auto py-1">
+                                                                        {filteredProviders
+                                                                            .filter(p => !providerSearch || p.label.toLowerCase().includes(providerSearch.toLowerCase()) || (p.meta?.email || '').toLowerCase().includes(providerSearch.toLowerCase()))
+                                                                            .map(provider => (
+                                                                                <li
+                                                                                    key={provider.value}
+                                                                                    className={`px-3 py-2 text-sm cursor-pointer hover:bg-primary/10 hover:text-primary transition-colors ${params.provider_id === provider.value ? 'bg-primary/10 text-primary font-medium' : ''}`}
+                                                                                    onMouseDown={e => {
+                                                                                        e.preventDefault();
+                                                                                        setParams((prev: any) => ({ ...prev, provider_id: provider.value, diagnosis: [] }));
+                                                                                        fetchProcedures(provider.value);
+                                                                                        if (errors.provider_id) setErrors(prev => { const n = { ...prev }; delete n.provider_id; return n; });
+                                                                                        setProviderDropdownOpen(false);
+                                                                                        setProviderSearch('');
+                                                                                    }}
+                                                                                >
+                                                                                    <div>{provider.label}</div>
+                                                                                    {provider.meta?.email && <div className="text-xs text-gray-400">{provider.meta.email}</div>}
+                                                                                </li>
+                                                                            ))}
+                                                                        {filteredProviders.filter(p => !providerSearch || p.label.toLowerCase().includes(providerSearch.toLowerCase()) || (p.meta?.email || '').toLowerCase().includes(providerSearch.toLowerCase())).length === 0 && (
+                                                                            <li className="px-3 py-2 text-sm text-gray-400">No results found</li>
+                                                                        )}
+                                                                    </ul>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="form-input bg-gray-100 text-gray-500 cursor-not-allowed min-h-[38px] flex items-center">
+                                                            No providers with completed appointments
+                                                        </div>
+                                                    )
+                                                ) : (
+                                                    <div className="form-input bg-gray-100 text-gray-500 cursor-not-allowed min-h-[38px] flex items-center">
+                                                        Select patient first
+                                                    </div>
+                                                )}
                                                 {touched.provider_id && errors.provider_id && <p className="mt-1 text-xs text-red-500">{errors.provider_id}</p>}
+                                                <p className="text-xs text-gray-400 mt-1">Only providers with completed appointments</p>
                                             </div>
                                             {/* Diagnosis multi-select */}
                                             <div>

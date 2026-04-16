@@ -153,6 +153,26 @@ router.get('/:type', authenticate, async (req, res) => {
         break;
       }
 
+      case 'patient-providers': {
+        // Returns providers who have COMPLETED appointments with a given patient_id
+        if (!parent_id) { data = []; break; }
+        const r = await pool.query(
+          `SELECT DISTINCT
+             p.id as value,
+             COALESCE(NULLIF(TRIM(COALESCE(u.first_name,'')||' '||COALESCE(u.last_name,'')), ''), p.full_name, p.clinic_name) as label,
+             u.email as meta_email
+           FROM appointments a
+           JOIN providers p ON a.provider_id = p.id
+           LEFT JOIN users u ON p.id = u.id
+           WHERE a.patient_id = $1
+             AND LOWER(a.status) = 'completed'
+           ORDER BY label`,
+          [parent_id]
+        );
+        data = r.rows.map(row => ({ value: row.value, label: row.label, meta: { email: row.meta_email } }));
+        break;
+      }
+
       case 'patients': {
         const q = searchLike
           ? `SELECT p.id as value, CONCAT(u.first_name,' ',u.last_name) as label, u.email as meta_email

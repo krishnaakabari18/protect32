@@ -277,8 +277,13 @@ router.get('/profile', AuthMiddleware.authenticate, async (req, res) => {
     const subRow = await pool.query(
       `SELECT s.id, s.razorpay_subscription_id, s.razorpay_plan_id, s.plan_title, s.plan_price,
               s.status, s.is_active, s.start_date, s.expiry_date, s.total_count,
-              s.paid_count, s.remaining_count, s.short_url
+              s.paid_count, s.remaining_count, s.short_url,
+              p.id as db_plan_id, p.title as plan_title_db, p.price as plan_price_db,
+              p.discount_percent, p.free_checkups_annually, p.free_cleanings_annually,
+              p.free_xrays_annually, p.max_members, p.features, p.is_popular,
+              p.interval, p.interval_count, p.currency, p.procedure_rows
        FROM subscriptions s
+       LEFT JOIN plans p ON (s.razorpay_plan_id = p.razorpay_plan_id OR s.razorpay_plan_id = p.plan_id::text)
        WHERE s.patient_id = $1
        ORDER BY s.expiry_date DESC NULLS LAST
        LIMIT 1`,
@@ -306,17 +311,33 @@ router.get('/profile', AuthMiddleware.authenticate, async (req, res) => {
         patient,
         subscription: subscription ? {
           subscription_id: subscription.razorpay_subscription_id,
-          plan_id: subscription.razorpay_plan_id,
-          plan_name: subscription.plan_title,
-          plan_price: subscription.plan_price,
-          status: subscription.status,
-          is_active: subscription.is_active,
-          start_date: subscription.start_date,
-          expiry_date: subscription.expiry_date,
-          total_count: subscription.total_count,
-          paid_count: subscription.paid_count,
+          plan_id:         subscription.razorpay_plan_id,
+          plan_name:       subscription.plan_title || subscription.plan_title_db,
+          plan_price:      subscription.plan_price || subscription.plan_price_db,
+          status:          subscription.status,
+          is_active:       subscription.is_active,
+          start_date:      subscription.start_date,
+          expiry_date:     subscription.expiry_date,
+          total_count:     subscription.total_count,
+          paid_count:      subscription.paid_count,
           remaining_count: subscription.remaining_count,
-          payment_link: subscription.short_url,
+          payment_link:    subscription.short_url,
+          plan: subscription.db_plan_id ? {
+            id:                      subscription.db_plan_id,
+            title:                   subscription.plan_title_db,
+            price:                   subscription.plan_price_db,
+            discount_percent:        subscription.discount_percent,
+            free_checkups_annually:  subscription.free_checkups_annually,
+            free_cleanings_annually: subscription.free_cleanings_annually,
+            free_xrays_annually:     subscription.free_xrays_annually,
+            max_members:             subscription.max_members,
+            features:                subscription.features,
+            is_popular:              subscription.is_popular,
+            interval:                subscription.interval,
+            interval_count:          subscription.interval_count,
+            currency:                subscription.currency,
+            procedure_rows:          subscription.procedure_rows,
+          } : null,
         } : null,
       },
       error: null,
@@ -417,10 +438,16 @@ router.put('/profile', AuthMiddleware.authenticate, uploadPatientPhotos, async (
 
     // 6. Fetch active subscription
     const subRow = await pool.query(
-      `SELECT razorpay_subscription_id, razorpay_plan_id, plan_title, plan_price,
-              status, is_active, start_date, expiry_date, remaining_count
-       FROM subscriptions WHERE patient_id = $1
-       ORDER BY expiry_date DESC NULLS LAST LIMIT 1`, [userId]
+      `SELECT s.razorpay_subscription_id, s.razorpay_plan_id, s.plan_title, s.plan_price,
+              s.status, s.is_active, s.start_date, s.expiry_date, s.remaining_count,
+              p.id as db_plan_id, p.title as plan_title_db, p.price as plan_price_db,
+              p.discount_percent, p.free_checkups_annually, p.free_cleanings_annually,
+              p.free_xrays_annually, p.max_members, p.features, p.is_popular,
+              p.interval, p.interval_count, p.currency, p.procedure_rows
+       FROM subscriptions s
+       LEFT JOIN plans p ON (s.razorpay_plan_id = p.razorpay_plan_id OR s.razorpay_plan_id = p.plan_id::text)
+       WHERE s.patient_id = $1
+       ORDER BY s.expiry_date DESC NULLS LAST LIMIT 1`, [userId]
     );
     const sub = subRow.rows[0] || null;
 
@@ -433,13 +460,29 @@ router.put('/profile', AuthMiddleware.authenticate, uploadPatientPhotos, async (
         subscription: sub ? {
           subscription_id: sub.razorpay_subscription_id,
           plan_id:         sub.razorpay_plan_id,
-          plan_name:       sub.plan_title,
-          plan_price:      sub.plan_price,
+          plan_name:       sub.plan_title || sub.plan_title_db,
+          plan_price:      sub.plan_price || sub.plan_price_db,
           status:          sub.status,
           is_active:       sub.is_active,
           start_date:      sub.start_date,
           expiry_date:     sub.expiry_date,
           remaining_count: sub.remaining_count,
+          plan: sub.db_plan_id ? {
+            id:                      sub.db_plan_id,
+            title:                   sub.plan_title_db,
+            price:                   sub.plan_price_db,
+            discount_percent:        sub.discount_percent,
+            free_checkups_annually:  sub.free_checkups_annually,
+            free_cleanings_annually: sub.free_cleanings_annually,
+            free_xrays_annually:     sub.free_xrays_annually,
+            max_members:             sub.max_members,
+            features:                sub.features,
+            is_popular:              sub.is_popular,
+            interval:                sub.interval,
+            interval_count:          sub.interval_count,
+            currency:                sub.currency,
+            procedure_rows:          sub.procedure_rows,
+          } : null,
         } : null,
       },
       error: null,

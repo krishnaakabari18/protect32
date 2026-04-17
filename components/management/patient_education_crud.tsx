@@ -149,7 +149,6 @@ const PatientEducationCRUD = () => {
         const newErrors: Record<string, string> = {};
         const newTouched: Record<string, boolean> = {};
         if (!params.title) { newErrors.title = 'Title is required.'; newTouched.title = true; }
-        if (!params.category) { newErrors.category = 'Category is required.'; newTouched.category = true; }
         if (!params.content) { newErrors.content = 'Content is required.'; newTouched.content = true; }
         setTouched(prev => ({ ...prev, ...newTouched }));
         setErrors(newErrors);
@@ -359,7 +358,7 @@ const PatientEducationCRUD = () => {
     const handleBlur = (e: any) => {
         const { name, value } = e.target;
         setTouched(prev => ({ ...prev, [name]: true }));
-        const requiredFields: Record<string, string> = { title: 'Title', category: 'Category' };
+        const requiredFields: Record<string, string> = { title: 'Title' };
         if (requiredFields[name] && !value) {
             setErrors(prev => ({ ...prev, [name]: `${requiredFields[name]} is required.` }));
         } else {
@@ -565,23 +564,6 @@ const PatientEducationCRUD = () => {
                 <div>
                     <select
                         className="form-select"
-                        value={filterCategory}
-                        onChange={(e) => {
-                            setFilterCategory(e.target.value);
-                            setPagination(prev => ({ ...prev, page: 1 }));
-                        }}
-                    >
-                        <option value="">All Categories</option>
-                        {categories.map((category) => (
-                            <option key={category} value={category}>
-                                {category}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                <div>
-                    <select
-                        className="form-select"
                         value={filterStatus}
                         onChange={(e) => {
                             setFilterStatus(e.target.value);
@@ -593,13 +575,12 @@ const PatientEducationCRUD = () => {
                         <option value="Inactive">Inactive</option>
                     </select>
                 </div>
-                {(filterCategory || filterStatus || searchTerm) && (
+                {(filterStatus || searchTerm) && (
                     <div>
                         <button
                             type="button"
                             className="btn btn-outline-danger"
                             onClick={() => {
-                                setFilterCategory('');
                                 setFilterStatus('');
                                 setSearchTerm('');
                                 setPagination(prev => ({ ...prev, page: 1 }));
@@ -625,7 +606,6 @@ const PatientEducationCRUD = () => {
                                         <tr>
                                             <th>#</th>
                                             <th>Title</th>
-                                            <th>Category</th>
                                             <th>Status</th>
                                             <th>Views</th>
                                             <th>Created Date</th>
@@ -637,9 +617,6 @@ const PatientEducationCRUD = () => {
                                             <tr key={item.id}>
                                                 <td>{(pagination.page - 1) * pagination.limit + index + 1}</td>
                                                 <td className="font-semibold">{item.title}</td>
-                                                <td>
-                                                    <span className="badge bg-primary">{item.category}</span>
-                                                </td>
                                                 <td>
                                                     <button
                                                         type="button"
@@ -693,10 +670,6 @@ const PatientEducationCRUD = () => {
                                     <div className="p-6">
                                         <div className="text-lg font-semibold mb-2">{item.title}</div>
                                         <div className="space-y-2 mb-4">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-white-dark">Category:</span>
-                                                <span className="badge bg-primary">{item.category}</span>
-                                            </div>
                                             <div className="flex items-center gap-2">
                                                 <span className="text-white-dark">Status:</span>
                                                 <button
@@ -840,27 +813,6 @@ const PatientEducationCRUD = () => {
                                                     disabled={modalMode === 'view'}
                                                 />
                                                 {touched.title && errors.title && <p className="mt-1 text-xs text-red-500">{errors.title}</p>}
-                                            </div>
-                                            <div>
-                                                <label htmlFor="category">Category <span className="text-red-500">*</span></label>
-                                                <input
-                                                    id="category"
-                                                    type="text"
-                                                    name="category"
-                                                    placeholder="e.g., Dental Care, Chronic Conditions"
-                                                    className={`form-input ${touched.category && errors.category ? 'border-red-500' : ''}`}
-                                                    value={params.category}
-                                                    onChange={changeValue}
-                                                    onBlur={handleBlur}
-                                                    disabled={modalMode === 'view'}
-                                                    list="categories-list"
-                                                />
-                                                <datalist id="categories-list">
-                                                    {categories.map((cat) => (
-                                                        <option key={cat} value={cat} />
-                                                    ))}
-                                                </datalist>
-                                                {touched.category && errors.category && <p className="mt-1 text-xs text-red-500">{errors.category}</p>}
                                             </div>
                                             <div>
                                                 <label htmlFor="status">Status *</label>

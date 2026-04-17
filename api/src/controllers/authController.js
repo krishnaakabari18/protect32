@@ -209,7 +209,7 @@ class AuthController {
                   p.id as db_plan_id, p.title as plan_title_db, p.price as plan_price_db,
                   p.discount_percent, p.free_checkups_annually, p.free_cleanings_annually,
                   p.free_xrays_annually, p.max_members, p.features, p.is_popular,
-                  p.interval, p.interval_count, p.currency, p.procedure_rows
+                  p.interval, p.interval_count, p.currency, p.procedure_rows, p.is_active as plan_is_active
            FROM subscriptions s
            LEFT JOIN plans p ON (s.razorpay_plan_id = p.razorpay_plan_id OR s.razorpay_plan_id = p.plan_id::text)
            WHERE s.patient_id = $1
@@ -224,7 +224,6 @@ class AuthController {
           plan_name:        sub.plan_title || sub.plan_title_db,
           plan_price:       sub.plan_price || sub.plan_price_db,
           status:           sub.status,
-          is_active:        sub.is_active,
           start_date:       sub.start_date,
           expiry_date:      sub.expiry_date,
           total_count:      sub.total_count,
@@ -242,6 +241,7 @@ class AuthController {
             max_members:             sub.max_members,
             features:                sub.features,
             is_popular:              sub.is_popular,
+            is_active:               sub.plan_is_active,
             interval:                sub.interval,
             interval_count:          sub.interval_count,
             currency:                sub.currency,
@@ -253,8 +253,7 @@ class AuthController {
       res.json({
         success: true,
         message: 'OTP verified successfully',
-        data: responseData,
-        error: null,
+        data: responseData
       });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message, data: null, error: error.message });

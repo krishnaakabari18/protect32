@@ -1,10 +1,34 @@
 const AppointmentModel = require('../models/appointmentModel');
+const pool = require('../config/database');
 
 class AppointmentController {
+
   static async createAppointment(req, res) {
     try {
-      const appointment = await AppointmentModel.create(req.body);
-      res.status(201).json({ message: 'Appointment created successfully', data: appointment });
+      const appointmentData = { ...req.body };
+      const paymentMethod = appointmentData.payment_method || 'cash';
+
+      // Set initial payment status based on method
+      if (paymentMethod === 'cash') {
+        appointmentData.payment_status = 'pending';
+        appointmentData.is_paid = false;
+      }
+      // For online: payment_status and is_paid are set by verify-online endpoint
+
+      const appointment = await AppointmentModel.create(appointmentData);
+
+      // CASH: create pending payment record in payments table
+      if (paymentMethod === 'cash') {
+        const amount = appointmentData.estimated_cost || 0;
+        await pool.query(
+          `INSERT INTO payments (patient_id, provider_id, appointment_id, amount, payment_method, payment_status, is_paid, payment_date)
+           VALUES ($1,$2,$3,$4,'cash','pending',false,NOW())
+           ON CONFLICT (appointment_id) DO NOTHING`,
+          [appointment.patient_id, appointment.provider_id, appointment.id, parseFloat(amount) || 0]
+        );
+      }
+
+      res.status(201).json({ success: true, message: 'Appointment created successfully', data: appointment });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
@@ -16,27 +40,20 @@ class AppointmentController {
       const filters = {};
       if (patient_id) filters.patient_id = patient_id;
       if (provider_id) filters.provider_id = provider_id;
-      if (status) filters.status = status;
-      if (date) filters.date = date;
-      if (from_date) filters.from_date = from_date;
-      if (to_date) filters.to_date = to_date;
-      if (search) filters.search = search;
+      if (status)     filters.status = status;
+      if (date)       filters.date = date;
+      if (from_date)  filters.from_date = from_date;
+      if (to_date)    filters.to_date = to_date;
+      if (search)     filters.search = search;
       filters.page  = page;
       filters.limit = limit;
 
       const { rows, total } = await AppointmentModel.findAll(filters);
-
-      const pageNum  = parseInt(page);
-      const limitNum = parseInt(limit);
+      const pageNum = parseInt(page), limitNum = parseInt(limit);
 
       res.json({
         data: rows,
-        pagination: {
-          page: pageNum,
-          limit: limitNum,
-          total,
-          totalPages: Math.ceil(total / limitNum)
-        }
+        pagination: { page: pageNum, limit: limitNum, total, totalPages: Math.ceil(total / limitNum) }
       });
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -46,10 +63,20 @@ class AppointmentController {
   static async getAppointmentById(req, res) {
     try {
       const appointment = await AppointmentModel.findById(req.params.id);
-      if (!appointment) {
-        return res.status(404).json({ error: 'Appointment not found' });
+      if (!appointment) return res.status(404).json({ error: 'Appointment not found' });
+
+      // For cash: also fetch payment record
+      let paymentRecord = null;
+      if (appointment.payment_method === 'cash') {
+        const pr = await pool.query(
+          `SELECT id, amount, payment_status, is_paid, payment_date, received_at
+           FROM payments WHERE appointment_id = $1 LIMIT 1`,
+          [req.params.id]
+        );
+        paymentRecord = pr.rows[0] || null;
       }
-      res.json({ data: appointment });
+
+      res.json({ data: { ...appointment, payment_record: paymentRecord } });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
@@ -58,10 +85,33 @@ class AppointmentController {
   static async updateAppointment(req, res) {
     try {
       const appointment = await AppointmentModel.update(req.params.id, req.body);
-      if (!appointment) {
-        return res.status(404).json({ error: 'Appointment not found' });
+      if (!appointment) return res.status(404).json({ error: 'Appointment not found' });
+
+      const payMethod = appointment.payment_method || 'cash';
+
+      // When appointment is COMPLETED → update payment status
+      if (req.body.status === 'Completed') {
+        if (payMethod === 'cash') {
+          // Cash: update payments table → PAID + update appointment payment_status
+          await pool.query(
+            `UPDATE payments SET payment_status='paid', is_paid=true, received_at=NOW()
+             WHERE appointment_id=$1`,
+            [req.params.id]
+          );
+          await pool.query(
+            `UPDATE appointments SET payment_status='paid', is_paid=true WHERE id=$1`,
+            [req.params.id]
+          );
+        } else if (payMethod === 'online') {
+          // Online: payment already done — just sync appointment payment_status
+          await pool.query(
+            `UPDATE appointments SET payment_status='paid', is_paid=true WHERE id=$1`,
+            [req.params.id]
+          );
+        }
       }
-      res.json({ message: 'Appointment updated successfully', data: appointment });
+
+      res.json({ success: true, message: 'Appointment updated successfully', data: appointment });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
@@ -70,9 +120,7 @@ class AppointmentController {
   static async deleteAppointment(req, res) {
     try {
       const appointment = await AppointmentModel.delete(req.params.id);
-      if (!appointment) {
-        return res.status(404).json({ error: 'Appointment not found' });
-      }
+      if (!appointment) return res.status(404).json({ error: 'Appointment not found' });
       res.json({ message: 'Appointment deleted successfully' });
     } catch (error) {
       res.status(500).json({ error: error.message });

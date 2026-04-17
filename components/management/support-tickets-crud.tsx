@@ -73,11 +73,10 @@ const SupportTicketsCRUD = () => {
     }, [pagination.page, pagination.limit, filterStatus, filterFromDate, filterToDate, filterProvider]);
 
     useEffect(() => {
-        if (params.patient_id) {
-            setSelectedPatient({ id: params.patient_id });
-        } else {
+        if (!params.patient_id) {
             setSelectedPatient(null);
         }
+        // Note: phone is set via onChange (new selection) or openModal (edit/view)
     }, [params.patient_id]);
 
     const fetchItems = async () => {
@@ -248,12 +247,30 @@ const SupportTicketsCRUD = () => {
                 }
             });
             
+            // Set patient phone from ticket data
+            if (item.patient_phone) {
+                setSelectedPatient({ mobile_number: item.patient_phone });
+            } else if (item.patient_id) {
+                // Fallback: fetch phone from users API
+                const token = localStorage.getItem('auth_token');
+                fetch(`${API_ENDPOINTS.users}/${item.patient_id}`, {
+                    headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+                }).then(r => r.json()).then(data => {
+                    if (data.data?.mobile_number) {
+                        setSelectedPatient({ mobile_number: data.data.mobile_number });
+                    }
+                }).catch(() => {});
+            } else {
+                setSelectedPatient(null);
+            }
+            
             // Fetch replies if viewing or editing
             if (mode === 'view' || mode === 'edit') {
                 fetchReplies(item.id);
             }
         } else {
             setReplies([]);
+            setSelectedPatient(null);
         }
         
         setReplyMessage('');
@@ -659,9 +676,28 @@ const SupportTicketsCRUD = () => {
                                                     id="patient_id"
                                                     dropdownType="patients"
                                                     value={params.patient_id}
-                                                    onChange={(val, opt) => {
+                                                    onChange={async (val, opt) => {
                                                         setParams((prev: any) => ({ ...prev, patient_id: val }));
-                                                        setSelectedPatient(opt?.meta ? { mobile_number: opt.meta.phone } : null);
+                                                        if (!val) { setSelectedPatient(null); return; }
+                                                        
+                                                        // Use phone from meta if available (after API restart)
+                                                        if (opt?.meta?.phone) {
+                                                            setSelectedPatient({ mobile_number: opt.meta.phone });
+                                                        } else {
+                                                            // Fallback: fetch patient phone directly from users API
+                                                            try {
+                                                                const token = localStorage.getItem('auth_token');
+                                                                const res = await fetch(`${API_ENDPOINTS.users}/${val}`, {
+                                                                    headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+                                                                });
+                                                                const data = await res.json();
+                                                                if (res.ok && data.data) {
+                                                                    setSelectedPatient({ mobile_number: data.data.mobile_number || '' });
+                                                                }
+                                                            } catch (e) {
+                                                                console.error('Failed to fetch patient phone:', e);
+                                                            }
+                                                        }
                                                         if (errors.patient_id) setErrors(prev => { const n = { ...prev }; delete n.patient_id; return n; });
                                                     }}
                                                     placeholder="Select Patient"
@@ -677,7 +713,6 @@ const SupportTicketsCRUD = () => {
                                                     type="text"
                                                     className="form-input bg-gray-100"
                                                     value={selectedPatient?.mobile_number || ''}
-                                                    disabled
                                                     readOnly
                                                 />
                                             </div>

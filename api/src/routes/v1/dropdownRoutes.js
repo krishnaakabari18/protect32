@@ -193,14 +193,14 @@ router.get('/:type', authenticate, async (req, res) => {
 
       case 'patients': {
         const q = searchLike
-          ? `SELECT p.id as value, CONCAT(u.first_name,' ',u.last_name) as label, u.email as meta_email
+          ? `SELECT p.id as value, CONCAT(u.first_name,' ',u.last_name) as label, u.email as meta_email, u.mobile_number as meta_phone
              FROM patients p JOIN users u ON p.id=u.id
-             WHERE u.first_name ILIKE $1 OR u.last_name ILIKE $1 OR u.email ILIKE $1
+             WHERE u.first_name ILIKE $1 OR u.last_name ILIKE $1 OR u.email ILIKE $1 OR u.mobile_number ILIKE $1
              ORDER BY u.first_name LIMIT 200`
-          : `SELECT p.id as value, CONCAT(u.first_name,' ',u.last_name) as label, u.email as meta_email
+          : `SELECT p.id as value, CONCAT(u.first_name,' ',u.last_name) as label, u.email as meta_email, u.mobile_number as meta_phone
              FROM patients p JOIN users u ON p.id=u.id ORDER BY u.first_name LIMIT 200`;
         const r = await pool.query(q, searchLike ? [searchLike] : []);
-        data = r.rows.map(row => ({ value: row.value, label: row.label, meta: { email: row.meta_email } }));
+        data = r.rows.map(row => ({ value: row.value, label: row.label, meta: { email: row.meta_email, phone: row.meta_phone } }));
         break;
       }
 

@@ -144,6 +144,9 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
                                 {opt.meta?.email && (
                                     <div className="text-xs text-gray-400">{opt.meta.email}</div>
                                 )}
+                                {opt.meta?.phone && (
+                                    <div className="text-xs text-gray-400">{opt.meta.phone}</div>
+                                )}
                                 {opt.meta?.category && (
                                     <div className="text-xs text-gray-400">{opt.meta.category}</div>
                                 )}

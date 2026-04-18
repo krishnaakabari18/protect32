@@ -5,9 +5,9 @@ const { AuthMiddleware } = require('../../middleware/auth');
 
 /**
  * @swagger
- * /treatmentPlans:
+ * /treatment-plans:
  *   post:
- *     summary: Create a new treatmentPlan
+ *     summary: Create a new treatment plan
  *     tags: [TreatmentPlans]
  *     security:
  *       - bearerAuth: []
@@ -17,31 +17,53 @@ const { AuthMiddleware } = require('../../middleware/auth');
  *         application/json:
  *           schema:
  *             type: object
+ *             properties:
+ *               patient_id:           { type: string, format: uuid }
+ *               provider_id:          { type: string, format: uuid }
+ *               diagnosis:            { type: string, description: "JSON array of procedure IDs" }
+ *               procedure_items:      { type: array }
+ *               treatment_description:{ type: string }
+ *               estimated_cost:       { type: number }
+ *               start_date:           { type: string, format: date }
+ *               end_date:             { type: string, format: date }
+ *               status:               { type: string, enum: [Proposed, Consented, Paid, Rejected] }
+ *               notes:                { type: string }
  *     responses:
  *       201:
- *         description: treatmentPlan created successfully
- */
-router.post('/', AuthMiddleware.authenticate, TreatmentPlanController.create);
-
-/**
- * @swagger
- * /treatmentPlans:
+ *         description: Treatment plan created successfully
  *   get:
- *     summary: Get all treatmentPlans
+ *     summary: Get all treatment plans
  *     tags: [TreatmentPlans]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema: { type: string, enum: [Proposed, Consented, Paid, Rejected] }
+ *       - in: query
+ *         name: patient_id
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: provider_id
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10 }
  *     responses:
  *       200:
- *         description: List of treatmentPlans
+ *         description: List of treatment plans
  */
+router.post('/', AuthMiddleware.authenticate, TreatmentPlanController.create);
 router.get('/', AuthMiddleware.authenticate, TreatmentPlanController.getAll);
 
 /**
  * @swagger
- * /treatmentPlans/{id}:
+ * /treatment-plans/{id}:
  *   get:
- *     summary: Get treatmentPlan by ID
+ *     summary: Get treatment plan by ID
  *     tags: [TreatmentPlans]
  *     security:
  *       - bearerAuth: []
@@ -49,19 +71,14 @@ router.get('/', AuthMiddleware.authenticate, TreatmentPlanController.getAll);
  *       - in: path
  *         name: id
  *         required: true
- *         schema:
- *           type: string
+ *         schema: { type: string, format: uuid }
  *     responses:
  *       200:
- *         description: treatmentPlan details
- */
-router.get('/:id', AuthMiddleware.authenticate, TreatmentPlanController.getById);
-
-/**
- * @swagger
- * /treatmentPlans/{id}:
+ *         description: Treatment plan details
+ *       404:
+ *         description: Not found
  *   put:
- *     summary: Update treatmentPlan
+ *     summary: Update treatment plan
  *     tags: [TreatmentPlans]
  *     security:
  *       - bearerAuth: []
@@ -69,8 +86,7 @@ router.get('/:id', AuthMiddleware.authenticate, TreatmentPlanController.getById)
  *       - in: path
  *         name: id
  *         required: true
- *         schema:
- *           type: string
+ *         schema: { type: string, format: uuid }
  *     requestBody:
  *       required: true
  *       content:
@@ -79,15 +95,9 @@ router.get('/:id', AuthMiddleware.authenticate, TreatmentPlanController.getById)
  *             type: object
  *     responses:
  *       200:
- *         description: treatmentPlan updated successfully
- */
-router.put('/:id', AuthMiddleware.authenticate, TreatmentPlanController.update);
-
-/**
- * @swagger
- * /treatmentPlans/{id}:
+ *         description: Treatment plan updated successfully
  *   delete:
- *     summary: Delete treatmentPlan
+ *     summary: Delete treatment plan
  *     tags: [TreatmentPlans]
  *     security:
  *       - bearerAuth: []
@@ -95,12 +105,13 @@ router.put('/:id', AuthMiddleware.authenticate, TreatmentPlanController.update);
  *       - in: path
  *         name: id
  *         required: true
- *         schema:
- *           type: string
+ *         schema: { type: string, format: uuid }
  *     responses:
  *       200:
- *         description: treatmentPlan deleted successfully
+ *         description: Treatment plan deleted successfully
  */
+router.get('/:id', AuthMiddleware.authenticate, TreatmentPlanController.getById);
+router.put('/:id', AuthMiddleware.authenticate, TreatmentPlanController.update);
 router.delete('/:id', AuthMiddleware.authenticate, TreatmentPlanController.delete);
 
 module.exports = router;

@@ -124,14 +124,30 @@ const InquiriesCRUD = () => {
         fetchItems();
     };
 
-    const exportCSV = () => {
-        const q = new URLSearchParams({
-            ...(filterStatus   && { status:    filterStatus }),
-            ...(filterFromDate && { from_date: filterFromDate }),
-            ...(filterToDate   && { to_date:   filterToDate }),
-            ...(searchQuery    && { search:    searchQuery }),
-        });
-        window.open(`${API_ENDPOINTS.inquiries}/export?${q}&token=${token()}`, '_blank');
+    const exportCSV = async () => {
+        try {
+            const q = new URLSearchParams({
+                ...(filterStatus   && { status:    filterStatus }),
+                ...(filterFromDate && { from_date: filterFromDate }),
+                ...(filterToDate   && { to_date:   filterToDate }),
+                ...(searchQuery    && { search:    searchQuery }),
+            });
+            const res = await fetch(`${API_ENDPOINTS.inquiries}/export?${q}`, {
+                headers: { 'Authorization': `Bearer ${token()}`, 'ngrok-skip-browser-warning': 'true' },
+            });
+            if (!res.ok) { Swal.fire('Error', 'Failed to export CSV', 'error'); return; }
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `inquiries-${Date.now()}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (e: any) {
+            Swal.fire('Error', e.message, 'error');
+        }
     };
 
     const toggleSelect = (id: string) =>

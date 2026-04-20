@@ -140,10 +140,13 @@ class AuthController {
 
       const otp = OTPUtil.generate(parseInt(process.env.OTP_LENGTH) || 6);
       await AuthModel.createOTP(null, mobile_number, otp, 'login');
+
+      // Send via WhatsApp (or SMS/test mode fallback)
       await OTPUtil.sendSMS(mobile_number, otp);
 
       res.json({
-        message: 'OTP sent successfully',
+        success: true,
+        message: 'OTP sent successfully via WhatsApp',
         data: {
           mobile_number,
           is_new_user: isNewUser,

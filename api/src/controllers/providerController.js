@@ -5,6 +5,30 @@ const path = require('path');
 const fs = require('fs');
 const { convertProviderUrls } = require('../utils/urlHelper');
 
+// Compute open_time and close_time for each day based on enabled sessions
+function computeTimeSlots(timeSlots) {
+  if (!timeSlots || !Array.isArray(timeSlots)) return timeSlots;
+  return timeSlots.map(day => {
+    if (!day.is_open) return { ...day, open_time: null, close_time: null };
+
+    const sessions = [
+      { key: 'morning',   data: day.morning },
+      { key: 'afternoon', data: day.afternoon },
+      { key: 'evening',   data: day.evening },
+    ];
+
+    // Find first enabled session → open_time
+    const firstEnabled = sessions.find(s => s.data?.enabled);
+    // Find last enabled session → close_time
+    const lastEnabled = [...sessions].reverse().find(s => s.data?.enabled);
+
+    const open_time  = firstEnabled?.data?.start || null;
+    const close_time = lastEnabled?.data?.end   || null;
+
+    return { ...day, open_time, close_time };
+  });
+}
+
 // Helper function to safely parse integers
 const safeParseInt = (value, defaultValue = null) => {
   if (value === undefined || value === null || value === '') {
@@ -274,6 +298,10 @@ class ProviderController {
 
       // Convert relative paths to absolute URLs
       const providerWithUrls = convertProviderUrls(provider);
+      if (providerWithUrls.time_slots) {
+        const ts = typeof providerWithUrls.time_slots === 'string' ? JSON.parse(providerWithUrls.time_slots) : providerWithUrls.time_slots;
+        providerWithUrls.time_slots = computeTimeSlots(ts);
+      }
       
       res.status(201).json({ message: 'Provider created successfully', data: providerWithUrls });
     } catch (error) {
@@ -304,7 +332,14 @@ class ProviderController {
       if (procedure_id)   filters.procedure_id = procedure_id;
 
       const providers = await ProviderModel.findAll(filters);
-      const providersWithUrls = providers.map(provider => convertProviderUrls(provider));
+      const providersWithUrls = providers.map(provider => {
+        const p = convertProviderUrls(provider);
+        if (p.time_slots) {
+          const ts = typeof p.time_slots === 'string' ? JSON.parse(p.time_slots) : p.time_slots;
+          p.time_slots = computeTimeSlots(ts);
+        }
+        return p;
+      });
 
       const pageNum = safeParseInt(page, 1);
       const limitNum = safeParseInt(limit, 10);
@@ -333,6 +368,10 @@ class ProviderController {
       
       // Convert relative paths to absolute URLs
       const providerWithUrls = convertProviderUrls(provider);
+      if (providerWithUrls.time_slots) {
+        const ts = typeof providerWithUrls.time_slots === 'string' ? JSON.parse(providerWithUrls.time_slots) : providerWithUrls.time_slots;
+        providerWithUrls.time_slots = computeTimeSlots(ts);
+      }
       
       res.json({ data: providerWithUrls });
     } catch (error) {
@@ -531,6 +570,10 @@ class ProviderController {
 
       // Convert relative paths to absolute URLs
       const providerWithUrls = convertProviderUrls(provider);
+      if (providerWithUrls.time_slots) {
+        const ts = typeof providerWithUrls.time_slots === 'string' ? JSON.parse(providerWithUrls.time_slots) : providerWithUrls.time_slots;
+        providerWithUrls.time_slots = computeTimeSlots(ts);
+      }
       
       console.log('Provider updated successfully:', provider);
       res.json({ message: 'Provider updated successfully', data: providerWithUrls });

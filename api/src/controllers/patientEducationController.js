@@ -5,11 +5,11 @@ const { convertEducationUrls } = require('../utils/urlHelper');
 class PatientEducationController {
   static async create(req, res) {
     try {
-      const { title, category, content, summary, tags, status } = req.body;
+      const { title, content, summary, tags, status } = req.body;
       const author_id = req.user.id;
 
-      if (!title || !category || !content) {
-        return res.status(400).json({ error: 'Title, category, and content are required' });
+      if (!title || !content) {
+        return res.status(400).json({ error: 'Title and content are required' });
       }
 
       // Parse tags if sent as JSON string from FormData
@@ -30,7 +30,6 @@ class PatientEducationController {
 
       const data = await PatientEducationModel.create({
         title,
-        category,
         content,
         summary,
         tags: parsedTags,
@@ -53,10 +52,10 @@ class PatientEducationController {
 
   static async getAll(req, res) {
     try {
-      const { page = 1, limit = 10, category, status, search } = req.query;
+      const { page = 1, limit = 10, status, search } = req.query;
       
       const filters = {};
-      if (category) filters.category = category;
+     
       if (status) filters.status = status;
       if (search) filters.search = search;
 
@@ -107,10 +106,10 @@ class PatientEducationController {
 
   static async update(req, res) {
     try {
-      const { title, category, content, summary, tags, status, removeImage } = req.body;
+      const { title, content, summary, tags, status, removeImage } = req.body;
 
-      if (!title || !category || !content) {
-        return res.status(400).json({ error: 'Title, category, and content are required' });
+      if (!title || !content) {
+        return res.status(400).json({ error: 'Title, content are required' });
       }
 
       // Parse tags if sent as JSON string from FormData
@@ -149,7 +148,6 @@ class PatientEducationController {
 
       const data = await PatientEducationModel.update(req.params.id, {
         title,
-        category,
         content,
         summary,
         tags: parsedTags,

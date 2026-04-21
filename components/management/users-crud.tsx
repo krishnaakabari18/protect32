@@ -157,13 +157,14 @@ const UsersCrud = () => {
         else if (id === 'last_name') delete newErrors.last_name;
         
         if (id === 'email' && !val) newErrors.email = 'Email is required';
+        else if (id === 'email' && val && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) newErrors.email = 'Enter a valid email address';
         else if (id === 'email') delete newErrors.email;
         
         if (id === 'password' && !params.id && !val) newErrors.password = 'Password is required for new users';
         else if (id === 'password') delete newErrors.password;
         
-        if (id === 'mobile_number' && val && !/^\d{10,15}$/.test(val)) {
-            newErrors.mobile_number = 'Mobile number must be 10-15 digits';
+        if (id === 'mobile_number' && val && !/^\d{10}$/.test(val.replace(/[\s\-+]/g, ''))) {
+            newErrors.mobile_number = 'Mobile number must be exactly 10 digits';
         } else if (id === 'mobile_number') {
             delete newErrors.mobile_number;
         }
@@ -237,11 +238,15 @@ const UsersCrud = () => {
         if (!params.first_name) newErrors.first_name = 'First name is required';
         if (!params.last_name) newErrors.last_name = 'Last name is required';
         if (!params.email) newErrors.email = 'Email is required';
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(params.email)) newErrors.email = 'Enter a valid email address';
         if (!params.id && !params.password) newErrors.password = 'Password is required for new users';
+        if (params.mobile_number && !/^\d{10}$/.test(params.mobile_number.replace(/[\s\-+]/g, ''))) {
+            newErrors.mobile_number = 'Mobile number must be exactly 10 digits';
+        }
 
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors);
-            setTouched({ first_name: true, last_name: true, email: true, password: true });
+            setTouched({ first_name: true, last_name: true, email: true, password: true, mobile_number: true });
             setTimeout(() => {
                 const firstKey = Object.keys(newErrors)[0];
                 const el = document.querySelector(`[id="${firstKey}"]`) as HTMLElement;
@@ -908,8 +913,9 @@ const UsersCrud = () => {
                                                     <label htmlFor="mobile_number">Mobile Number</label>
                                                     <input 
                                                         id="mobile_number" 
-                                                        type="text" 
-                                                        placeholder="Enter Mobile Number" 
+                                                        type="text"
+                                                        maxLength={10}
+                                                        placeholder="Enter Mobile Number (10 digits)" 
                                                         className={`form-input ${touched.mobile_number && errors.mobile_number ? 'border-red-500' : ''}`}
                                                         value={params.mobile_number} 
                                                         onChange={(e) => changeValue(e)}

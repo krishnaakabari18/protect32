@@ -359,6 +359,27 @@ const PatientsCrud = () => {
         Object.keys(requiredFields).forEach(key => {
             if (!formData[key as keyof typeof formData]) newErrors[key] = requiredFields[key];
         });
+
+        // Email format validation
+        if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+            newErrors.email = 'Enter a valid email address';
+        }
+
+        // Mobile number - exactly 10 digits
+        if (formData.mobile_number && !/^\d{10}$/.test(String(formData.mobile_number).replace(/[\s\-+]/g, ''))) {
+            newErrors.mobile_number = 'Mobile number must be exactly 10 digits';
+        }
+
+        // Emergency contact number - exactly 10 digits
+        if (formData.emergency_contact_number && !/^\d{10}$/.test(String(formData.emergency_contact_number).replace(/[\s\-+]/g, ''))) {
+            newErrors.emergency_contact_number = 'Emergency contact must be exactly 10 digits';
+        }
+
+        // Postal code - numbers only
+        if (formData.postal_code && !/^\d+$/.test(String(formData.postal_code).trim())) {
+            newErrors.postal_code = 'Pincode must contain numbers only';
+        }
+
         return newErrors;
     };
 
@@ -1038,6 +1059,8 @@ const PatientsCrud = () => {
                 <input
                     type="tel"
                     name="emergency_contact_number"
+                    maxLength={10}
+                    placeholder="10 digit number"
                     value={formData.emergency_contact_number}
                     onChange={handleInputChange}
                     onBlur={handleBlur}
@@ -1366,7 +1389,8 @@ const PatientsCrud = () => {
 
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Postal Code</label>
-                <input type="text" name="postal_code" value={formData.postal_code} onChange={handleInputChange} className="form-input" />
+                <input type="text" name="postal_code" maxLength={6} placeholder="6 digit pincode" value={formData.postal_code} onChange={handleInputChange} onBlur={handleBlur} className={`form-input ${touched.postal_code && errors.postal_code ? 'border-red-500' : ''}`} />
+                {touched.postal_code && errors.postal_code && <p className="mt-1 text-xs text-red-500">{errors.postal_code}</p>}
             </div>
 
             <div>

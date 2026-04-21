@@ -1,6 +1,6 @@
 table > thead > tr > th,
 table > tbody > tr > td {
-    @apply !py-3 !px-4 text-sm whitespace-nowrap;
+    @apply !py-3 !px-4 text-sm;
 }
 table > thead > tr > th.mantine-187dsit {
     background-color: rgb(224 230 237 / 0.3);

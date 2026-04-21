@@ -25,6 +25,7 @@ const TABS = [
 
 const FIELD_TAB: Record<string, string> = {
     id: 'provider', date_of_birth: 'provider',
+    email: 'provider', whatsapp_number: 'provider',
     years_of_experience: 'provider', state_dental_council_reg_number: 'provider',
     procedure_ids: 'provider',
     clinic_0_pan_no: 'clinic', clinic_0_gst_number: 'clinic', clinic_0_name: 'clinic', clinic_0_contact_number: 'clinic',
@@ -234,6 +235,16 @@ const ProvidersCRUD = () => {
         if (!params.date_of_birth) e.date_of_birth = 'Date of birth is required';
         if (params.years_of_experience === '' || params.years_of_experience === null || params.years_of_experience === undefined) e.years_of_experience = 'Years of experience is required';
         if (!params.state_dental_council_reg_number) e.state_dental_council_reg_number = 'Registration number is required';
+
+        // Email validation
+        if (params.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(params.email)) {
+            e.email = 'Please enter a valid email address';
+        }
+
+        // WhatsApp number validation - exactly 10 digits
+        if (params.whatsapp_number && !/^\d{10}$/.test(params.whatsapp_number.replace(/\s/g, ''))) {
+            e.whatsapp_number = 'WhatsApp number must be exactly 10 digits';
+        }
         
         // Validate at least one procedure is selected
         if (!params.procedure_fees || params.procedure_fees.filter((f: any) => f.procedure_id).length === 0) {
@@ -245,6 +256,7 @@ const ProvidersCRUD = () => {
             if (!c.pan_no) e.clinic_0_pan_no = 'Pan No is required';
             if (!c.name) e.clinic_0_name = 'Clinic name is required';
             if (!c.contact_number) e.clinic_0_contact_number = 'Contact number is required';
+            else if (!/^\d{10}$/.test(c.contact_number.replace(/\s/g, ''))) e.clinic_0_contact_number = 'Contact number must be exactly 10 digits';
             // if (!c.specialty) e.clinic_0_specialty = 'Speciality is required';
             if (!c.address) e.clinic_0_address = 'Address is required';
             if (!c.city) e.clinic_0_city = 'City is required';
@@ -556,7 +568,8 @@ const ProvidersCRUD = () => {
             </div>
             <div>
                 <label htmlFor="email">Email ID</label>
-                <input id="email" name="email" type="email" className="form-input" value={params.email} onChange={cv} disabled={isView} placeholder="Saved to user account" />
+                <input id="email" name="email" type="email" className={`form-input ${errCls('email')}`} value={params.email} onChange={cv} onBlur={hb} disabled={isView} placeholder="Saved to user account" />
+                {errMsg('email')}
             </div>
             <div>
                 <label htmlFor="date_of_birth">Date of Birth <span className="text-red-500">*</span></label>
@@ -579,7 +592,12 @@ const ProvidersCRUD = () => {
                     <input name="same_as_whatsapp" type="checkbox" className="form-checkbox" checked={params.same_as_whatsapp} onChange={cv} disabled={isView} />
                     <span>Same as WhatsApp</span>
                 </label>
-                {!params.same_as_whatsapp && <input name="whatsapp_number" type="text" className="form-input" placeholder="WhatsApp Number" value={params.whatsapp_number} onChange={cv} disabled={isView} />}
+                {!params.same_as_whatsapp && (
+                    <>
+                        <input name="whatsapp_number" type="text" maxLength={10} className={`form-input ${errCls('whatsapp_number')}`} placeholder="WhatsApp Number (10 digits)" value={params.whatsapp_number} onChange={cv} onBlur={hb} disabled={isView} />
+                        {errMsg('whatsapp_number')}
+                    </>
+                )}
             </div>
             {/* SDC Photo */}
             <div>
@@ -710,7 +728,7 @@ const ProvidersCRUD = () => {
                     
                     <div>
                         <label>Contact Number <span className="text-red-500">*</span></label>
-                        <input type="text" name="clinic_0_contact_number" className={`form-input ${ef('contact_number')}`} value={clinic.contact_number} onChange={e => updateClinic('contact_number', e.target.value)} onBlur={e => hcb(0,'contact_number',e.target.value)} disabled={isView} />
+                        <input type="text" name="clinic_0_contact_number" maxLength={10} className={`form-input ${ef('contact_number')}`} value={clinic.contact_number} onChange={e => updateClinic('contact_number', e.target.value)} onBlur={e => hcb(0,'contact_number',e.target.value)} disabled={isView} />
                         {em('contact_number')}
                     </div>
                     <div>

@@ -257,11 +257,11 @@ const ProvidersCRUD = () => {
             if (!c.name) e.clinic_0_name = 'Clinic name is required';
             if (!c.contact_number) e.clinic_0_contact_number = 'Contact number is required';
             else if (!/^\d{10}$/.test(c.contact_number.replace(/\s/g, ''))) e.clinic_0_contact_number = 'Contact number must be exactly 10 digits';
-            // if (!c.specialty) e.clinic_0_specialty = 'Speciality is required';
             if (!c.address) e.clinic_0_address = 'Address is required';
             if (!c.city) e.clinic_0_city = 'City is required';
             if (!c.state) e.clinic_0_state = 'State is required';
             if (!c.pin_code) e.clinic_0_pin_code = 'PIN code is required';
+            else if (!/^\d+$/.test(c.pin_code.trim())) e.clinic_0_pin_code = 'PIN code must contain numbers only';
         }
 
         console.log('Validation Errors:', e);
@@ -787,7 +787,7 @@ const ProvidersCRUD = () => {
                     </div>
                     <div>
                         <label>PIN Code <span className="text-red-500">*</span></label>
-                        <input type="text" name="clinic_0_pin_code" className={`form-input ${ef('pin_code')}`} value={clinic.pin_code} onChange={e => updateClinic('pin_code', e.target.value)} onBlur={e => hcb(0,'pin_code',e.target.value)} disabled={isView} />
+                        <input type="text" name="clinic_0_pin_code" maxLength={6} placeholder="6 digit PIN" className={`form-input ${ef('pin_code')}`} value={clinic.pin_code} onChange={e => updateClinic('pin_code', e.target.value)} onBlur={e => hcb(0,'pin_code',e.target.value)} disabled={isView} />
                         {em('pin_code')}
                     </div>
                     <div>

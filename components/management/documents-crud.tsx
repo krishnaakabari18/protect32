@@ -24,7 +24,7 @@ const autoName = (type: string, date: string) => {
 };
 const formatDate = (s: string) => {
     if (!s) return '-';
-    try { return new Date(s).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+    try { return new Date(s).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }); }
     catch { return '-'; }
 };
 const formatSize = (b: number) => {
@@ -174,49 +174,22 @@ const DocumentsCRUD = () => {
         finally { setLoading(false); }
     };
 
-    const openCreate = () => {
-        setModalMode('create');
-        setPatientId(''); setPatientError('');
-        setDocItems([emptyItem()]);
-        setAddModal(true);
-    };
-
-    const openEdit = async (record: any) => {
+    const loadModal = async (record: any, mode: 'edit' | 'view') => {
         setLoading(true);
         try {
             const token = localStorage.getItem('auth_token');
-            const res = await fetch(`${API_ENDPOINTS.documents}/${record.id}`, { headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' } });
+            const res = await fetch(`${API_ENDPOINTS.documents}/${record.id}`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' },
+            });
             const data = await res.json();
             const full = res.ok ? data.data : record;
-            setModalMode('edit');
+            setModalMode(mode);
             setEditId(full.id);
-            setPatientId(full.patient_id || ''); setPatientError('');
+            setPatientId(full.patient_id || '');
+            setPatientError('');
             const its: DocItem[] = (full.items || []).map((it: any) => ({
                 id: it.id, name: it.name || '', document_type: it.document_type || '',
                 upload_date: it.upload_date ? it.upload_date.split('T')[0] : new Date().toISOString().split('T')[0],
-                file: null,
-                existingFile: it.file_path ? { path: it.file_path, file_originalname: it.file_originalname, file_mimetype: it.file_mimetype, file_size: it.file_size } : null,
-                nameError: '', typeError: '',
-            }));
-            setDocItems(its.length > 0 ? its : [emptyItem()]);
-            setAddModal(true);
-        } catch (e) { console.error(e); }
-        finally { setLoading(false); }
-    };
-
-    const openView = async (record: any) => {
-        setLoading(true);
-        try {
-            const token = localStorage.getItem('auth_token');
-            const res = await fetch(`${API_ENDPOINTS.documents}/${record.id}`, { headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' } });
-            const data = await res.json();
-            const full = res.ok ? data.data : record;
-            setModalMode('view');
-            setEditId(full.id);
-            setPatientId(full.patient_id || '');
-            const its: DocItem[] = (full.items || []).map((it: any) => ({
-                id: it.id, name: it.name || '', document_type: it.document_type || '',
-                upload_date: it.upload_date ? it.upload_date.split('T')[0] : '',
                 file: null,
                 existingFile: it.file_path ? { path: it.file_path, file_originalname: it.file_originalname, file_mimetype: it.file_mimetype, file_size: it.file_size } : null,
                 nameError: '', typeError: '',
@@ -243,11 +216,6 @@ const DocumentsCRUD = () => {
         else { const t: any = Swal.mixin({ toast: true, position: 'top', showConfirmButton: false, timer: 3000, customClass: { container: 'toast' } }); t.fire({ icon: type, title: msg, padding: '10px 20px' }); }
     };
 
-    const downloadFile = (filePath: string) => {
-        const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-        window.open(`${base}/${filePath}`, '_blank');
-    };
-
     const clearFilters = () => {
         setSearchInput(''); setSearchQuery('');
         setFilterPatient(''); setFilterType('');
@@ -261,54 +229,37 @@ const DocumentsCRUD = () => {
         <div>
             <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
                 <h2 className="text-xl">Documents</h2>
-                <button type="button" className="btn btn-primary" onClick={openCreate}>
+                <button type="button" className="btn btn-primary" onClick={() => { setModalMode('create'); setPatientId(''); setPatientError(''); setDocItems([emptyItem()]); setAddModal(true); }}>
                     <IconUserPlus className="ltr:mr-2 rtl:ml-2" />Add Document
                 </button>
             </div>
 
             {/* Filters */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-                {/* Search box */}
                 <div className="lg:col-span-2">
-                    <input
-                        type="text"
-                        className="form-input w-full"
-                        placeholder="Search by document name, patient, type..."
+                    <input type="text" className="form-input w-full" placeholder="Search by name, patient, type..."
                         value={searchInput}
                         onChange={e => {
                             const val = e.target.value;
                             setSearchInput(val);
                             if (debounceRef.current) clearTimeout(debounceRef.current);
-                            debounceRef.current = setTimeout(() => {
-                                setSearchQuery(val);
-                                setPagination(p => ({ ...p, page: 1 }));
-                            }, 400);
+                            debounceRef.current = setTimeout(() => { setSearchQuery(val); setPagination(p => ({ ...p, page: 1 })); }, 400);
                         }}
                     />
                 </div>
-
-                {/* Patient searchable dropdown */}
                 <div>
-                    <SearchableSelect
-                        dropdownType="patients"
-                        value={filterPatient}
+                    <SearchableSelect dropdownType="patients" value={filterPatient}
                         onChange={val => { setFilterPatient(val); setPagination(p => ({ ...p, page: 1 })); }}
-                        placeholder="All Patients"
-                    />
+                        placeholder="All Patients" />
                 </div>
-
-                {/* Document type filter */}
                 <div>
                     <select className="form-select w-full" value={filterType} onChange={e => { setFilterType(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}>
                         <option value="">All Types</option>
                         {DOCUMENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                 </div>
-
                 {hasFilters && (
-                    <div>
-                        <button type="button" className="btn btn-outline-danger w-full" onClick={clearFilters}>Clear Filters</button>
-                    </div>
+                    <div><button type="button" className="btn btn-outline-danger w-full" onClick={clearFilters}>Clear Filters</button></div>
                 )}
             </div>
 
@@ -318,23 +269,56 @@ const DocumentsCRUD = () => {
                 <div className="panel mt-5 overflow-hidden border-0 p-0">
                     <div className="table-responsive">
                         <table className="table-striped table-hover">
-                            <thead><tr><th>#</th><th>Documents</th><th>Patient</th><th>Types</th><th>Items</th><th>Upload Date</th><th className="!text-center">Actions</th></tr></thead>
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Patient</th>
+                                    <th>Documents</th>
+                                    <th>Upload Date</th>
+                                    <th className="!text-center">Actions</th>
+                                </tr>
+                            </thead>
                             <tbody>
                                 {items.length === 0 ? (
-                                    <tr><td colSpan={7} className="text-center py-8 text-gray-400">No documents found</td></tr>
-                                ) : items.map((item, idx) => (
-                                    <tr key={item.id}>
+                                    <tr><td colSpan={5} className="text-center py-8 text-gray-400">No documents found</td></tr>
+                                ) : items.map((record, idx) => (
+                                    <tr key={record.id}>
                                         <td>{(pagination.page - 1) * pagination.limit + idx + 1}</td>
-                                        <td className="font-semibold max-w-xs truncate">{item.document_names || '-'}</td>
-                                        <td>{item.patient_first_name && item.patient_last_name ? `${item.patient_first_name} ${item.patient_last_name}` : '-'}</td>
-                                        <td><span className="text-sm">{item.document_types || '-'}</span></td>
-                                        <td><span className="badge bg-info">{item.items_count || 0} items</span></td>
-                                        <td>{formatDate(item.upload_date)}</td>
-                                        <td><div className="flex gap-2 items-center justify-center">
-                                            <button type="button" className="btn btn-sm btn-outline-info" onClick={() => openView(item)}><IconEye /></button>
-                                            <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => openEdit(item)}><IconPencil /></button>
-                                            <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => deleteRecord(item)}><IconTrash /></button>
-                                        </div></td>
+                                        <td>
+                                            <div className="font-semibold">
+                                                {record.patient_first_name} {record.patient_last_name}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div className="space-y-1">
+                                                {(record.items || []).map((it: any) => (
+                                                    <div key={it.id} className="flex items-center gap-2 text-sm">
+                                                        <span>{fileIcon(it.file_mimetype)}</span>
+                                                        <span className="font-medium truncate max-w-[180px]">{it.name}</span>
+                                                        <span className="badge bg-info text-xs">{it.document_type}</span>
+                                                        <span className="text-gray-400 text-xs">{formatSize(it.file_size)}</span>
+                                                        {it.file_path && (
+                                                            <a href={it.file_path} target="_blank" rel="noreferrer"
+                                                                className="btn btn-xs btn-outline-primary px-1 py-0.5 ml-1"
+                                                                title="Download">
+                                                                <IconDownload className="w-3 h-3" />
+                                                            </a>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                                {(!record.items || record.items.length === 0) && (
+                                                    <span className="text-gray-400 text-sm">No files</span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td>{formatDate(record.upload_date)}</td>
+                                        <td>
+                                            <div className="flex gap-2 items-center justify-center">
+                                                <button type="button" className="btn btn-sm btn-outline-info" onClick={() => loadModal(record, 'view')}><IconEye /></button>
+                                                <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => loadModal(record, 'edit')}><IconPencil /></button>
+                                                <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => deleteRecord(record)}><IconTrash /></button>
+                                            </div>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -372,7 +356,7 @@ const DocumentsCRUD = () => {
                                     </div>
                                     <div className="p-5 max-h-[80vh] overflow-y-auto">
 
-                                        {/* Patient — SearchableSelect */}
+                                        {/* Patient */}
                                         <div className="mb-5">
                                             <label>Patient <span className="text-red-500">*</span></label>
                                             <SearchableSelect
@@ -393,7 +377,7 @@ const DocumentsCRUD = () => {
                                                     <div className="flex items-center justify-between mb-3">
                                                         <span className="font-semibold text-sm">Document {i + 1}</span>
                                                         {!isView && docItems.length > 1 && (
-                                                            <button type="button" className="text-danger text-sm" onClick={() => setDocItems(prev => prev.filter((_, idx) => idx !== i))}>Remove</button>
+                                                            <button type="button" className="text-danger text-sm" onClick={() => setDocItems(prev => prev.filter((_, ri) => ri !== i))}>Remove</button>
                                                         )}
                                                     </div>
                                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -415,22 +399,29 @@ const DocumentsCRUD = () => {
                                                             <label className="text-sm">Document Name <span className="text-gray-400 text-xs">(auto if blank)</span></label>
                                                             <input type="text" className="form-input" placeholder="Leave blank to auto-generate"
                                                                 value={item.name} onChange={e => updateItem(i, 'name', e.target.value)} disabled={isView} />
-                                                            {!isView && <p className="text-xs text-gray-400 mt-0.5">No special characters allowed</p>}
                                                         </div>
                                                         <div className="sm:col-span-3">
                                                             <label className="text-sm">File (PDF / Image, max 10MB)</label>
+                                                            {/* Existing file preview */}
                                                             {item.existingFile && !item.file && (
-                                                                <div className="flex items-center gap-2 mb-1 p-2 bg-gray-100 dark:bg-gray-700 rounded text-sm">
-                                                                    {fileIcon(item.existingFile.file_mimetype)} {item.existingFile.file_originalname}
-                                                                    <span className="text-xs text-gray-400">({formatSize(item.existingFile.file_size)})</span>
-                                                                    {!isView && <span className="text-xs text-gray-400 ml-auto">Choose below to replace</span>}
-                                                                    <button type="button" className="btn btn-sm btn-outline-primary ml-auto" onClick={() => downloadFile(item.existingFile!.path)}><IconDownload className="w-4 h-4" /></button>
+                                                                <div className="flex items-center gap-2 mb-2 p-2 bg-gray-100 dark:bg-gray-700 rounded text-sm">
+                                                                    <span>{fileIcon(item.existingFile.file_mimetype)}</span>
+                                                                    <span className="truncate flex-1">{item.existingFile.file_originalname}</span>
+                                                                    <span className="text-xs text-gray-400 shrink-0">{formatSize(item.existingFile.file_size)}</span>
+                                                                    <a href={item.existingFile.path} target="_blank" rel="noreferrer"
+                                                                        className="btn btn-xs btn-outline-primary px-2 shrink-0">
+                                                                        <IconDownload className="w-3 h-3" />
+                                                                    </a>
+                                                                    {!isView && <span className="text-xs text-gray-400 shrink-0">Choose below to replace</span>}
                                                                 </div>
                                                             )}
+                                                            {/* New file selected */}
                                                             {item.file && (
-                                                                <div className="flex items-center gap-2 mb-1 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-sm border border-blue-200 dark:border-blue-700">
-                                                                    {fileIcon(item.file.type)} {item.file.name} <span className="text-xs text-gray-400">({formatSize(item.file.size)})</span>
-                                                                    {!isView && <button type="button" className="text-danger ml-auto" onClick={() => updateItem(i, 'file', null)}>×</button>}
+                                                                <div className="flex items-center gap-2 mb-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-sm border border-blue-200">
+                                                                    <span>{fileIcon(item.file.type)}</span>
+                                                                    <span className="truncate flex-1">{item.file.name}</span>
+                                                                    <span className="text-xs text-gray-400 shrink-0">{formatSize(item.file.size)}</span>
+                                                                    {!isView && <button type="button" className="text-danger shrink-0" onClick={() => updateItem(i, 'file', null)}>×</button>}
                                                                 </div>
                                                             )}
                                                             {!isView && (

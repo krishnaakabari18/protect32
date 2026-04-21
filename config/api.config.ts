@@ -120,6 +120,9 @@ export const API_ENDPOINTS = {
   // Appointment Payments
   appointmentPayments: `${API_BASE_URL}/appointment-payments`,
 
+  // Subscriptions
+  subscriptions: `${API_BASE_URL}/subscriptions`,
+
   // Settings
   settings: `${API_BASE_URL}/settings`,
   

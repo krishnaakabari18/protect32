@@ -118,6 +118,11 @@ class DocumentModel {
     return result.rows[0];
   }
 
+  static async deleteItem(itemId) {
+    const result = await pool.query('DELETE FROM document_items WHERE id = $1 RETURNING *', [itemId]);
+    return result.rows[0];
+  }
+
   static async delete(id) {
     const result = await pool.query('DELETE FROM documents WHERE id = $1 RETURNING *', [id]);
     return result.rows[0];

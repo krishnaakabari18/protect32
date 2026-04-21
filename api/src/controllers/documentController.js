@@ -1,5 +1,6 @@
 const DocumentModel = require('../models/documentModel');
 const { deleteFiles, getFileInfo } = require('../utils/documentUpload');
+const pool = require('../config/database');
 
 class DocumentController {
   static async create(req, res) {
@@ -112,6 +113,27 @@ class DocumentController {
       res.json({ message: 'Document updated successfully', data: full });
     } catch (error) {
       if (req.files) deleteFiles(req.files.map(f => f.path));
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  static async deleteItem(req, res) {
+    try {
+      const { itemId } = req.params;
+
+      // Fetch item to get file path before deleting
+      const itemRow = await pool.query('SELECT * FROM document_items WHERE id = $1', [itemId]);
+      if (!itemRow.rows[0]) return res.status(404).json({ error: 'Document item not found' });
+
+      const item = itemRow.rows[0];
+
+      // Delete physical file
+      if (item.file_path) deleteFiles([item.file_path]);
+
+      await DocumentModel.deleteItem(itemId);
+
+      res.json({ message: 'Document item deleted successfully', deleted_item: item });
+    } catch (error) {
       res.status(500).json({ error: error.message });
     }
   }

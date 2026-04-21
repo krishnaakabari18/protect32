@@ -141,17 +141,26 @@ class AuthController {
       const otp = OTPUtil.generate(parseInt(process.env.OTP_LENGTH) || 6);
       await AuthModel.createOTP(null, mobile_number, otp, 'login');
 
-      // Send via WhatsApp (or SMS/test mode fallback)
-      await OTPUtil.sendSMS(mobile_number, otp);
+      // Send via WhatsApp — returns { success, reason, logs }
+      const whatsappResult = await OTPUtil.sendSMS(mobile_number, otp);
+      const sent = whatsappResult?.success ?? whatsappResult;
+
+      const responseData = {
+        mobile_number,
+        is_new_user: isNewUser,
+        expires_in_minutes: process.env.OTP_EXPIRE_MINUTES || 10,
+        whatsapp_sent: !!sent,
+        whatsapp_debug: whatsappResult,
+      };
+
+      if (process.env.NODE_ENV === 'development') {
+        responseData.otp_debug = otp;
+      }
 
       res.json({
         success: true,
-        message: 'OTP sent successfully via WhatsApp',
-        data: {
-          mobile_number,
-          is_new_user: isNewUser,
-          expires_in_minutes: process.env.OTP_EXPIRE_MINUTES || 10,
-        }
+        message: sent ? 'OTP sent successfully via WhatsApp' : 'OTP generated (WhatsApp not connected — check whatsapp_debug)',
+        data: responseData,
       });
     } catch (error) {
       res.status(500).json({ error: error.message });

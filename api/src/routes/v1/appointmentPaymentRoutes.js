@@ -124,8 +124,7 @@ router.post('/book', auth, async (req, res) => {
     // Insert payment record with pending status
     await client.query(
       `INSERT INTO payments (patient_id, provider_id, appointment_id, amount, payment_method, payment_status, is_paid, payment_date)
-       VALUES ($1,$2,$3,$4,'cash','pending',false,NOW())
-       ON CONFLICT (appointment_id) DO NOTHING`,
+       VALUES ($1,$2,$3,$4,'cash','pending',false,NOW())`,
       [patient_id, provider_id, appointment.id, parseFloat(amount)]
     );
 
@@ -231,12 +230,9 @@ router.post('/verify-online', auth, async (req, res) => {
       `INSERT INTO payments
          (patient_id, provider_id, appointment_id, amount, payment_method, payment_status,
           transaction_id, razorpay_order_id, razorpay_payment_id, razorpay_signature, is_paid, payment_date)
-       VALUES ($1,$2,$3,$4,'online','success',$5,$6,$5,$7,true,NOW())
-       ON CONFLICT (appointment_id) DO UPDATE SET
-         payment_status='success', transaction_id=EXCLUDED.transaction_id,
-         razorpay_payment_id=EXCLUDED.razorpay_payment_id, is_paid=true`,
+       VALUES ($1,$2,$3,$4,'online','success',$5,$6,$7,$8,true,NOW())`,
       [patient_id, provider_id, appointment.id, parseFloat(amount),
-       razorpay_payment_id, razorpay_order_id, razorpay_signature]
+       razorpay_payment_id, razorpay_order_id, razorpay_payment_id, razorpay_signature]
     );
 
     await client.query('COMMIT');

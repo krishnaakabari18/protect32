@@ -28,11 +28,13 @@ class OTPUtil {
     const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
 
     if (instanceId && accessToken) {
-      const mobile = phoneNumber.replace(/\D/g, '').slice(-10);
+      //const mobile = phoneNumber.replace(/\D/g, '').slice(-10);
+      let mobile = phoneNumber;
+	    mobile = mobile.replace(/^\+/, ''); // better: remove only leading +
       const message = encodeURIComponent(
         `Your OTP is *${otp}*. Valid for ${process.env.OTP_EXPIRE_MINUTES || 10} minutes. Do not share with anyone.`
       );
-      const sendUrl = `https://aiadrika.in/api/send?number=91${mobile}&type=text&message=${message}&instance_id=${instanceId}&access_token=${accessToken}`;
+      const sendUrl = `https://aiadrika.in/api/send?number=${mobile}&type=text&message=${message}&instance_id=${instanceId}&access_token=${accessToken}`;
       const logs = [];
 
       const fetchText = async (url, timeout = 12000) => {

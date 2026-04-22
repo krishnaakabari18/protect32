@@ -6,6 +6,7 @@ const swaggerSpec = require('./config/swagger');
 const routes = require('./routes');
 const { apiLimiter } = require('./middleware/auth');
 const { setRequestHost } = require('./utils/urlHelper');
+const urlTransform = require('./middleware/urlTransform');
 
 
 const app = express();
@@ -141,6 +142,7 @@ app.get('/cors-test', (req, res) => {
 });
 
 // API Routes
+app.use('/api', urlTransform);
 app.use('/api', routes);
 
 // 404 handler

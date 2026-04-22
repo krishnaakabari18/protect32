@@ -8,6 +8,7 @@ const { getBaseUrl } = require('../utils/urlHelper');
 // Fields that contain file paths (relative or absolute)
 const FILE_FIELDS = [
   'profile_picture', 'profile_photo', 'avatar', 'avatar_url',
+  'user_profile_picture', 'user_photo',
   'file_url', 'file_path', 'document_url',
   'state_dental_council_reg_photo', 'clinic_board',
   'feature_image', 'image', 'image_url', 'photo',

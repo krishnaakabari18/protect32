@@ -5,6 +5,7 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
 const routes = require('./routes');
 const { apiLimiter } = require('./middleware/auth');
+const { setRequestHost } = require('./utils/urlHelper');
 
 
 const app = express();
@@ -57,6 +58,18 @@ const corsOptions = {
 
 // Apply CORS middleware
 app.use(cors(corsOptions));
+
+// Dynamically update BASE_URL from incoming request host (handles ngrok, production, etc.)
+app.use((req, res, next) => {
+  const proto = req.headers['x-forwarded-proto'] || req.protocol;
+  const host = req.headers['x-forwarded-host'] || req.get('host');
+  if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
+    // Use the actual request host (ngrok, production domain, etc.)
+    process.env.BASE_URL = `${proto}://${host}`;
+    setRequestHost(`${proto}://${host}`);
+  }
+  next();
+});
 
 // Apply global rate limiting to all API routes
 app.use('/api', apiLimiter);

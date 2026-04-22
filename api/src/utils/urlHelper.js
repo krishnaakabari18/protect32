@@ -3,6 +3,16 @@
  * Converts relative file paths to absolute URLs
  */
 
+// Store the last known request host for dynamic URL building
+let _lastKnownHost = null;
+
+/**
+ * Set the current request host (called from middleware)
+ */
+function setRequestHost(host) {
+  if (host) _lastKnownHost = host;
+}
+
 /**
  * Get the base URL from environment or construct it
  * @returns {string} Base URL
@@ -12,7 +22,6 @@ function getBaseUrl() {
   if (process.env.BASE_URL) {
     return process.env.BASE_URL;
   }
-  
   // Fallback to constructing from PORT
   const port = process.env.PORT || 8080;
   return `http://localhost:${port}`;
@@ -29,12 +38,10 @@ function toAbsoluteUrl(relativePath) {
   const baseUrl = getBaseUrl();
   
   // If it's already an absolute URL, replace the host with current base URL
-  // This handles old ngrok URLs stored in the database
   if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
     try {
       const url = new URL(relativePath);
       const base = new URL(baseUrl);
-      // Replace origin with current base URL
       return `${base.origin}${url.pathname}`;
     } catch (e) {
       return relativePath;
@@ -44,7 +51,6 @@ function toAbsoluteUrl(relativePath) {
   // Remove leading slash if present
   const cleanPath = relativePath.replace(/^\/+/, '');
   
-  // Return absolute URL
   return `${baseUrl}/${cleanPath}`;
 }
 
@@ -193,5 +199,6 @@ module.exports = {
   convertUserUrls,
   convertDocumentUrls,
   convertEducationUrls,
-  convertPatientUrls
+  convertPatientUrls,
+  setRequestHost,
 };

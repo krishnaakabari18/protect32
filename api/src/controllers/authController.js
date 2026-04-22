@@ -56,7 +56,7 @@ class AuthController {
 
       res.status(201).json({
         message: 'User registered successfully',
-        data: { user, accessToken, refreshToken }
+        data: { user: convertUserUrls(user), accessToken, refreshToken }
       });
     } catch (error) {
       // Delete uploaded file if registration fails
@@ -108,7 +108,7 @@ class AuthController {
 
       res.json({
         message: 'Login successful',
-        data: { user, accessToken, refreshToken }
+        data: { user: convertUserUrls(user), accessToken, refreshToken }
       });
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -204,8 +204,8 @@ class AuthController {
       const deviceInfo   = { userAgent: req.headers['user-agent'] || 'unknown', platform: req.headers['sec-ch-ua-platform'] || 'unknown' };
       await AuthModel.createRefreshToken(user.id, refreshToken, deviceInfo, req.ip);
 
-      // Base response data
-      const responseData = { user, accessToken, refreshToken };
+      // Base response data — convert profile_picture to full URL
+      const responseData = { user: convertUserUrls(user), accessToken, refreshToken };
 
       // If patient — enrich with patient profile + active subscription
       if (user.user_type === 'patient') {
@@ -353,7 +353,7 @@ class AuthController {
 
       res.json({
         message: 'Google login successful',
-        data: { user, accessToken, refreshToken }
+        data: { user: convertUserUrls(user), accessToken, refreshToken }
       });
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -382,7 +382,7 @@ class AuthController {
 
       res.json({
         message: 'Facebook login successful',
-        data: { user, accessToken, refreshToken }
+        data: { user: convertUserUrls(user), accessToken, refreshToken }
       });
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -410,7 +410,7 @@ class AuthController {
 
       res.json({
         message: 'Apple login successful',
-        data: { user, accessToken, refreshToken }
+        data: { user: convertUserUrls(user), accessToken, refreshToken }
       });
     } catch (error) {
       res.status(500).json({ error: error.message });

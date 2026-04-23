@@ -64,8 +64,20 @@ class AppointmentController {
       const { rows, total } = await AppointmentModel.findAll(filters);
       const pageNum = parseInt(page), limitNum = parseInt(limit);
 
+      // Parse provider_time_slots JSON for each row
+      const data = rows.map(row => {
+        if (row.provider_time_slots) {
+          try {
+            row.provider_time_slots = typeof row.provider_time_slots === 'string'
+              ? JSON.parse(row.provider_time_slots)
+              : row.provider_time_slots;
+          } catch (e) { row.provider_time_slots = null; }
+        }
+        return row;
+      });
+
       res.json({
-        data: rows,
+        data,
         pagination: { page: pageNum, limit: limitNum, total, totalPages: Math.ceil(total / limitNum) }
       });
     } catch (error) {
@@ -77,6 +89,15 @@ class AppointmentController {
     try {
       const appointment = await AppointmentModel.findById(req.params.id);
       if (!appointment) return res.status(404).json({ error: 'Appointment not found' });
+
+      // Parse provider_time_slots JSON
+      if (appointment.provider_time_slots) {
+        try {
+          appointment.provider_time_slots = typeof appointment.provider_time_slots === 'string'
+            ? JSON.parse(appointment.provider_time_slots)
+            : appointment.provider_time_slots;
+        } catch (e) { appointment.provider_time_slots = null; }
+      }
 
       // For cash: also fetch payment record
       let paymentRecord = null;
@@ -97,7 +118,26 @@ class AppointmentController {
 
   static async updateAppointment(req, res) {
     try {
-      const appointment = await AppointmentModel.update(req.params.id, req.body);
+      const body = { ...req.body };
+
+      // Sanitize time fields — strip ISO date prefix and milliseconds
+      // e.g. "11:05:01.138Z" → "11:05"  |  "2026-04-23T11:05:00Z" → "11:05"
+      const sanitizeTime = (val) => {
+        if (!val) return val;
+        const s = String(val);
+        // If it's a full ISO datetime, extract time part
+        const isoMatch = s.match(/T(\d{2}:\d{2})/);
+        if (isoMatch) return isoMatch[1];
+        // If it's HH:MM:SS.mmm or HH:MM:SS, keep only HH:MM
+        const timeMatch = s.match(/^(\d{2}:\d{2})/);
+        if (timeMatch) return timeMatch[1];
+        return s;
+      };
+
+      if (body.start_time) body.start_time = sanitizeTime(body.start_time);
+      if (body.end_time)   body.end_time   = sanitizeTime(body.end_time);
+
+      const appointment = await AppointmentModel.update(req.params.id, body);
       if (!appointment) return res.status(404).json({ error: 'Appointment not found' });
 
       const payMethod = appointment.payment_method || 'cash';

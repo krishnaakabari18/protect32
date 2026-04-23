@@ -66,7 +66,8 @@ class AppointmentModel {
           u1.first_name as patient_first_name, u1.last_name as patient_last_name, u1.email as patient_email,
           u2.first_name as provider_first_name, u2.last_name as provider_last_name,
           pr.clinic_name,
-          EXTRACT(EPOCH FROM (a.end_time - a.start_time))/60 as duration_minutes
+          pr.time_slots as provider_time_slots,
+          TO_CHAR((a.end_time - a.start_time), 'HH24:MI') as duration_minutes
         FROM appointments a
         JOIN users u1 ON a.patient_id = u1.id
         JOIN users u2 ON a.provider_id = u2.id
@@ -126,7 +127,8 @@ class AppointmentModel {
         u1.first_name as patient_first_name, u1.last_name as patient_last_name, u1.email as patient_email,
         u2.first_name as provider_first_name, u2.last_name as provider_last_name,
         pr.clinic_name, pr.contact_number as clinic_contact,
-        EXTRACT(EPOCH FROM (a.end_time - a.start_time))/60 as duration_minutes,
+        pr.time_slots as provider_time_slots,
+        TO_CHAR((a.end_time - a.start_time), 'HH24:MI') as duration_minutes,
         TO_CHAR(a.appointment_date, 'YYYY-MM-DD') as appointment_date
        FROM appointments a
        JOIN users u1 ON a.patient_id = u1.id

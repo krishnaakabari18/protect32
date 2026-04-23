@@ -64,15 +64,36 @@ router.post('/book', auth, async (req, res) => {
       amount, payment_method = 'cash', notes, procedure_items, estimated_cost,
     } = req.body;
 
-    if (!patient_id || !provider_id || !appointment_date || !start_time || !end_time || !amount) {
-      return res.status(400).json({ success: false, error: 'patient_id, provider_id, appointment_date, start_time, end_time, amount are required' });
+    // ── Validation ────────────────────────────────────────────────────────────
+    if (!patient_id || !provider_id || !appointment_date || !start_time || !end_time) {
+      return res.status(400).json({ success: false, error: 'patient_id, provider_id, appointment_date, start_time, end_time are required' });
+    }
+
+    const parsedAmount = parseFloat(amount) || 0;
+    if (isNaN(parsedAmount) || parsedAmount < 0) {
+      return res.status(400).json({ success: false, error: 'amount must be a valid number (0 or greater)' });
+    }
+
+    // Validate patient exists in patients table
+    const patientCheck = await pool.query('SELECT id FROM patients WHERE id = $1', [patient_id]);
+    if (!patientCheck.rows[0]) {
+      return res.status(400).json({ success: false, error: `Patient not found. The selected patient (${patient_id}) does not have a patient profile.` });
+    }
+
+    // Validate provider exists in providers table
+    const providerCheck = await pool.query('SELECT id FROM providers WHERE id = $1', [provider_id]);
+    if (!providerCheck.rows[0]) {
+      return res.status(400).json({ success: false, error: `Provider not found. The selected provider (${provider_id}) does not have a provider profile.` });
     }
 
     // ── ONLINE PAYMENT: Create Razorpay order first, don't create appointment yet ──
     if (payment_method === 'online') {
+      if (parsedAmount <= 0) {
+        return res.status(400).json({ success: false, error: 'amount must be greater than 0 for online payment' });
+      }
       const { rz, key_id } = await getRazorpay();
       const order = await rz.orders.create({
-        amount: Math.round(parseFloat(amount) * 100), // paise
+        amount: Math.round(parsedAmount * 100), // paise
         currency: 'INR',
         receipt: `appt_${Date.now()}`,
         notes: { patient_id, provider_id, appointment_date },
@@ -84,9 +105,8 @@ router.post('/book', auth, async (req, res) => {
         message: 'Complete payment to confirm appointment',
         razorpay_order_id: order.id,
         razorpay_key: key_id,
-        amount: parseFloat(amount),
-        // Appointment details to pass back after payment
-        appointment_data: { patient_id, provider_id, appointment_date, start_time, end_time, notes, procedure_items, estimated_cost, amount },
+        amount: parsedAmount,
+        appointment_data: { patient_id, provider_id, appointment_date, start_time, end_time, notes, procedure_items, estimated_cost, amount: parsedAmount },
       });
     }
 
@@ -125,7 +145,7 @@ router.post('/book', auth, async (req, res) => {
     await client.query(
       `INSERT INTO payments (patient_id, provider_id, appointment_id, amount, payment_method, payment_status, is_paid, payment_date)
        VALUES ($1,$2,$3,$4,'cash','pending',false,NOW())`,
-      [patient_id, provider_id, appointment.id, parseFloat(amount)]
+      [patient_id, provider_id, appointment.id, parsedAmount]
     );
 
     await client.query('COMMIT');

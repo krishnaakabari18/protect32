@@ -25,6 +25,8 @@ const corsOptions = {
       'http://localhost:3002',
       'http://localhost:8080',
       'http://localhost:3050',
+      'https://occupiable-milissa-ennuyante.ngrok-free.dev',
+      'https://occupiable-milissa-ennuyante.ngrok-free.dev', // Legacy support
       'https://app.protect32.in',
       'http://app.protect32.in',
       process.env.FRONTEND_URL

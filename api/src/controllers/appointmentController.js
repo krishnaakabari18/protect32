@@ -7,24 +7,38 @@ class AppointmentController {
     try {
       const appointmentData = { ...req.body };
       const paymentMethod = appointmentData.payment_method || 'cash';
+      const { patient_id, provider_id, appointment_date, start_time, end_time } = appointmentData;
 
-      // Set initial payment status based on method
+      if (!patient_id || !provider_id || !appointment_date || !start_time || !end_time) {
+        return res.status(400).json({ error: 'patient_id, provider_id, appointment_date, start_time, end_time are required' });
+      }
+
+      const amount = parseFloat(appointmentData.estimated_cost ?? appointmentData.amount ?? 0) || 0;
+      if (isNaN(amount) || amount < 0) {
+        return res.status(400).json({ error: 'Amount must be a valid number (0 or greater).' });
+      }
+
+      const patientCheck = await pool.query('SELECT id FROM patients WHERE id = $1', [patient_id]);
+      if (!patientCheck.rows[0]) {
+        return res.status(400).json({ error: 'Selected patient does not have a patient profile. Please complete patient registration first.' });
+      }
+
+      const providerCheck = await pool.query('SELECT id FROM providers WHERE id = $1', [provider_id]);
+      if (!providerCheck.rows[0]) {
+        return res.status(400).json({ error: 'Selected provider does not have a provider profile. Please complete provider registration first.' });
+      }
+
       if (paymentMethod === 'cash') {
         appointmentData.payment_status = 'pending';
         appointmentData.is_paid = false;
       }
-      // For online: payment_status and is_paid are set by verify-online endpoint
 
       const appointment = await AppointmentModel.create(appointmentData);
 
-      // CASH: create pending payment record in payments table
       if (paymentMethod === 'cash') {
-        const amount = appointmentData.estimated_cost || 0;
         await pool.query(
-          `INSERT INTO payments (patient_id, provider_id, appointment_id, amount, payment_method, payment_status, is_paid, payment_date)
-           VALUES ($1,$2,$3,$4,'cash','pending',false,NOW())
-           ON CONFLICT (appointment_id) DO NOTHING`,
-          [appointment.patient_id, appointment.provider_id, appointment.id, parseFloat(amount) || 0]
+          'INSERT INTO payments (patient_id, provider_id, appointment_id, amount, payment_method, payment_status, is_paid, payment_date) VALUES ($1,$2,$3,$4,$5,$6,false,NOW())',
+          [appointment.patient_id, appointment.provider_id, appointment.id, amount, 'cash', 'pending']
         );
       }
 
@@ -33,7 +47,6 @@ class AppointmentController {
       res.status(500).json({ error: error.message });
     }
   }
-
   static async getAllAppointments(req, res) {
     try {
       const { patient_id, provider_id, status, date, from_date, to_date, search, page = 1, limit = 10 } = req.query;

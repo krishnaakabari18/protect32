@@ -14,15 +14,23 @@ function setRequestHost(host) {
 }
 
 /**
- * Get the base URL from environment or construct it
- * @returns {string} Base URL
+ * Get the base URL for media/file assets (never includes /api path)
+ * Priority: MEDIA_BASE_URL → BASE_URL (strip /api suffix) → localhost
+ * @returns {string} Base URL for media files
  */
 function getBaseUrl() {
-  // Use BASE_URL from environment if available
-  if (process.env.BASE_URL) {
-    return process.env.BASE_URL;
+  // Dedicated media base URL (recommended for production)
+  if (process.env.MEDIA_BASE_URL) {
+    return process.env.MEDIA_BASE_URL.replace(/\/+$/, ''); // strip trailing slash
   }
-  // Fallback to constructing from PORT
+
+  // Fall back to BASE_URL but strip /api suffix if present
+  // e.g. https://app.protect32.in/api → https://app.protect32.in
+  if (process.env.BASE_URL) {
+    return process.env.BASE_URL.replace(/\/api\/?$/, '').replace(/\/+$/, '');
+  }
+
+  // Last resort
   const port = process.env.PORT || 8080;
   return `http://localhost:${port}`;
 }

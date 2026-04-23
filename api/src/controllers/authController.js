@@ -460,7 +460,7 @@ class AuthController {
   // If user doesn't exist → create user with user_type then send OTP
   static async mobileLoginOrRegister(req, res) {
     try {
-      const { mobile_number, user_type } = req.body;
+      const { mobile_number, user_type = 'patient' } = req.body;
 
       if (!mobile_number) {
         return res.status(400).json({ error: 'mobile_number is required' });
@@ -470,37 +470,66 @@ class AuthController {
       const existing = await pool.query('SELECT id, user_type FROM users WHERE mobile_number = $1', [mobile_number]);
 
       let isNewUser = false;
+      let userId = existing.rows[0]?.id;
+      const effectiveUserType = existing.rows[0]?.user_type || user_type;
 
       if (!existing.rows[0]) {
-        // Create new user
-        await pool.query(
-          `INSERT INTO users (mobile_number, user_type, mobile_verified, is_verified, is_active)
-           VALUES ($1, $2, false, false, true)`,
-          [mobile_number, user_type || 'patient']
+        // Create user record
+        const newUser = await pool.query(
+          'INSERT INTO users (mobile_number, user_type, mobile_verified, is_verified, is_active) VALUES ($1,$2,false,false,true) RETURNING id',
+          [mobile_number, user_type]
         );
+        userId = newUser.rows[0].id;
         isNewUser = true;
+
+        // Auto-insert into patients or providers table based on user_type
+        if (user_type === 'patient') {
+          await pool.query(
+            'INSERT INTO patients (id) VALUES ($1) ON CONFLICT (id) DO NOTHING',
+            [userId]
+          ).catch(e => console.error('[mobile-login] patient insert error:', e.message));
+          console.log('[mobile-login] New patient profile created for user:', userId);
+        } else if (user_type === 'provider') {
+          await pool.query(
+            'INSERT INTO providers (id, specialty, clinic_name, contact_number, location) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (id) DO NOTHING',
+            [userId, '', '', '', '']
+          ).catch(e => console.error('[mobile-login] provider insert error:', e.message));
+          console.log('[mobile-login] New provider profile created for user:', userId);
+        }
       }
 
-      // Generate and send OTP
+      // Generate OTP
       const otp = OTPUtil.generate(parseInt(process.env.OTP_LENGTH) || 6);
       await AuthModel.createOTP(null, mobile_number, otp, 'login');
-      await OTPUtil.sendSMS(mobile_number, otp);
+
+      // Send via WhatsApp — same as send-otp
+      const whatsappResult = await OTPUtil.sendSMS(mobile_number, otp);
+      const sent = whatsappResult?.success ?? whatsappResult;
+
+      const responseData = {
+        mobile_number,
+        is_new_user: isNewUser,
+        user_type: effectiveUserType,
+        expires_in_minutes: process.env.OTP_EXPIRE_MINUTES || 10,
+        whatsapp_sent: !!sent,
+        whatsapp_debug: whatsappResult,
+      };
+
+      if (process.env.NODE_ENV === 'development') {
+        responseData.otp_debug = otp;
+      }
 
       res.json({
-        message: isNewUser
-          ? 'Account created. OTP sent to your mobile number.'
-          : 'OTP sent to your mobile number.',
-        data: {
-          mobile_number,
-          is_new_user: isNewUser,
-          expires_in_minutes: parseInt(process.env.OTP_EXPIRE_MINUTES) || 10,
-        }
+        success: true,
+        message: sent
+          ? (isNewUser ? 'Account created. OTP sent via WhatsApp.' : 'OTP sent via WhatsApp.')
+          : 'OTP generated (WhatsApp not connected — check whatsapp_debug)',
+        data: responseData,
       });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
   }
-
   // Mobile Registration (for Mobile App) — legacy, kept for backward compat
   static async mobileRegister(req, res) {
     try {

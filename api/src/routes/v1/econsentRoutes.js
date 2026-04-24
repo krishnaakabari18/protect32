@@ -292,6 +292,158 @@ router.put('/:id', auth, async (req, res) => {
 
 /**
  * @swagger
+ * /econsents/{id}/request-sign:
+ *   post:
+ *     summary: Send OTP to patient for eSign verification
+ *     tags: [eConsent]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [place, sign_date, sign_time, signature]
+ *             properties:
+ *               place:      { type: string, example: "Mumbai" }
+ *               sign_date:  { type: string, example: "2026-04-24" }
+ *               sign_time:  { type: string, example: "14:30" }
+ *               signature:  { type: string, example: "Rohan Gupta" }
+ *     responses:
+ *       200:
+ *         description: OTP sent to patient mobile
+ */
+router.post('/:id/request-sign', auth, async (req, res) => {
+  try {
+    const { place, sign_date, sign_time, signature } = req.body;
+    if (!place || !sign_date || !sign_time || !signature)
+      return res.status(400).json({ success: false, error: 'place, sign_date, sign_time and signature are required' });
+
+    const r = await pool.query(
+      `SELECT e.*, u.mobile_number, u.first_name, u.last_name
+       FROM econsents e JOIN users u ON e.patient_id = u.id
+       WHERE e.id = $1`,
+      [req.params.id]
+    );
+    const econsent = r.rows[0];
+    if (!econsent) return res.status(404).json({ success: false, error: 'eConsent not found' });
+    if (econsent.status === 'signed') return res.status(400).json({ success: false, error: 'Already signed' });
+
+    const mobile = econsent.mobile_number;
+    if (!mobile) return res.status(400).json({ success: false, error: 'Patient has no mobile number' });
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await pool.query(
+      `UPDATE econsents SET
+        place = $2, sign_date = $3, sign_time = $4, signature = $5,
+        notes = $6, updated_at = NOW()
+       WHERE id = $1`,
+      [req.params.id, place, sign_date, sign_time, signature, `OTP:${otp}:${expiresAt.toISOString()}`]
+    );
+
+    let otpSent = false;
+    try {
+      const OTPUtil = require('../../utils/otp');
+      await OTPUtil.sendOTP(mobile, otp);
+      otpSent = true;
+    } catch (e) {
+      console.warn('[eConsent] OTP send failed:', e.message);
+    }
+
+    console.log(`[eConsent] OTP for ${mobile}: ${otp}`);
+
+    res.json({
+      success: true,
+      message: otpSent ? `OTP sent to ${mobile.slice(0, 4)}****${mobile.slice(-3)}` : `OTP generated (dev: ${otp})`,
+      mobile_hint: `${mobile.slice(0, 4)}****${mobile.slice(-3)}`,
+      otp_sent: otpSent,
+      ...(process.env.NODE_ENV === 'development' && { dev_otp: otp }),
+    });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+/**
+ * @swagger
+ * /econsents/{id}/verify-sign:
+ *   post:
+ *     summary: Verify OTP and complete eSign
+ *     tags: [eConsent]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [otp]
+ *             properties:
+ *               otp: { type: string, example: "123456" }
+ *     responses:
+ *       200:
+ *         description: OTP verified, eConsent signed
+ */
+router.post('/:id/verify-sign', auth, async (req, res) => {
+  try {
+    const { otp } = req.body;
+    if (!otp) return res.status(400).json({ success: false, error: 'OTP is required' });
+
+    const r = await pool.query('SELECT * FROM econsents WHERE id = $1', [req.params.id]);
+    const econsent = r.rows[0];
+    if (!econsent) return res.status(404).json({ success: false, error: 'eConsent not found' });
+    if (econsent.status === 'signed') return res.status(400).json({ success: false, error: 'Already signed' });
+
+    const notes = econsent.notes || '';
+    const otpMatch = notes.match(/^OTP:(\d{6}):(.+)$/);
+    if (!otpMatch) return res.status(400).json({ success: false, error: 'No OTP pending. Please request OTP first.' });
+
+    const storedOtp = otpMatch[1];
+    const expiresAt = new Date(otpMatch[2]);
+
+    if (new Date() > expiresAt)
+      return res.status(400).json({ success: false, error: 'OTP expired. Please request a new OTP.' });
+
+    if (otp !== storedOtp)
+      return res.status(400).json({ success: false, error: 'Invalid OTP' });
+
+    await pool.query(
+      `UPDATE econsents SET status = 'signed', signed_at = NOW(), notes = NULL, updated_at = NOW()
+       WHERE id = $1`,
+      [req.params.id]
+    );
+
+    const full = await pool.query(
+      `SELECT e.*,
+        u1.first_name as patient_first_name, u1.last_name as patient_last_name,
+        u2.first_name as provider_first_name, u2.last_name as provider_last_name,
+        pr.clinic_name as provider_clinic
+       FROM econsents e
+       JOIN users u1 ON e.patient_id = u1.id
+       JOIN users u2 ON e.provider_id = u2.id
+       LEFT JOIN providers pr ON e.provider_id = pr.id
+       WHERE e.id = $1`,
+      [req.params.id]
+    );
+
+    res.json({ success: true, message: 'eConsent signed successfully', data: full.rows[0] });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+/**
+ * @swagger
  * /econsents/{id}:
  *   delete:
  *     summary: Delete an eConsent

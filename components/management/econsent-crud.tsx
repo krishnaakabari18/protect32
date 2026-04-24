@@ -33,11 +33,16 @@ const EConsentCRUD = () => {
     const [saving, setSaving] = useState(false);
     const [pdfModal, setPdfModal] = useState(false);
     const [pdfItem, setPdfItem] = useState<any>(null);
+    const [pdfMode, setPdfMode] = useState<'view' | 'sign'>('view'); // view = read-only, sign = editable
     const [signPlace, setSignPlace] = useState('');
     const [signDate, setSignDate] = useState('');
     const [signTime, setSignTime] = useState('');
     const [signatureName, setSignatureName] = useState('');
     const [signing, setSigning] = useState(false);
+    const [otpStep, setOtpStep] = useState(false); // false = fill form, true = enter OTP
+    const [otpValue, setOtpValue] = useState('');
+    const [mobileHint, setMobileHint] = useState('');
+    const [devOtp, setDevOtp] = useState('');
     const printRef = useRef<HTMLDivElement>(null);
 
     const token = () => localStorage.getItem('auth_token') || '';
@@ -172,8 +177,7 @@ const EConsentCRUD = () => {
         fetchItems();
     };
 
-    const openPdf = async (item: any) => {
-        // Fetch full details including clinic name
+    const openPdf = async (item: any, mode: 'view' | 'sign' = 'view') => {
         try {
             const res = await fetch(`${API_ENDPOINTS.econsents}/${item.id}`, {
                 headers: { 'Authorization': `Bearer ${token()}`, 'ngrok-skip-browser-warning': 'true' },
@@ -181,30 +185,68 @@ const EConsentCRUD = () => {
             const data = await res.json();
             const full = res.ok ? data.data : item;
             setPdfItem(full);
+            setPdfMode(mode);
+            // Pre-fill with today's values for signing
             setSignPlace(full.place || '');
             setSignDate(full.sign_date || new Date().toISOString().split('T')[0]);
             setSignTime(full.sign_time || new Date().toTimeString().slice(0, 5));
             setSignatureName(full.signature || `${full.patient_first_name} ${full.patient_last_name}`);
+            setOtpStep(false);
+            setOtpValue('');
+            setDevOtp('');
             setPdfModal(true);
         } catch (e) {
             setPdfItem(item);
+            setPdfMode(mode);
             setPdfModal(true);
         }
     };
 
-    const submitSignature = async () => {
-        if (!pdfItem) return;
+    const requestOtp = async () => {
+        if (!signPlace || !signDate || !signTime || !signatureName) {
+            Swal.fire('Error', 'Please fill Place, Date, Time and Signature', 'error');
+            return;
+        }
         setSigning(true);
         try {
-            const res = await fetch(`${API_ENDPOINTS.econsents}/${pdfItem.id}`, {
-                method: 'PUT',
+            const res = await fetch(`${API_ENDPOINTS.econsents}/${pdfItem.id}/request-sign`, {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}`, 'ngrok-skip-browser-warning': 'true' },
-                body: JSON.stringify({ status: 'signed', place: signPlace, sign_date: signDate, sign_time: signTime, signature: signatureName }),
+                body: JSON.stringify({ place: signPlace, sign_date: signDate, sign_time: signTime, signature: signatureName }),
             });
+            const data = await res.json();
             if (res.ok) {
-                Swal.fire({ icon: 'success', title: 'Signed successfully', timer: 1500, showConfirmButton: false });
+                setMobileHint(data.mobile_hint || '');
+                setDevOtp(data.dev_otp || '');
+                setOtpStep(true);
+            } else {
+                Swal.fire('Error', data.error || 'Failed to send OTP', 'error');
+            }
+        } catch (e: any) { Swal.fire('Error', e.message, 'error'); }
+        finally { setSigning(false); }
+    };
+
+    const verifyOtp = async () => {
+        if (!otpValue || otpValue.length !== 6) {
+            Swal.fire('Error', 'Please enter the 6-digit OTP', 'error');
+            return;
+        }
+        setSigning(true);
+        try {
+            const res = await fetch(`${API_ENDPOINTS.econsents}/${pdfItem.id}/verify-sign`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}`, 'ngrok-skip-browser-warning': 'true' },
+                body: JSON.stringify({ otp: otpValue }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                Swal.fire({ icon: 'success', title: 'eConsent Signed!', text: 'Consent has been signed successfully.', timer: 2000, showConfirmButton: false });
                 setPdfModal(false);
+                setOtpStep(false);
+                setOtpValue('');
                 fetchItems();
+            } else {
+                Swal.fire('Error', data.error || 'Invalid OTP', 'error');
             }
         } catch (e: any) { Swal.fire('Error', e.message, 'error'); }
         finally { setSigning(false); }
@@ -311,9 +353,9 @@ const EConsentCRUD = () => {
                                         <td>{statusBadge(item.status)}</td>
                                         <td>
                                             <div className="flex gap-2 items-center justify-center">
-                                                <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => openPdf(item)}>View</button>
+                                                <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => openPdf(item, 'view')}>View</button>
                                                 {item.status === 'pending' && (
-                                                    <button type="button" className="btn btn-sm btn-outline-success text-xs px-2" onClick={() => openPdf(item)}>eSign</button>
+                                                    <button type="button" className="btn btn-sm btn-outline-success text-xs px-2" onClick={() => openPdf(item, 'sign')}>eSign</button>
                                                 )}
                                                 <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => deleteItem(item.id)}><IconTrash /></button>
                                             </div>
@@ -518,7 +560,7 @@ const EConsentCRUD = () => {
                             <TransitionChild as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100" leave="ease-in duration-200" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95">
                                 <DialogPanel className="panel my-4 w-full max-w-3xl overflow-hidden rounded-lg border-0 p-0 text-black dark:text-white-dark">
                                     <div className="flex items-center justify-between bg-[#fbfbfb] px-5 py-3 dark:bg-[#121c2c]">
-                                        <h5 className="text-lg font-bold">eConsent Document</h5>
+                                        <h5 className="text-lg font-bold">{pdfMode === 'sign' ? '✍ eSign Consent' : 'eConsent Document'}</h5>
                                         <div className="flex items-center gap-2">
                                             <button type="button" className="btn btn-primary btn-sm" onClick={handlePrint}>🖨 Print</button>
                                             <button type="button" className="text-white-dark hover:text-dark" onClick={() => setPdfModal(false)}><IconX /></button>
@@ -559,34 +601,34 @@ const EConsentCRUD = () => {
                                                 <div className="grid grid-cols-2 gap-8 mt-8">
                                                     <div>
                                                         <label className="text-xs uppercase text-gray-500 block mb-1">Place</label>
-                                                        {pdfItem.status === 'signed' ? (
-                                                            <div className="border-b border-gray-700 pb-1 font-medium">{pdfItem.place || '-'}</div>
-                                                        ) : (
+                                                        {pdfMode === 'sign' ? (
                                                             <input type="text" className="border-b border-gray-700 w-full outline-none bg-transparent pb-1" value={signPlace} onChange={e => setSignPlace(e.target.value)} placeholder="Enter place" />
+                                                        ) : (
+                                                            <div className="border-b border-gray-300 pb-1 min-h-[24px]">{pdfItem.place || ''}</div>
                                                         )}
                                                     </div>
                                                     <div>
                                                         <label className="text-xs uppercase text-gray-500 block mb-1">Date</label>
-                                                        {pdfItem.status === 'signed' ? (
-                                                            <div className="border-b border-gray-700 pb-1 font-medium">{pdfItem.sign_date || '-'}</div>
-                                                        ) : (
+                                                        {pdfMode === 'sign' ? (
                                                             <input type="date" className="border-b border-gray-700 w-full outline-none bg-transparent pb-1" value={signDate} onChange={e => setSignDate(e.target.value)} />
+                                                        ) : (
+                                                            <div className="border-b border-gray-300 pb-1 min-h-[24px]">{pdfItem.sign_date || ''}</div>
                                                         )}
                                                     </div>
                                                     <div>
                                                         <label className="text-xs uppercase text-gray-500 block mb-1">Time</label>
-                                                        {pdfItem.status === 'signed' ? (
-                                                            <div className="border-b border-gray-700 pb-1 font-medium">{pdfItem.sign_time || '-'}</div>
-                                                        ) : (
+                                                        {pdfMode === 'sign' ? (
                                                             <input type="time" className="border-b border-gray-700 w-full outline-none bg-transparent pb-1" value={signTime} onChange={e => setSignTime(e.target.value)} />
+                                                        ) : (
+                                                            <div className="border-b border-gray-300 pb-1 min-h-[24px]">{pdfItem.sign_time || ''}</div>
                                                         )}
                                                     </div>
                                                     <div>
                                                         <label className="text-xs uppercase text-gray-500 block mb-1">Signature</label>
-                                                        {pdfItem.status === 'signed' ? (
-                                                            <div className="border-b border-gray-700 pb-1 font-medium italic">{pdfItem.signature || '-'}</div>
-                                                        ) : (
+                                                        {pdfMode === 'sign' ? (
                                                             <input type="text" className="border-b border-gray-700 w-full outline-none bg-transparent pb-1 italic" value={signatureName} onChange={e => setSignatureName(e.target.value)} placeholder="Full name as signature" />
+                                                        ) : (
+                                                            <div className="border-b border-gray-300 pb-1 min-h-[24px] italic font-medium">{pdfItem.signature || ''}</div>
                                                         )}
                                                         <p className="text-xs text-gray-400 mt-1">(To be signed by parent/guardian in case of minor)</p>
                                                     </div>
@@ -613,13 +655,41 @@ const EConsentCRUD = () => {
                                                 </p>
                                             </div>
 
+                                            {/* OTP Step */}
+                                            {pdfMode === 'sign' && otpStep && (
+                                                <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+                                                    <p className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-1">OTP Verification</p>
+                                                    <p className="text-sm text-blue-600 dark:text-blue-300 mb-3">
+                                                        OTP sent to <strong>{mobileHint}</strong>. Enter the 6-digit OTP to complete signing.
+                                                        {devOtp && <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded">(Dev OTP: {devOtp})</span>}
+                                                    </p>
+                                                    <div className="flex gap-3 items-center">
+                                                        <input
+                                                            type="text"
+                                                            maxLength={6}
+                                                            className="form-input w-40 text-center text-xl tracking-widest font-bold"
+                                                            placeholder="000000"
+                                                            value={otpValue}
+                                                            onChange={e => setOtpValue(e.target.value.replace(/\D/g, ''))}
+                                                            autoFocus
+                                                        />
+                                                        <button type="button" className="btn btn-success" onClick={verifyOtp} disabled={signing || otpValue.length !== 6}>
+                                                            {signing ? 'Verifying...' : '✓ Verify & Sign'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             {/* Action buttons */}
                                             <div className="flex justify-end gap-3 mt-4">
-                                                <button type="button" className="btn btn-outline-danger" onClick={() => setPdfModal(false)}>Close</button>
-                                                {pdfItem.status === 'pending' && (
-                                                    <button type="button" className="btn btn-success" onClick={submitSignature} disabled={signing}>
-                                                        {signing ? 'Signing...' : '✍ Submit Signature'}
+                                                <button type="button" className="btn btn-outline-danger" onClick={() => { setPdfModal(false); setOtpStep(false); setOtpValue(''); }}>Close</button>
+                                                {pdfMode === 'sign' && pdfItem.status === 'pending' && !otpStep && (
+                                                    <button type="button" className="btn btn-success" onClick={requestOtp} disabled={signing}>
+                                                        {signing ? 'Sending OTP...' : '✍ Request Signature'}
                                                     </button>
+                                                )}
+                                                {pdfMode === 'sign' && otpStep && (
+                                                    <button type="button" className="btn btn-outline-warning btn-sm" onClick={() => { setOtpStep(false); setOtpValue(''); }}>← Back</button>
                                                 )}
                                             </div>
                                         </div>

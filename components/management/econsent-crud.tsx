@@ -16,6 +16,8 @@ const EConsentCRUD = () => {
     const [current, setCurrent] = useState<any>(null);
     const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
     const [filterStatus, setFilterStatus] = useState('');
+    const [filterPatient, setFilterPatient] = useState('');
+    const [filterProvider, setFilterProvider] = useState('');
 
     // Form state
     const [providerId, setProviderId] = useState('');
@@ -58,7 +60,9 @@ const EConsentCRUD = () => {
             const q = new URLSearchParams({
                 page: pagination.page.toString(),
                 limit: pagination.limit.toString(),
-                ...(filterStatus && { status: filterStatus }),
+                ...(filterStatus   && { status:      filterStatus }),
+                ...(filterPatient  && { patient_id:  filterPatient }),
+                ...(filterProvider && { provider_id: filterProvider }),
             });
             const res = await fetch(`${API_ENDPOINTS.econsents}?${q}`, {
                 headers: { 'Authorization': `Bearer ${token()}`, 'ngrok-skip-browser-warning': 'true' },
@@ -70,7 +74,7 @@ const EConsentCRUD = () => {
             }
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
-    }, [pagination.page, pagination.limit, filterStatus]);
+    }, [pagination.page, pagination.limit, filterStatus, filterPatient, filterProvider]);
 
     useEffect(() => { fetchItems(); }, [fetchItems]);
 
@@ -247,14 +251,34 @@ const EConsentCRUD = () => {
             </div>
 
             {/* Filters */}
-            <div className="flex gap-3 mb-5">
-                <select className="form-select w-48" value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}>
+            <div className="flex flex-wrap gap-3 mb-5">
+                <div className="w-48">
+                    <SearchableSelect
+                        dropdownType="providers"
+                        value={filterProvider}
+                        onChange={val => { setFilterProvider(val); setPagination(p => ({ ...p, page: 1 })); }}
+                        placeholder="All Providers"
+                    />
+                </div>
+                <div className="w-48">
+                    <SearchableSelect
+                        dropdownType="patients"
+                        value={filterPatient}
+                        onChange={val => { setFilterPatient(val); setPagination(p => ({ ...p, page: 1 })); }}
+                        placeholder="All Patients"
+                    />
+                </div>
+                <select className="form-select w-40" value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}>
                     <option value="">All Status</option>
                     <option value="pending">Pending</option>
                     <option value="signed">Signed</option>
                     <option value="rejected">Rejected</option>
                 </select>
-                {filterStatus && <button type="button" className="btn btn-outline-danger" onClick={() => { setFilterStatus(''); setPagination(p => ({ ...p, page: 1 })); }}>Clear</button>}
+                {(filterStatus || filterPatient || filterProvider) && (
+                    <button type="button" className="btn btn-outline-danger" onClick={() => { setFilterStatus(''); setFilterPatient(''); setFilterProvider(''); setPagination(p => ({ ...p, page: 1 })); }}>
+                        Clear Filters
+                    </button>
+                )}
             </div>
 
             {loading ? (

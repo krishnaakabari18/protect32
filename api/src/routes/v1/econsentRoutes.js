@@ -25,7 +25,61 @@ pool.query(`
   )
 `).catch(e => console.error('[eConsent] Table create error:', e.message));
 
-// GET /econsents — list with filters
+/**
+ * @swagger
+ * tags:
+ *   name: eConsent
+ *   description: Electronic consent management
+ */
+
+/**
+ * @swagger
+ * /econsents:
+ *   get:
+ *     summary: Get all eConsents with filters
+ *     tags: [eConsent]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: provider_id
+ *         schema: { type: string, format: uuid }
+ *         description: Filter by provider
+ *       - in: query
+ *         name: patient_id
+ *         schema: { type: string, format: uuid }
+ *         description: Filter by patient
+ *       - in: query
+ *         name: status
+ *         schema: { type: string, enum: [pending, signed, rejected] }
+ *         description: Filter by status
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 20 }
+ *     responses:
+ *       200:
+ *         description: List of eConsents
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/EConsent'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page: { type: integer }
+ *                     limit: { type: integer }
+ *                     total: { type: integer }
+ *                     totalPages: { type: integer }
+ */
 router.get('/', auth, async (req, res) => {
   try {
     const { provider_id, patient_id, status, page = 1, limit = 20 } = req.query;
@@ -33,7 +87,7 @@ router.get('/', auth, async (req, res) => {
     let p = 1;
     let q = `
       SELECT e.*,
-        u1.first_name as patient_first_name, u1.last_name as patient_last_name,
+        u1.first_name as patient_first_name, u1.last_name as patient_last_name, u1.email as patient_email,
         u2.first_name as provider_first_name, u2.last_name as provider_last_name,
         pr.clinic_name as provider_clinic
       FROM econsents e
@@ -57,7 +111,32 @@ router.get('/', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-// GET /econsents/:id — single record with full patient/provider details
+/**
+ * @swagger
+ * /econsents/{id}:
+ *   get:
+ *     summary: Get single eConsent by ID
+ *     tags: [eConsent]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: eConsent details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *                 data: { $ref: '#/components/schemas/EConsent' }
+ *       404:
+ *         description: Not found
+ */
 router.get('/:id', auth, async (req, res) => {
   try {
     const r = await pool.query(
@@ -77,7 +156,52 @@ router.get('/:id', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-// POST /econsents — create
+/**
+ * @swagger
+ * /econsents:
+ *   post:
+ *     summary: Create a new eConsent request
+ *     tags: [eConsent]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [provider_id, patient_id, procedure_names]
+ *             properties:
+ *               provider_id:
+ *                 type: string
+ *                 format: uuid
+ *                 example: "550e8400-e29b-41d4-a716-446655440000"
+ *               patient_id:
+ *                 type: string
+ *                 format: uuid
+ *                 example: "550e8400-e29b-41d4-a716-446655440001"
+ *               procedure_names:
+ *                 type: string
+ *                 example: "Root Canal Treatment, Tooth Extraction"
+ *               patient_age:
+ *                 type: integer
+ *                 example: 35
+ *               patient_address:
+ *                 type: string
+ *                 example: "123 Main St, Mumbai"
+ *     responses:
+ *       201:
+ *         description: eConsent created with status pending
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *                 data: { $ref: '#/components/schemas/EConsent' }
+ *       400:
+ *         description: Missing required fields
+ */
 router.post('/', auth, async (req, res) => {
   try {
     const { provider_id, patient_id, procedure_names, patient_age, patient_address } = req.body;
@@ -93,11 +217,61 @@ router.post('/', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-// PUT /econsents/:id — update status + signature fields
+/**
+ * @swagger
+ * /econsents/{id}:
+ *   put:
+ *     summary: Update eConsent status and signature details
+ *     tags: [eConsent]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [pending, signed, rejected]
+ *                 example: signed
+ *               place:
+ *                 type: string
+ *                 example: "Mumbai"
+ *               sign_date:
+ *                 type: string
+ *                 example: "2026-04-24"
+ *               sign_time:
+ *                 type: string
+ *                 example: "14:30"
+ *               signature:
+ *                 type: string
+ *                 example: "Rohan Gupta"
+ *               notes:
+ *                 type: string
+ *                 example: "Patient signed voluntarily"
+ *     responses:
+ *       200:
+ *         description: eConsent updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *                 data: { $ref: '#/components/schemas/EConsent' }
+ *       404:
+ *         description: Not found
+ */
 router.put('/:id', auth, async (req, res) => {
   try {
     const { status, notes, place, sign_date, sign_time, signature } = req.body;
-    const signed_at = status === 'signed' ? new Date() : null;
     const r = await pool.query(
       `UPDATE econsents SET
         status = COALESCE($2, status),
@@ -116,7 +290,25 @@ router.put('/:id', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-// DELETE /econsents/:id
+/**
+ * @swagger
+ * /econsents/{id}:
+ *   delete:
+ *     summary: Delete an eConsent
+ *     tags: [eConsent]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Deleted successfully
+ *       404:
+ *         description: Not found
+ */
 router.delete('/:id', auth, async (req, res) => {
   try {
     const r = await pool.query('DELETE FROM econsents WHERE id=$1 RETURNING id', [req.params.id]);
@@ -124,5 +316,71 @@ router.delete('/:id', auth, async (req, res) => {
     res.json({ success: true, message: 'Deleted' });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     EConsent:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *         provider_id:
+ *           type: string
+ *           format: uuid
+ *         patient_id:
+ *           type: string
+ *           format: uuid
+ *         procedure_names:
+ *           type: string
+ *           example: "Root Canal Treatment, Tooth Extraction"
+ *         patient_age:
+ *           type: integer
+ *           example: 35
+ *         patient_address:
+ *           type: string
+ *           example: "123 Main St, Mumbai"
+ *         place:
+ *           type: string
+ *           example: "Mumbai"
+ *         sign_date:
+ *           type: string
+ *           example: "2026-04-24"
+ *         sign_time:
+ *           type: string
+ *           example: "14:30"
+ *         signature:
+ *           type: string
+ *           example: "Rohan Gupta"
+ *         status:
+ *           type: string
+ *           enum: [pending, signed, rejected]
+ *           example: pending
+ *         signed_at:
+ *           type: string
+ *           format: date-time
+ *         notes:
+ *           type: string
+ *         patient_first_name:
+ *           type: string
+ *         patient_last_name:
+ *           type: string
+ *         patient_email:
+ *           type: string
+ *         provider_first_name:
+ *           type: string
+ *         provider_last_name:
+ *           type: string
+ *         provider_clinic:
+ *           type: string
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ */
 
 module.exports = router;

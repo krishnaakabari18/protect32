@@ -117,6 +117,9 @@ export const API_ENDPOINTS = {
   // Inquiries
   inquiries: `${API_BASE_URL}/inquiries`,
 
+  // eConsents
+  econsents: `${API_BASE_URL}/econsents`,
+
   // Appointment Payments
   appointmentPayments: `${API_BASE_URL}/appointment-payments`,
 

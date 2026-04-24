@@ -31,6 +31,7 @@ const settingsRoutes = require('./settingsRoutes');
 const dashboardRoutes = require('./dashboardRoutes');
 const subscriptionRoutes = require('./subscriptionRoutes');
 const inquiryRoutes = require('./inquiryRoutes');
+const econsentRoutes = require('./econsentRoutes');
 const providerDashboardRoutes = require('./providerDashboardRoutes');
 const appointmentPaymentRoutes = require('./appointmentPaymentRoutes');
 
@@ -65,6 +66,7 @@ router.use('/settings', settingsRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/subscriptions', subscriptionRoutes);
 router.use('/inquiries', inquiryRoutes);
+router.use('/econsents', econsentRoutes);
 router.use('/provider-dashboard', providerDashboardRoutes);
 router.use('/appointment-payments', appointmentPaymentRoutes);
 

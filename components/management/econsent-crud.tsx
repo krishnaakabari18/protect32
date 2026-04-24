@@ -8,7 +8,6 @@ import IconEye from '@/components/icon/icon-eye';
 import IconTrash from '@/components/icon/icon-trash';
 import { API_ENDPOINTS } from '@/config/api.config';
 import SearchableSelect from '@/components/ui/searchable-select';
-
 const EConsentCRUD = () => {
     const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -30,6 +29,14 @@ const EConsentCRUD = () => {
     const [procSearch, setProcSearch] = useState('');
     const procRef = useRef<HTMLDivElement>(null);
     const [saving, setSaving] = useState(false);
+    const [pdfModal, setPdfModal] = useState(false);
+    const [pdfItem, setPdfItem] = useState<any>(null);
+    const [signPlace, setSignPlace] = useState('');
+    const [signDate, setSignDate] = useState('');
+    const [signTime, setSignTime] = useState('');
+    const [signatureName, setSignatureName] = useState('');
+    const [signing, setSigning] = useState(false);
+    const printRef = useRef<HTMLDivElement>(null);
 
     const token = () => localStorage.getItem('auth_token') || '';
 
@@ -161,6 +168,70 @@ const EConsentCRUD = () => {
         fetchItems();
     };
 
+    const openPdf = async (item: any) => {
+        // Fetch full details including clinic name
+        try {
+            const res = await fetch(`${API_ENDPOINTS.econsents}/${item.id}`, {
+                headers: { 'Authorization': `Bearer ${token()}`, 'ngrok-skip-browser-warning': 'true' },
+            });
+            const data = await res.json();
+            const full = res.ok ? data.data : item;
+            setPdfItem(full);
+            setSignPlace(full.place || '');
+            setSignDate(full.sign_date || new Date().toISOString().split('T')[0]);
+            setSignTime(full.sign_time || new Date().toTimeString().slice(0, 5));
+            setSignatureName(full.signature || `${full.patient_first_name} ${full.patient_last_name}`);
+            setPdfModal(true);
+        } catch (e) {
+            setPdfItem(item);
+            setPdfModal(true);
+        }
+    };
+
+    const submitSignature = async () => {
+        if (!pdfItem) return;
+        setSigning(true);
+        try {
+            const res = await fetch(`${API_ENDPOINTS.econsents}/${pdfItem.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}`, 'ngrok-skip-browser-warning': 'true' },
+                body: JSON.stringify({ status: 'signed', place: signPlace, sign_date: signDate, sign_time: signTime, signature: signatureName }),
+            });
+            if (res.ok) {
+                Swal.fire({ icon: 'success', title: 'Signed successfully', timer: 1500, showConfirmButton: false });
+                setPdfModal(false);
+                fetchItems();
+            }
+        } catch (e: any) { Swal.fire('Error', e.message, 'error'); }
+        finally { setSigning(false); }
+    };
+
+    const handlePrint = () => {
+        const content = printRef.current;
+        if (!content) return;
+        const win = window.open('', '_blank');
+        if (!win) return;
+        win.document.write(`
+            <html><head><title>eConsent Document</title>
+            <style>
+                body { font-family: Georgia, serif; padding: 40px; max-width: 800px; margin: 0 auto; }
+                h2 { text-align: center; font-size: 20px; text-transform: uppercase; }
+                hr { margin: 20px 0; }
+                .underline { border-bottom: 2px solid #000; display: inline-block; min-width: 120px; font-weight: bold; }
+                p { line-height: 1.8; font-size: 15px; }
+                .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 40px; }
+                .field label { font-size: 11px; text-transform: uppercase; color: #666; display: block; margin-bottom: 4px; }
+                .field .line { border-bottom: 1px solid #333; min-width: 200px; height: 24px; }
+                .note { font-size: 11px; color: #888; font-style: italic; margin-top: 4px; }
+                .verification { margin-top: 40px; border-top: 1px solid #ddd; padding-top: 20px; display: flex; align-items: center; gap: 20px; }
+                .doctor-sign { text-align: right; flex: 1; font-weight: bold; }
+                @media print { button { display: none; } }
+            </style></head><body>${content.innerHTML}</body></html>
+        `);
+        win.document.close();
+        win.print();
+    };
+
     const statusBadge = (status: string) => {
         const map: Record<string, string> = { pending: 'bg-warning', signed: 'bg-success', rejected: 'bg-danger' };
         return <span className={`badge ${map[status] || 'bg-secondary'} capitalize`}>{status}</span>;
@@ -216,14 +287,9 @@ const EConsentCRUD = () => {
                                         <td>{statusBadge(item.status)}</td>
                                         <td>
                                             <div className="flex gap-2 items-center justify-center">
-                                                <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => { setCurrent(item); setViewModal(true); }}>
-                                                    <IconEye />
-                                                </button>
+                                                <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => openPdf(item)}>View</button>
                                                 {item.status === 'pending' && (
-                                                    <button type="button" className="btn btn-sm btn-outline-success text-xs px-2" onClick={async () => {
-                                                        await fetch(`${API_ENDPOINTS.econsents}/${item.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}`, 'ngrok-skip-browser-warning': 'true' }, body: JSON.stringify({ status: 'signed' }) });
-                                                        fetchItems();
-                                                    }}>eSign</button>
+                                                    <button type="button" className="btn btn-sm btn-outline-success text-xs px-2" onClick={() => openPdf(item)}>eSign</button>
                                                 )}
                                                 <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => deleteItem(item.id)}><IconTrash /></button>
                                             </div>
@@ -408,6 +474,129 @@ const EConsentCRUD = () => {
                                             </div>
                                             <div className="flex justify-end border-t pt-4">
                                                 <button type="button" className="btn btn-outline-danger" onClick={() => setViewModal(false)}>Close</button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </DialogPanel>
+                            </TransitionChild>
+                        </div>
+                    </div>
+                </Dialog>
+            </Transition>
+            {/* PDF / eConsent Document Modal */}
+            <Transition appear show={pdfModal} as={Fragment}>
+                <Dialog as="div" open={pdfModal} onClose={() => setPdfModal(false)}>
+                    <TransitionChild as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0" enterTo="opacity-100" leave="ease-in duration-200" leaveFrom="opacity-100" leaveTo="opacity-0">
+                        <div className="fixed inset-0" />
+                    </TransitionChild>
+                    <div className="fixed inset-0 z-[999] overflow-y-auto bg-[black]/60">
+                        <div className="flex min-h-screen items-start justify-center px-4 py-8">
+                            <TransitionChild as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100" leave="ease-in duration-200" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95">
+                                <DialogPanel className="panel my-4 w-full max-w-3xl overflow-hidden rounded-lg border-0 p-0 text-black dark:text-white-dark">
+                                    <div className="flex items-center justify-between bg-[#fbfbfb] px-5 py-3 dark:bg-[#121c2c]">
+                                        <h5 className="text-lg font-bold">eConsent Document</h5>
+                                        <div className="flex items-center gap-2">
+                                            <button type="button" className="btn btn-primary btn-sm" onClick={handlePrint}>🖨 Print</button>
+                                            <button type="button" className="text-white-dark hover:text-dark" onClick={() => setPdfModal(false)}><IconX /></button>
+                                        </div>
+                                    </div>
+                                    {pdfItem && (
+                                        <div className="p-5 overflow-y-auto max-h-[80vh]">
+                                            {/* Printable content */}
+                                            <div ref={printRef} className="bg-white p-8 rounded border border-gray-200 font-serif">
+                                                <h2 className="text-center text-xl font-bold uppercase mb-1">Model Form of Informed Consent</h2>
+                                                <hr className="border-black mb-6" />
+
+                                                <p className="text-base leading-8 mb-6">
+                                                    I{' '}
+                                                    <span className="font-bold underline">{pdfItem.patient_first_name} {pdfItem.patient_last_name}</span>
+                                                    {' '}aged{' '}
+                                                    <span className="font-bold underline">{pdfItem.patient_age || '___'}</span>
+                                                    {' '}resident of{' '}
+                                                    <span className="font-bold underline">{pdfItem.patient_address || '___________'}</span>
+                                                    {' '}being under the treatment of{' '}
+                                                    <span className="font-bold underline">
+                                                        Dr. {pdfItem.provider_first_name} {pdfItem.provider_last_name}
+                                                        {pdfItem.provider_clinic ? ` / ${pdfItem.provider_clinic}` : ''}
+                                                    </span>
+                                                    {' '}do hereby give consent to the performance of medical / surgical / anesthesia / diagnostic procedure of{' '}
+                                                    <span className="font-bold underline">{pdfItem.procedure_names}</span>
+                                                    {' '}upon myself / upon{' '}
+                                                    <span className="font-bold underline">{pdfItem.patient_first_name} {pdfItem.patient_last_name}</span>
+                                                    {' '}aged{' '}
+                                                    <span className="font-bold underline">{pdfItem.patient_age || '___'}</span>.
+                                                </p>
+
+                                                <p className="text-base leading-7 mb-8">
+                                                    I declare that I am more than 18 years of age. I have been informed that there are inherent risks involved in the treatment / procedure. I have signed this consent voluntarily out of my free will without any pressure and in my full senses.
+                                                </p>
+
+                                                {/* Signature fields */}
+                                                <div className="grid grid-cols-2 gap-8 mt-8">
+                                                    <div>
+                                                        <label className="text-xs uppercase text-gray-500 block mb-1">Place</label>
+                                                        {pdfItem.status === 'signed' ? (
+                                                            <div className="border-b border-gray-700 pb-1 font-medium">{pdfItem.place || '-'}</div>
+                                                        ) : (
+                                                            <input type="text" className="border-b border-gray-700 w-full outline-none bg-transparent pb-1" value={signPlace} onChange={e => setSignPlace(e.target.value)} placeholder="Enter place" />
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-xs uppercase text-gray-500 block mb-1">Date</label>
+                                                        {pdfItem.status === 'signed' ? (
+                                                            <div className="border-b border-gray-700 pb-1 font-medium">{pdfItem.sign_date || '-'}</div>
+                                                        ) : (
+                                                            <input type="date" className="border-b border-gray-700 w-full outline-none bg-transparent pb-1" value={signDate} onChange={e => setSignDate(e.target.value)} />
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-xs uppercase text-gray-500 block mb-1">Time</label>
+                                                        {pdfItem.status === 'signed' ? (
+                                                            <div className="border-b border-gray-700 pb-1 font-medium">{pdfItem.sign_time || '-'}</div>
+                                                        ) : (
+                                                            <input type="time" className="border-b border-gray-700 w-full outline-none bg-transparent pb-1" value={signTime} onChange={e => setSignTime(e.target.value)} />
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-xs uppercase text-gray-500 block mb-1">Signature</label>
+                                                        {pdfItem.status === 'signed' ? (
+                                                            <div className="border-b border-gray-700 pb-1 font-medium italic">{pdfItem.signature || '-'}</div>
+                                                        ) : (
+                                                            <input type="text" className="border-b border-gray-700 w-full outline-none bg-transparent pb-1 italic" value={signatureName} onChange={e => setSignatureName(e.target.value)} placeholder="Full name as signature" />
+                                                        )}
+                                                        <p className="text-xs text-gray-400 mt-1">(To be signed by parent/guardian in case of minor)</p>
+                                                    </div>
+                                                </div>
+
+                                                <hr className="my-6 border-gray-200" />
+
+                                                {/* Verification */}
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <p className="text-xs uppercase text-gray-500 font-semibold mb-2">Verification</p>
+                                                        <p className="text-xs text-gray-500">ID: CONS-{pdfItem.id?.replace(/-/g, '').slice(0, 16).toUpperCase()}</p>
+                                                        <p className="text-xs text-gray-400">This is a computer-generated document.</p>
+                                                        <p className="text-xs text-gray-400">Digitally signed and verified.</p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="font-bold">Dr. {pdfItem.provider_first_name} {pdfItem.provider_last_name}</p>
+                                                        {pdfItem.provider_clinic && <p className="text-sm text-gray-600">{pdfItem.provider_clinic}</p>}
+                                                    </div>
+                                                </div>
+
+                                                <p className="text-xs text-gray-400 italic mt-6">
+                                                    NOTES: This Consent Form should be signed BEFORE the treatment is started. These formats may be modified as per individual requirements.
+                                                </p>
+                                            </div>
+
+                                            {/* Action buttons */}
+                                            <div className="flex justify-end gap-3 mt-4">
+                                                <button type="button" className="btn btn-outline-danger" onClick={() => setPdfModal(false)}>Close</button>
+                                                {pdfItem.status === 'pending' && (
+                                                    <button type="button" className="btn btn-success" onClick={submitSignature} disabled={signing}>
+                                                        {signing ? 'Signing...' : '✍ Submit Signature'}
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     )}

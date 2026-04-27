@@ -76,9 +76,71 @@ class UserModel {
   }
 
   static async delete(id) {
-    const query = 'DELETE FROM users WHERE id = $1 RETURNING *';
-    const result = await pool.query(query, [id]);
-    return result.rows[0];
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // 1. Delete user_permissions
+      await client.query('DELETE FROM user_permissions WHERE user_id = $1', [id]);
+
+      // 2. Delete notifications
+      await client.query('DELETE FROM notifications WHERE user_id = $1', [id]);
+
+      // 3. Delete refresh tokens & OTP
+      await client.query('DELETE FROM refresh_tokens WHERE user_id = $1', [id]);
+      await client.query('DELETE FROM otp_verifications WHERE user_id = $1', [id]);
+
+      // 4. Delete econsents (patient or provider side)
+      await client.query('DELETE FROM econsents WHERE patient_id = $1 OR provider_id = $1', [id]);
+
+      // 5. Delete subscriptions
+      await client.query('DELETE FROM subscriptions WHERE patient_id = $1', [id]);
+
+      // 6. Delete payments
+      await client.query('DELETE FROM payments WHERE patient_id = $1 OR provider_id = $1', [id]);
+
+      // 7. Delete prescriptions
+      await client.query('DELETE FROM prescriptions WHERE patient_id = $1 OR provider_id = $1', [id]);
+
+      // 8. Delete reviews
+      await client.query('DELETE FROM reviews WHERE patient_id = $1 OR provider_id = $1', [id]);
+
+      // 9. Delete treatment plans
+      await client.query('DELETE FROM treatment_plans WHERE patient_id = $1 OR provider_id = $1', [id]);
+
+      // 10. Delete appointments
+      await client.query('DELETE FROM appointments WHERE patient_id = $1 OR provider_id = $1', [id]);
+
+      // 11. Delete documents
+      await client.query('DELETE FROM documents WHERE patient_id = $1 OR uploaded_by = $1', [id]);
+
+      // 12. Delete support tickets
+      await client.query('DELETE FROM support_tickets WHERE patient_id = $1 OR provider_id = $1', [id]);
+
+      // 13. Delete chat messages/conversations
+      await client.query('DELETE FROM chat_messages WHERE sender_id = $1', [id]);
+      await client.query(`
+        DELETE FROM chat_conversations
+        WHERE patient_id = $1 OR provider_id = $1
+      `, [id]);
+
+      // 14. Delete patient record (if patient)
+      await client.query('DELETE FROM patients WHERE id = $1', [id]);
+
+      // 15. Delete provider record (if provider)
+      await client.query('DELETE FROM providers WHERE id = $1', [id]);
+
+      // 16. Finally delete the user
+      const result = await client.query('DELETE FROM users WHERE id = $1 RETURNING *', [id]);
+
+      await client.query('COMMIT');
+      return result.rows[0];
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 }
 

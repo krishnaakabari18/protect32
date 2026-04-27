@@ -80,10 +80,18 @@ class UserModel {
     try {
       await client.query('BEGIN');
 
-      // Helper: ignore if table doesn't exist
+      // Safe delete using savepoints - handles missing tables AND constraint errors
       const safe = async (sql, params) => {
-        try { await client.query(sql, params); } catch (e) {
-          if (!e.message.includes('does not exist')) throw e;
+        try {
+          await client.query('SAVEPOINT sp');
+          await client.query(sql, params);
+          await client.query('RELEASE SAVEPOINT sp');
+        } catch (e) {
+          await client.query('ROLLBACK TO SAVEPOINT sp');
+          // Only ignore "table does not exist" errors
+          if (!e.message.includes('does not exist') && !e.message.includes('relation')) {
+            console.warn('[UserDelete] Skipped:', e.message);
+          }
         }
       };
 

@@ -120,36 +120,43 @@ class AuthController {
   static async sendOTP(req, res) {
     try {
       const { mobile_number } = req.body;
-
       if (!mobile_number) {
         return res.status(400).json({ error: 'mobile_number is required' });
       }
 
       const pool = require('../config/database');
-      const result = await pool.query('SELECT id FROM users WHERE mobile_number = $1', [mobile_number]);
+      const result = await pool.query('SELECT id, email FROM users WHERE mobile_number = $1', [mobile_number]);
       const isNewUser = !result.rows[0];
+      const userEmail = result.rows[0]?.email || null;
 
-      // Create user if not exists (minimal record, verified after OTP)
+      // Create user if not exists
       if (isNewUser) {
         await pool.query(
-          `INSERT INTO users (mobile_number, user_type, mobile_verified, is_verified, is_active)
-           VALUES ($1, 'patient', false, false, true)`,
-          [mobile_number]
+          'INSERT INTO users (mobile_number, user_type, mobile_verified, is_verified, is_active) VALUES ($1, $2, false, false, true)',
+          [mobile_number, 'patient']
         );
       }
 
       const otp = OTPUtil.generate(parseInt(process.env.OTP_LENGTH) || 6);
       await AuthModel.createOTP(null, mobile_number, otp, 'login');
 
-      // Send via WhatsApp — returns { success, reason, logs }
+      // Send via WhatsApp
       const whatsappResult = await OTPUtil.sendSMS(mobile_number, otp);
-      const sent = whatsappResult?.success ?? whatsappResult;
+      const whatsappSent = whatsappResult?.success ?? !!whatsappResult;
+
+      // Also send via Email if user has an email address
+      let emailSent = false;
+      if (userEmail) {
+        emailSent = await OTPUtil.sendEmail(userEmail, otp);
+        console.log('[OTP] Email sent to', userEmail, ':', emailSent);
+      }
 
       const responseData = {
         mobile_number,
         is_new_user: isNewUser,
         expires_in_minutes: process.env.OTP_EXPIRE_MINUTES || 10,
-        whatsapp_sent: !!sent,
+        whatsapp_sent: whatsappSent,
+        email_sent: emailSent,
         whatsapp_debug: whatsappResult,
       };
 
@@ -159,14 +166,15 @@ class AuthController {
 
       res.json({
         success: true,
-        message: sent ? 'OTP sent successfully via WhatsApp' : 'OTP generated (WhatsApp not connected — check whatsapp_debug)',
+        message: whatsappSent
+          ? (emailSent ? 'OTP sent via WhatsApp and Email' : 'OTP sent via WhatsApp')
+          : (emailSent ? 'OTP sent via Email' : 'OTP generated (WhatsApp not connected — check whatsapp_debug)'),
         data: responseData,
       });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
   }
-
   // Verify OTP — works for both new and existing users
   static async verifyOTP(req, res) {
     try {
@@ -467,14 +475,14 @@ class AuthController {
       }
 
       const pool = require('../config/database');
-      const existing = await pool.query('SELECT id, user_type FROM users WHERE mobile_number = $1', [mobile_number]);
+      const existing = await pool.query('SELECT id, user_type, email FROM users WHERE mobile_number = $1', [mobile_number]);
 
       let isNewUser = false;
       let userId = existing.rows[0]?.id;
       const effectiveUserType = existing.rows[0]?.user_type || user_type;
+      const userEmail = existing.rows[0]?.email || null;
 
       if (!existing.rows[0]) {
-        // Create user record
         const newUser = await pool.query(
           'INSERT INTO users (mobile_number, user_type, mobile_verified, is_verified, is_active) VALUES ($1,$2,false,false,true) RETURNING id',
           [mobile_number, user_type]
@@ -482,12 +490,10 @@ class AuthController {
         userId = newUser.rows[0].id;
         isNewUser = true;
 
-        // Auto-insert into patients or providers table based on user_type
+        // Auto-insert into patients or providers table
         if (user_type === 'patient') {
-          await pool.query(
-            'INSERT INTO patients (id) VALUES ($1) ON CONFLICT (id) DO NOTHING',
-            [userId]
-          ).catch(e => console.error('[mobile-login] patient insert error:', e.message));
+          await pool.query('INSERT INTO patients (id) VALUES ($1) ON CONFLICT (id) DO NOTHING', [userId])
+            .catch(e => console.error('[mobile-login] patient insert error:', e.message));
           console.log('[mobile-login] New patient profile created for user:', userId);
         } else if (user_type === 'provider') {
           await pool.query(
@@ -502,16 +508,24 @@ class AuthController {
       const otp = OTPUtil.generate(parseInt(process.env.OTP_LENGTH) || 6);
       await AuthModel.createOTP(null, mobile_number, otp, 'login');
 
-      // Send via WhatsApp — same as send-otp
+      // Send via WhatsApp
       const whatsappResult = await OTPUtil.sendSMS(mobile_number, otp);
-      const sent = whatsappResult?.success ?? whatsappResult;
+      const whatsappSent = whatsappResult?.success ?? !!whatsappResult;
+
+      // Also send via Email if user has an email address
+      let emailSent = false;
+      if (userEmail) {
+        emailSent = await OTPUtil.sendEmail(userEmail, otp);
+        console.log('[OTP] Email sent to', userEmail, ':', emailSent);
+      }
 
       const responseData = {
         mobile_number,
         is_new_user: isNewUser,
         user_type: effectiveUserType,
         expires_in_minutes: process.env.OTP_EXPIRE_MINUTES || 10,
-        whatsapp_sent: !!sent,
+        whatsapp_sent: whatsappSent,
+        email_sent: emailSent,
         whatsapp_debug: whatsappResult,
       };
 
@@ -521,9 +535,9 @@ class AuthController {
 
       res.json({
         success: true,
-        message: sent
-          ? (isNewUser ? 'Account created. OTP sent via WhatsApp.' : 'OTP sent via WhatsApp.')
-          : 'OTP generated (WhatsApp not connected — check whatsapp_debug)',
+        message: whatsappSent
+          ? (emailSent ? 'OTP sent via WhatsApp and Email' : 'OTP sent via WhatsApp')
+          : (emailSent ? 'OTP sent via Email' : 'OTP generated (WhatsApp not connected — check whatsapp_debug)'),
         data: responseData,
       });
     } catch (error) {
@@ -600,6 +614,97 @@ class AuthController {
       res.status(500).json({ error: error.message });
     }
   }
-}
 
+
+  // Send OTP to email for verification
+  static async sendEmailOTP(req, res) {
+    try {
+      const userId = req.user?.id || req.user?.userId;
+      const pool = require('../config/database');
+
+      const userRow = await pool.query('SELECT id, email, email_verified FROM users WHERE id = $1', [userId]);
+      const user = userRow.rows[0];
+
+      if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+      if (!user.email) return res.status(400).json({ success: false, error: 'No email address on this account' });
+      if (user.email_verified) return res.status(400).json({ success: false, error: 'Email is already verified' });
+
+      const otp = OTPUtil.generate(parseInt(process.env.OTP_LENGTH) || 6);
+      // Store OTP against email (use email as identifier)
+      await AuthModel.createOTP(userId, user.email, otp, 'email_verification');
+
+      const emailSent = await OTPUtil.sendEmail(user.email, otp);
+      console.log('[Email OTP] Sent to', user.email, ':', emailSent);
+
+      const responseData = {
+        email: user.email,
+        expires_in_minutes: process.env.OTP_EXPIRE_MINUTES || 10,
+        email_sent: emailSent,
+      };
+
+      if (process.env.NODE_ENV === 'development') {
+        responseData.otp_debug = otp;
+      }
+
+      res.json({
+        success: true,
+        message: emailSent ? 'OTP sent to your email address' : 'Failed to send email — check SMTP settings',
+        data: responseData,
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  // Verify email OTP and mark email_verified = true
+  static async verifyEmail(req, res) {
+    try {
+      const { otp_code } = req.body;
+      const userId = req.user?.id || req.user?.userId;
+
+      if (!otp_code) return res.status(400).json({ success: false, error: 'otp_code is required' });
+
+      const pool = require('../config/database');
+
+      const userRow = await pool.query('SELECT id, email, email_verified FROM users WHERE id = $1', [userId]);
+      const user = userRow.rows[0];
+
+      if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+      if (!user.email) return res.status(400).json({ success: false, error: 'No email address on this account' });
+      if (user.email_verified) return res.status(400).json({ success: false, error: 'Email is already verified' });
+
+      // Validate OTP — check against email identifier
+      const otpRow = await pool.query(
+        `SELECT * FROM otp_verifications
+         WHERE (user_id = $1 OR mobile_number = $2)
+           AND otp_code = $3
+           AND purpose = 'email_verification'
+           AND is_verified = false
+           AND expires_at > NOW()
+         ORDER BY created_at DESC LIMIT 1`,
+        [userId, user.email, otp_code]
+      );
+
+      if (!otpRow.rows[0]) {
+        return res.status(400).json({ success: false, error: 'Invalid or expired OTP' });
+      }
+
+      // Mark OTP as used
+      await pool.query('UPDATE otp_verifications SET is_verified = true WHERE id = $1', [otpRow.rows[0].id]);
+
+      // Mark email as verified
+      await pool.query('UPDATE users SET email_verified = true WHERE id = $1', [userId]);
+
+      res.json({
+        success: true,
+        message: 'Email verified successfully',
+        data: { email: user.email, email_verified: true },
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+
+}
 module.exports = AuthController;

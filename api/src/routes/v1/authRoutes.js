@@ -601,4 +601,43 @@ router.post('/mobile-register', AuthController.mobileRegister);
  */
 router.post('/mobile-login', AuthController.mobileLoginOrRegister);
 
+/**
+ * @swagger
+ * /auth/send-email-otp:
+ *   post:
+ *     summary: Send OTP to user's email for verification
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: OTP sent to email
+ */
+router.post('/send-email-otp', AuthMiddleware.authenticate, AuthController.sendEmailOTP);
+
+/**
+ * @swagger
+ * /auth/verify-email:
+ *   post:
+ *     summary: Verify email using OTP
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [otp_code]
+ *             properties:
+ *               otp_code: { type: string, example: "482931" }
+ *     responses:
+ *       200:
+ *         description: Email verified successfully
+ *       400:
+ *         description: Invalid or expired OTP
+ */
+router.post('/verify-email', AuthMiddleware.authenticate, AuthController.verifyEmail);
+
 module.exports = router;

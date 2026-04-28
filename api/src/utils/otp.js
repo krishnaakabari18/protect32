@@ -123,30 +123,65 @@ class OTPUtil {
   }
 
   static async sendEmail(email, otp) {
-    if (process.env.EMAIL_HOST && process.env.EMAIL_USER) {
-      try {
-        const nodemailer = require('nodemailer');
-        const transporter = nodemailer.createTransport({
-          host: process.env.EMAIL_HOST,
-          port: process.env.EMAIL_PORT,
-          secure: false,
-          auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
-        });
-        await transporter.sendMail({
-          from: process.env.EMAIL_USER,
-          to: email,
-          subject: 'Your OTP Code',
-          text: `Your OTP is: ${otp}. Valid for ${process.env.OTP_EXPIRE_MINUTES} minutes.`,
-          html: `<p>Your OTP is: <strong>${otp}</strong></p><p>Valid for ${process.env.OTP_EXPIRE_MINUTES} minutes.</p>`
-        });
-        return true;
-      } catch (error) {
-        console.error('Email sending failed:', error);
+    try {
+      const nodemailer = require('nodemailer');
+      const pool = require('../config/database');
+
+      // Load SMTP config from settings table (DB-driven)
+      const settingsRow = await pool.query(
+        'SELECT smtp_host, smtp_port, smtp_username, smtp_password, smtp_from_address, smtp_from_name, smtp_encryption FROM settings LIMIT 1'
+      );
+      const s = settingsRow.rows[0];
+
+      // Fall back to .env if DB config not set
+      const host       = s?.smtp_host       || process.env.EMAIL_HOST;
+      const port       = parseInt(s?.smtp_port || process.env.EMAIL_PORT || 587);
+      const user       = s?.smtp_username    || process.env.EMAIL_USER;
+      const pass       = s?.smtp_password    || process.env.EMAIL_PASS;
+      const fromAddr   = s?.smtp_from_address || user;
+      const fromName   = s?.smtp_from_name   || 'Protect32';
+      const encryption = (s?.smtp_encryption || 'TLS').toUpperCase();
+
+      if (!host || !user || !pass) {
+        console.warn('[Email] SMTP not configured — skipping email OTP');
         return false;
       }
+
+      const transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure: encryption === 'SSL' || port === 465,
+        auth: { user, pass },
+        tls: { rejectUnauthorized: false },
+      });
+
+      const expiry = process.env.OTP_EXPIRE_MINUTES || 10;
+
+      await transporter.sendMail({
+        from: `"${fromName}" <${fromAddr}>`,
+        to: email,
+        subject: 'Your OTP Code - Protect32',
+        text: `Your OTP is: ${otp}. Valid for ${expiry} minutes. Do not share with anyone.`,
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;border:1px solid #e5e7eb;border-radius:8px;">
+            <h2 style="color:#4361ee;margin-bottom:8px;">Protect32</h2>
+            <p style="color:#374151;font-size:15px;">Your One-Time Password (OTP) is:</p>
+            <div style="background:#f3f4f6;border-radius:6px;padding:16px 24px;text-align:center;margin:16px 0;">
+              <span style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#111827;">${otp}</span>
+            </div>
+            <p style="color:#6b7280;font-size:13px;">Valid for <strong>${expiry} minutes</strong>. Do not share this OTP with anyone.</p>
+            <hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0;">
+            <p style="color:#9ca3af;font-size:12px;">If you did not request this OTP, please ignore this email.</p>
+          </div>
+        `,
+      });
+
+      console.log(`✅ Email OTP sent to ${email}`);
+      return true;
+    } catch (error) {
+      console.error('[Email] OTP send failed:', error.message);
+      return false;
     }
-    console.log(`OTP for ${email}: ${otp}`);
-    return true;
   }
 }
 

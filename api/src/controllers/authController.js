@@ -479,8 +479,19 @@ class AuthController {
 
       let isNewUser = false;
       let userId = existing.rows[0]?.id;
-      const effectiveUserType = existing.rows[0]?.user_type || user_type;
+      const existingUserType = existing.rows[0]?.user_type || null;
       const userEmail = existing.rows[0]?.email || null;
+
+      // Block if user exists but user_type doesn't match
+      if (existing.rows[0] && existingUserType !== user_type) {
+        return res.status(400).json({
+          success: false,
+          error: `This mobile number is registered as a ${existingUserType}. Please select user: "${existingUserType}" to login.`,
+          registered_user_type: existingUserType,
+        });
+      }
+
+      const effectiveUserType = existingUserType || user_type;
 
       if (!existing.rows[0]) {
         const newUser = await pool.query(

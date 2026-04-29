@@ -57,6 +57,9 @@ const settingsModel = {
             whatsapp_api_key,
             whatsapp_api_secret,
             whatsapp_enabled,
+            whatsapp_instance_id,
+            whatsapp_access_token,
+            whatsapp_api_url,
             
             // SEO
             seo_meta_title,
@@ -97,6 +100,9 @@ const settingsModel = {
                 whatsapp_api_key = COALESCE($27, whatsapp_api_key),
                 whatsapp_api_secret = COALESCE($28, whatsapp_api_secret),
                 whatsapp_enabled = COALESCE($29, whatsapp_enabled),
+                whatsapp_instance_id = COALESCE($37, whatsapp_instance_id),
+                whatsapp_access_token = COALESCE($38, whatsapp_access_token),
+                whatsapp_api_url = COALESCE($39, whatsapp_api_url),
                 seo_meta_title = COALESCE($30, seo_meta_title),
                 seo_meta_description = COALESCE($31, seo_meta_description),
                 seo_meta_keywords = COALESCE($32, seo_meta_keywords),
@@ -145,7 +151,10 @@ const settingsModel = {
             seo_og_image,
             userId,
             data.procedure_default_description || null,
-            data.procedure_price_disclaimer || null
+            data.procedure_price_disclaimer || null,
+            whatsapp_instance_id || null,
+            whatsapp_access_token || null,
+            whatsapp_api_url || null
         ];
 
         const result = await pool.query(query, values);

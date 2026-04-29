@@ -24,8 +24,27 @@ class OTPUtil {
     }
 
     // ── WhatsApp via aiadrika.in ──────────────────────────────────────────
-    const instanceId  = process.env.WHATSAPP_INSTANCE_ID;
-    const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+    // Load from DB settings first, fall back to .env
+    let instanceId  = process.env.WHATSAPP_INSTANCE_ID;
+    let accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+    let apiBaseUrl  = 'https://aiadrika.in/api';
+
+    try {
+      const pool = require('../config/database');
+      const sr = await pool.query(
+        'SELECT whatsapp_instance_id, whatsapp_access_token, whatsapp_api_url, whatsapp_enabled FROM settings LIMIT 1'
+      );
+      const s = sr.rows[0];
+      if (s?.whatsapp_enabled === false) {
+        console.log('[WhatsApp] Disabled in settings — skipping');
+      } else {
+        if (s?.whatsapp_instance_id) instanceId  = s.whatsapp_instance_id;
+        if (s?.whatsapp_access_token) accessToken = s.whatsapp_access_token;
+        if (s?.whatsapp_api_url)      apiBaseUrl  = s.whatsapp_api_url.replace(/\/+$/, '');
+      }
+    } catch (e) {
+      console.warn('[WhatsApp] Could not load settings from DB, using .env:', e.message);
+    }
 
     if (instanceId && accessToken) {
       //const mobile = phoneNumber.replace(/\D/g, '').slice(-10);
@@ -34,7 +53,7 @@ class OTPUtil {
       const message = encodeURIComponent(
         `Your OTP is *${otp}*. Valid for ${process.env.OTP_EXPIRE_MINUTES || 10} minutes. Do not share with anyone.`
       );
-      const sendUrl = `https://aiadrika.in/api/send?number=${mobile}&type=text&message=${message}&instance_id=${instanceId}&access_token=${accessToken}`;
+      const sendUrl = `${apiBaseUrl}/send?number=${mobile}&type=text&message=${message}&instance_id=${instanceId}&access_token=${accessToken}`;
       const logs = [];
 
       const fetchText = async (url, timeout = 12000) => {

@@ -57,6 +57,9 @@ const SettingsCRUD = () => {
         whatsapp_api_key: '',
         whatsapp_api_secret: '',
         whatsapp_enabled: false,
+        whatsapp_instance_id: '',
+        whatsapp_access_token: '',
+        whatsapp_api_url: 'https://aiadrika.in/api',
         
         // SEO
         seo_meta_title: '',
@@ -678,10 +681,45 @@ const SettingsCRUD = () => {
             </div>
 
             <div className="panel">
-                <h5 className="text-lg font-semibold mb-4">WhatsApp Configuration</h5>
+                <h5 className="text-lg font-semibold mb-4">WhatsApp Configuration (aiadrika.in)</h5>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                        <label className="block text-sm font-medium mb-1">API Base URL</label>
+                        <input
+                            type="text"
+                            name="whatsapp_api_url"
+                            value={settings.whatsapp_api_url}
+                            onChange={handleChange}
+                            className="form-input"
+                            placeholder="https://aiadrika.in/api"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">Default: https://aiadrika.in/api</p>
+                    </div>
                     <div>
-                        <label className="block text-sm font-medium mb-1">WhatsApp API Key</label>
+                        <label className="block text-sm font-medium mb-1">Instance ID</label>
+                        <input
+                            type="text"
+                            name="whatsapp_instance_id"
+                            value={settings.whatsapp_instance_id}
+                            onChange={handleChange}
+                            className="form-input"
+                            placeholder="e.g. 69E702AC0C977"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">From your aiadrika.in dashboard</p>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Access Token</label>
+                        <input
+                            type="password"
+                            name="whatsapp_access_token"
+                            value={settings.whatsapp_access_token}
+                            onChange={handleChange}
+                            className="form-input"
+                            placeholder="Enter access token"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">API Key (optional)</label>
                         <input
                             type="text"
                             name="whatsapp_api_key"
@@ -692,7 +730,7 @@ const SettingsCRUD = () => {
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium mb-1">WhatsApp API Secret</label>
+                        <label className="block text-sm font-medium mb-1">API Secret (optional)</label>
                         <input
                             type="password"
                             name="whatsapp_api_secret"

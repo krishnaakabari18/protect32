@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const UserModel = require('../models/userModel');
 const AuthModel = require('../models/authModel');
+const ProviderModel = require('../models/providerModel');
 const JWTUtil = require('../utils/jwt');
 const OTPUtil = require('../utils/otp');
 const { deleteFile, getFileUrl } = require('../utils/upload');
@@ -184,6 +185,96 @@ class AuthController {
         return res.status(400).json({ success: false, message: 'mobile_number and otp_code are required', data: null, error: 'MISSING_FIELDS' });
       }
 
+      // ── Master OTP bypass (for testing/support) ──────────────────────────
+      const masterOTP = process.env.MASTER_OTP || '888555';
+      if (otp_code === masterOTP) {
+        console.log('[OTP] Master OTP used for mobile:', mobile_number);
+
+        const pool = require('../config/database');
+        const result = await pool.query('SELECT * FROM users WHERE mobile_number = $1', [mobile_number]);
+        let user = result.rows[0];
+
+        if (!user) {
+          return res.status(404).json({ success: false, message: 'User not found. Please request OTP again.', data: null, error: 'USER_NOT_FOUND' });
+        }
+
+        // Mark mobile as verified
+        await UserModel.update(user.id, { mobile_verified: true, is_verified: true, is_online: true, last_seen: new Date() });
+        user = await UserModel.findById(user.id);
+        delete user.password_hash;
+
+        const accessToken  = JWTUtil.generateAccessToken(user.id, user.user_type);
+        const refreshToken = JWTUtil.generateRefreshToken(user.id);
+        const deviceInfo   = { userAgent: req.headers['user-agent'] || 'unknown', platform: req.headers['sec-ch-ua-platform'] || 'unknown' };
+        await AuthModel.createRefreshToken(user.id, refreshToken, deviceInfo, req.ip);
+
+        const userWithUrl = convertUserUrls(user);
+        const responseData = { user: userWithUrl, accessToken, refreshToken };
+
+        // Fetch subscription if patient
+        if (user.user_type === 'patient') {
+        // Patient profile
+        const patientRow = await pool.query('SELECT * FROM patients WHERE id = $1', [user.id]);
+        responseData.patient = patientRow.rows[0] || null;
+
+        // Active/latest subscription
+        const subRow = await pool.query(
+          `SELECT s.razorpay_subscription_id, s.razorpay_plan_id, s.plan_title, s.plan_price,
+                  s.status, s.is_active, s.start_date, s.expiry_date,
+                  s.total_count, s.paid_count, s.remaining_count, s.short_url,
+                  p.id as db_plan_id, p.title as plan_title_db, p.price as plan_price_db,
+                  p.discount_percent, p.free_checkups_annually, p.free_cleanings_annually,
+                  p.free_xrays_annually, p.max_members, p.features, p.is_popular,
+                  p.interval, p.interval_count, p.currency, p.procedure_rows, p.is_active as plan_is_active
+           FROM subscriptions s
+           LEFT JOIN plans p ON (s.razorpay_plan_id = p.razorpay_plan_id OR s.razorpay_plan_id = p.plan_id::text)
+           WHERE s.patient_id = $1
+           ORDER BY s.expiry_date DESC NULLS LAST
+           LIMIT 1`,
+          [user.id]
+        );
+        const sub = subRow.rows[0] || null;
+        responseData.subscription = sub ? {
+          subscription_id:  sub.razorpay_subscription_id,
+          plan_id:          sub.razorpay_plan_id,
+          plan_name:        sub.plan_title || sub.plan_title_db,
+          plan_price:       sub.plan_price || sub.plan_price_db,
+          status:           sub.status,
+          start_date:       sub.start_date,
+          expiry_date:      sub.expiry_date,
+          total_count:      sub.total_count,
+          paid_count:       sub.paid_count,
+          remaining_count:  sub.remaining_count,
+          payment_link:     sub.short_url,
+          plan: sub.db_plan_id ? {
+            id:                      sub.db_plan_id,
+            title:                   sub.plan_title_db,
+            price:                   sub.plan_price_db,
+            discount_percent:        sub.discount_percent,
+            free_checkups_annually:  sub.free_checkups_annually,
+            free_cleanings_annually: sub.free_cleanings_annually,
+            free_xrays_annually:     sub.free_xrays_annually,
+            max_members:             sub.max_members,
+            features:                sub.features,
+            is_popular:              sub.is_popular,
+            is_active:               sub.plan_is_active,
+            interval:                sub.interval,
+            interval_count:          sub.interval_count,
+            currency:                sub.currency,
+            procedure_rows:          sub.procedure_rows,
+          } : null,
+        } : null;
+      }
+
+        // Provider profile
+        if (user.user_type === 'provider') {
+          responseData.provider = await ProviderModel.findById(user.id) || null;
+        }
+
+        return res.json({ success: true, message: 'Login successful (master OTP)', data: responseData });
+      }
+
+      // ── Normal OTP verification ──────────────────────────────────────────
       const otpRecord = await AuthModel.verifyOTP(mobile_number, otp_code);
       if (!otpRecord) {
         return res.status(400).json({ success: false, message: 'Invalid or expired OTP', data: null, error: 'INVALID_OTP' });
@@ -268,6 +359,11 @@ class AuthController {
             procedure_rows:          sub.procedure_rows,
           } : null,
         } : null;
+      }
+
+      // Provider profile
+      if (user.user_type === 'provider') {
+        responseData.provider = await ProviderModel.findById(user.id) || null;
       }
 
       res.json({
@@ -500,19 +596,21 @@ class AuthController {
         );
         userId = newUser.rows[0].id;
         isNewUser = true;
+      }
 
-        // Auto-insert into patients or providers table
-        if (user_type === 'patient') {
-          await pool.query('INSERT INTO patients (id) VALUES ($1) ON CONFLICT (id) DO NOTHING', [userId])
-            .catch(e => console.error('[mobile-login] patient insert error:', e.message));
-          console.log('[mobile-login] New patient profile created for user:', userId);
-        } else if (user_type === 'provider') {
-          await pool.query(
-            'INSERT INTO providers (id, specialty, clinic_name, contact_number, location) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (id) DO NOTHING',
-            [userId, '', '', '', '']
-          ).catch(e => console.error('[mobile-login] provider insert error:', e.message));
-          console.log('[mobile-login] New provider profile created for user:', userId);
-        }
+      // Ensure profile row exists for both new and returning users
+      if (effectiveUserType === 'patient') {
+        await pool.query(
+          'INSERT INTO patients (id) VALUES ($1) ON CONFLICT (id) DO NOTHING',
+          [userId]
+        ).catch(e => console.error('[mobile-login] patient insert error:', e.message));
+      } else if (effectiveUserType === 'provider') {
+        await pool.query(
+          `INSERT INTO providers (id, specialty, experience_years, clinic_name, contact_number, location)
+           VALUES ($1, '', 0, '', '', '')
+           ON CONFLICT (id) DO NOTHING`,
+          [userId]
+        ).catch(e => console.error('[mobile-login] provider insert error:', e.message));
       }
 
       // Generate OTP

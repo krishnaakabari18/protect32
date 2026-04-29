@@ -137,12 +137,6 @@ router.get('/:id', AuthMiddleware.authenticate, DocumentController.getById);
  *     tags: [Documents]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
 /**
  * @swagger
  * /documents/{id}:
